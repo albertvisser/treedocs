@@ -2,6 +2,7 @@
 import os
 import wx
 import pickle
+import pprint
 
 # van een ibm site afgeplukt
 
@@ -117,7 +118,10 @@ class main_window(wx.Frame):
             if keycode == ord("L"): # 76: Ctrl-L reload tabs
                 self.reread()
             elif keycode == ord("N"): # 78: Ctrl-N nieuwe tab
-                self.add_item()
+                if event.GetModifiers() == wx.MOD_SHIFT:
+                    self.add_item() # eigenlijk: add_item_at_top
+                else:
+                    self.add_item()
             elif keycode == ord("D"):
                 self.delete_item()
             elif keycode == ord("H"): # 72: Ctrl-H Hide/minimize
@@ -137,6 +141,11 @@ class main_window(wx.Frame):
                 self.rename()
             else:
                 self.rename_item()
+        elif keycode == wx.WXK_INSERT and win == self.tree:
+            if event.GetModifiers() == wx.MOD_SHIFT:
+                self_add_item() # eigenlijk insert_at_top
+            else:
+                self_add_item() # eigenlijk insert_at_current_level
         elif keycode == wx.WXK_DELETE and win == self.tree:
             self.delete_item()
         elif keycode == wx.WXK_ESCAPE:
@@ -148,8 +157,9 @@ class main_window(wx.Frame):
         self.editor.IsModified = True
 
     def OnSelChanging(self, event=None): # works (tm)
-        if event.GetItem() == self.root:
-            event.Veto()
+        pass
+        ## if event.GetItem() == self.root:
+            ## event.Veto()
 
     def OnSelChanged(self, event=None): # works (tm)
         self.check_active()
@@ -157,6 +167,14 @@ class main_window(wx.Frame):
         event.Skip()
 
     def open(self):
+        def maak_item(parent, tag, text, children = None):
+            if children is None:
+                children = []
+            item = self.tree.AppendItem (parent, tag)
+            self.tree.SetItemPyData(item, text)
+            for child in children:
+                maak_item(item, *child)
+            return item
         self.opts = {
             "AskBeforeHide": True,"ActiveItem": 0, "SashPosition": 180,
             "ScreenSize": (800, 500), "RootTitle": "MyNotes"}
@@ -180,9 +198,7 @@ class main_window(wx.Frame):
                 for key,val in value.items():
                     self.opts[key] = val
             else:
-                tag, text = value
-                item = self.tree.AppendItem (self.root, tag)
-                self.tree.SetItemPyData(item, text)
+                item = maak_item(self.root, *value)
                 if key == self.opts["ActiveItem"]:
                     item_to_activate = item
         self.tree.SetItemText(self.root,self.opts["RootTitle"])
@@ -199,6 +215,15 @@ class main_window(wx.Frame):
             self.open()
 
     def save(self, event=None):
+        def lees_item(item):
+            titel = self.tree.GetItemText(item)
+            text = self.tree.GetItemPyData(item)
+            kids = []
+            tag, cookie = self.tree.GetFirstChild(item)
+            while tag.IsOk():
+                kids.append(lees_item(tag))
+                tag, cookie = self.tree.GetNextChild(tag, cookie)
+            return titel, text, kids
         self.check_active() # even zorgen dat de editor inhoud geassocieerd wordt
         self.opts["ScreenSize"] = self.GetSize()
         self.opts["SashPosition"] = self.splitter.GetSashPosition()
@@ -209,8 +234,7 @@ class main_window(wx.Frame):
             ky += 1
             if tag == self.activeitem:
                 self.opts["ActiveItem"] = ky
-            self.nt_data[ky] = (self.tree.GetItemText(tag),
-                self.tree.GetItemPyData(tag))
+            self.nt_data[ky] = lees_item(tag)
             tag, cookie = self.tree.GetNextChild(self.root, cookie)
         file = open(self.project_file,"w")
         pickle.dump(self.nt_data, file)
@@ -246,14 +270,35 @@ class main_window(wx.Frame):
 
     def add_item(self, event=None): # works
         # kijk waar de cursor staat (of altijd onderaan toevoegen?)
-        _title = "Geef een titel op voor het nieuwe item"
-        _item = self.activeitem
-        self.ask_title(_title, _item, new=True)
+        title = "Geef een titel op voor het nieuwe item"
+        root = self.activeitem
+        if root is None:
+            root = self.root
+        text = ""
+        new = self.ask_title(title, text)
+        if not new:
+            return
+        new_title, extra_title = new
+        self.check_active()
+        item = self.tree.AppendItem (root, new_title)
+        self.tree.SetItemPyData(item, "")
+        self.editor.Clear()
+        if extra_title:
+            new_item = self.tree.AppendItem(item, extra_title)
+            item = new_item
+        self.activate_item(item)
+        self.tree.Expand (root)
+        if item != self.root:
+            self.editor.SetInsertionPoint(0)
+            self.editor.SetFocus()
 
     def delete_item(self, event=None):
         item = self.tree.GetSelection()
         if item != self.root:
             prev = self.tree.GetPrevSibling(item)
+            if not prev.IsOk():
+                prev = self.tree.GetItemParent(item)
+            print self.tree.GetItemText(prev)
             self.activeitem = None
             self.tree.Delete(item)
             self.activate_item(prev)
@@ -261,43 +306,39 @@ class main_window(wx.Frame):
             MsgBox(self, "Can't delete root", "Error")
 
     def rename_item(self):
-        _title = 'Nieuwe titel voor het huidige item:'
-        _item = self.activeitem
-        self.ask_title(_title, _item)
-
-    def ask_title(self, _title, _item, new=False):
-        dlg = wx.TextEntryDialog(self, _title,
-                'DocTree', self.tree.GetItemText(_item))
-        if dlg.ShowModal() != wx.ID_OK:
+        title = 'Nieuwe titel voor het huidige item:'
+        root = item = self.activeitem
+        text = self.tree.GetItemText(item)
+        new = self.ask_title(title, text)
+        if not new:
             return
-        data = dlg.GetValue()
-        if not data:
-            return
-        try:
-            new_title, extra_title = data.split(" \\ ")
-        except ValueError:
-            new_title, extra_title = data,""
-        if new:
-            self.check_active()
-            item = self.tree.AppendItem (self.root, new_title)
-            self.activeitem = item
-            self.tree.SetItemPyData(item, "")
-            self.editor.Clear()
-        else:
-            self.tree.SetItemText(self.activeitem,new_title)
+        new_title, extra_title = new
+        self.tree.SetItemText(self.activeitem,new_title)
         if extra_title:
-            if new:
-                data = ''
-            else:
-                data = self.tree.GetItemPyData(self.activeitem)
-                self.tree.SetItemPyData(self.activeitem, "")
+            data = self.tree.GetItemPyData(self.activeitem)
+            ## self.tree.SetItemPyData(self.activeitem, "")
             new_item = self.tree.AppendItem(self.activeitem, extra_title)
             self.tree.SetItemPyData(new_item, data)
-        self.tree.Expand (self.activeitem)
-        self.editor.Enable(True)
-        self.editor.SetInsertionPoint(0)
-        self.editor.SetFocus()
-        dlg.Destroy()
+            item = new_item
+        self.activate_item(item)
+        self.tree.Expand (root)
+        if item != self.root:
+            self.editor.SetInsertionPoint(0)
+            self.editor.SetFocus()
+
+    def ask_title(self, _title, _text):
+        dlg = wx.TextEntryDialog(self, _title,
+                'DocTree', _text)
+        if dlg.ShowModal() == wx.ID_OK:
+            data = dlg.GetValue()
+            dlg.Destroy()
+            if data:
+                try:
+                    new_title, extra_title = data.split(" \\ ")
+                except ValueError:
+                    new_title, extra_title = data,""
+                return new_title, extra_title
+        return
 
     def next_note(self, event=None):
         item = self.tree.GetNextSibling(self.activeitem)
@@ -314,7 +355,7 @@ class main_window(wx.Frame):
             MsgBox(self, "Er is geen vorige", "Error")
 
     def check_active(self,message=None): # works, I guess
-        if self.activeitem and self.activeitem != self.root:
+        if self.activeitem:
             self.tree.SetItemBold(self.activeitem, False)
             if self.editor.IsModified:
                 if message:
@@ -323,13 +364,13 @@ class main_window(wx.Frame):
 
     def activate_item(self, item): # works too, it would seem
         self.activeitem = item
-        if item != self.root:
-            self.tree.SetItemBold(item, True)
-            self.editor.SetValue(self.tree.GetItemPyData(item))
-            self.editor.Enable(True)
-        else:
-            self.editor.Clear()
-            self.editor.Enable(False)
+        ## if item != self.root:
+        self.tree.SetItemBold(item, True)
+        self.editor.SetValue(self.tree.GetItemPyData(item))
+        self.editor.Enable(True)
+        ## else:
+            ## self.editor.Clear()
+            ## self.editor.Enable(False)
 
     def info_page(self,event=None):
         info = [
