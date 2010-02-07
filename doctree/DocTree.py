@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: latin-1 -*-
 import os
 import wx
 import pickle
@@ -58,7 +59,8 @@ class main_window(wx.Frame):
                     ("e&Xit (Ctrl-Q, Esc)",self.afsl, 'Exit program'),
                 ),),
             ("&Note",(
-                    ("&New (Ctrl-N)", self.add_item, 'Add note'),
+                    ("&New (Ctrl-N)", self.add_item, 'Add note (below current level)'),
+                    ("&Add (Insert)", self.insert_item, 'Add note (after current)'),
                     ("&Delete (Ctrl-D, Del)", self.delete_item, 'Remove note'),
                     ("Note &Title (F2)",self.ask_title, 'Rename current note'),
                     ("",None,None),
@@ -119,9 +121,9 @@ class main_window(wx.Frame):
                 self.reread()
             elif keycode == ord("N"): # 78: Ctrl-N nieuwe tab
                 if event.GetModifiers() == wx.MOD_SHIFT:
-                    self.add_item() # eigenlijk: add_item_at_top
+                    self.add_item(root=self.tree) # eigenlijk: add_item_at_top
                 else:
-                    self.add_item()
+                    self.add_item(root=self.activeitem)
             elif keycode == ord("D"):
                 self.delete_item()
             elif keycode == ord("H"): # 72: Ctrl-H Hide/minimize
@@ -142,10 +144,7 @@ class main_window(wx.Frame):
             else:
                 self.rename_item()
         elif keycode == wx.WXK_INSERT and win == self.tree:
-            if event.GetModifiers() == wx.MOD_SHIFT:
-                self_add_item() # eigenlijk insert_at_top
-            else:
-                self_add_item() # eigenlijk insert_at_current_level
+            self.insert_item() # insert_at_current_level
         elif keycode == wx.WXK_DELETE and win == self.tree:
             self.delete_item()
         elif keycode == wx.WXK_ESCAPE:
@@ -177,7 +176,7 @@ class main_window(wx.Frame):
             return item
         self.opts = {
             "AskBeforeHide": True,"ActiveItem": 0, "SashPosition": 180,
-            "ScreenSize": (800, 500), "RootTitle": "MyNotes"}
+            "ScreenSize": (800, 500), "RootTitle": "MyNotes", "RootData": ""}
         self.nt_data = {}
         try:
             file = open(self.project_file)
@@ -202,6 +201,8 @@ class main_window(wx.Frame):
                 if key == self.opts["ActiveItem"]:
                     item_to_activate = item
         self.tree.SetItemText(self.root,self.opts["RootTitle"])
+        self.tree.SetItemPyData(self.root, self.opts["RootData"])
+        self.editor.SetValue(self.opts["RootData"])
         self.SetSize(self.opts["ScreenSize"])
         self.splitter.SetSashPosition(self.opts["SashPosition"], True)
         self.tree.Expand (self.root)
@@ -227,6 +228,8 @@ class main_window(wx.Frame):
         self.check_active() # even zorgen dat de editor inhoud geassocieerd wordt
         self.opts["ScreenSize"] = self.GetSize()
         self.opts["SashPosition"] = self.splitter.GetSashPosition()
+        self.opts["RootTitle"] = self.tree.GetItemText(self.root)
+        self.opts["RootData"] = self.tree.GetItemPyData(self.root)
         ky = 0
         self.nt_data = {ky: self.opts}
         tag, cookie = self.tree.GetFirstChild(self.root)
@@ -268,12 +271,12 @@ class main_window(wx.Frame):
         self.save()
         self.Close()
 
-    def add_item(self, event=None): # works
+    def add_item(self, event=None, root=None): # works
         # kijk waar de cursor staat (of altijd onderaan toevoegen?)
         title = "Geef een titel op voor het nieuwe item"
-        root = self.activeitem
-        if root is None:
-            root = self.root
+        ## root = self.activeitem
+        ## if root is None:
+            ## root = self.root
         text = ""
         new = self.ask_title(title, text)
         if not new:
@@ -281,6 +284,28 @@ class main_window(wx.Frame):
         new_title, extra_title = new
         self.check_active()
         item = self.tree.AppendItem (root, new_title)
+        self.tree.SetItemPyData(item, "")
+        self.editor.Clear()
+        if extra_title:
+            new_item = self.tree.AppendItem(item, extra_title)
+            item = new_item
+        self.activate_item(item)
+        self.tree.Expand (root)
+        if item != self.root:
+            self.editor.SetInsertionPoint(0)
+            self.editor.SetFocus()
+
+    def insert_item(self, event=None): # works
+        # kijk waar de cursor staat (of altijd onderaan toevoegen?)
+        title = "Geef een titel op voor het nieuwe item"
+        root = self.tree.GetItemParent(self.activeitem)
+        text = ""
+        new = self.ask_title(title, text)
+        if not new:
+            return
+        new_title, extra_title = new
+        self.check_active()
+        item = self.tree.InsertItem (root, self.activeitem, new_title)
         self.tree.SetItemPyData(item, "")
         self.editor.Clear()
         if extra_title:
@@ -343,16 +368,12 @@ class main_window(wx.Frame):
     def next_note(self, event=None):
         item = self.tree.GetNextSibling(self.activeitem)
         if item.IsOk():
-            self.activate_item(item)
-        else:
-            MsgBox(self, "Er is geen volgende", "Error")
+            self.tree.SelectItem(item)
 
     def prev_note(self, event=None):
         item = self.tree.GetPrevSibling(self.activeitem)
         if item.IsOk():
-            self.activate_item(item)
-        else:
-            MsgBox(self, "Er is geen vorige", "Error")
+            self.tree.SelectItem(item)
 
     def check_active(self,message=None): # works, I guess
         if self.activeitem:
@@ -384,7 +405,9 @@ class main_window(wx.Frame):
 
     def help_page(self,event=None):
         info = [
-            "Ctrl-N                   - nieuwe notitie",
+            "Ctrl-N                   - nieuwe notitie onder huidige",
+            "Shift-Ctrl-N             - nieuwe notitie onder hoogste niveau",
+            "Insert                   - nieuwe notitie achter huidige",
             "Ctrl-PgDn    in editor of"
             " CursorDown in tree      - volgende notitie",
             "Ctrl-PgUp    in editor of"
