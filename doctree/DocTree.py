@@ -285,11 +285,11 @@ class main_window(wx.Frame):
         self.check_active()
         item = self.tree.AppendItem (root, new_title)
         self.tree.SetItemPyData(item, "")
-        self.editor.Clear()
+        ## self.editor.Clear()
         if extra_title:
             new_item = self.tree.AppendItem(item, extra_title)
             item = new_item
-        self.activate_item(item)
+        self.tree.SelectItem(item) #   self.activate_item(item)
         self.tree.Expand (root)
         if item != self.root:
             self.editor.SetInsertionPoint(0)
@@ -307,11 +307,11 @@ class main_window(wx.Frame):
         self.check_active()
         item = self.tree.InsertItem (root, self.activeitem, new_title)
         self.tree.SetItemPyData(item, "")
-        self.editor.Clear()
+        ## self.editor.Clear()
         if extra_title:
             new_item = self.tree.AppendItem(item, extra_title)
             item = new_item
-        self.activate_item(item)
+        self.tree.SelectItem(item) # self.activate_item(item)
         self.tree.Expand (root)
         if item != self.root:
             self.editor.SetInsertionPoint(0)
