@@ -1,18 +1,22 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
+
 # -*- coding: latin-1 -*-
+# het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 import os
 import wx
+import wx.lib.mixins.treemixin as treemix
 import pickle
 import pprint
 
-# van een ibm site afgeplukt
-
-def MsgBox (window, string, title):
-     dlg=wx.MessageDialog(window, string, title, wx.OK)
-     dlg.ShowModal()
-     dlg.Destroy()
+def MsgBox(window, string, title):
+    """Toon een boodschap"""
+    dlg=wx.MessageDialog(window, string, title, wx.OK)
+    dlg.ShowModal()
+    dlg.Destroy()
 
 class CheckDialog(wx.Dialog):
+    """Dialoog om te melden dat de applicatie verborgen gaat worden
+    AskBeforeHide bepaalt of deze getoond wordt of niet"""
     def __init__(self,parent,id,title, size=(-1,120), pos=wx.DefaultPosition,
             style=wx.DEFAULT_DIALOG_STYLE):
         wx.Dialog.__init__(self,parent,id,title,pos,size,style)
@@ -37,6 +41,50 @@ class CheckDialog(wx.Dialog):
         sizer0.SetSizeHints(pnl)
         pnl.Layout()
 
+class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
+    """TreeCtrl met drag&drop faciliteit"""
+    def __init__(self, *args, **kwargs):
+        super(DnDTree, self).__init__(*args, **kwargs)
+
+    def OnDrop(self,dropitem,dragitem):
+        """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
+        een ander (dropitem)
+        Het komt er altijd *onder* te hangen als laatste item"""
+        def getsubtree(item, subtree):
+            """recusrsieve functie om de strucuur onder de te verplaatsen data
+            te onthouden"""
+            tag, cookie = self.GetFirstChild(item)
+            while tag.IsOk():
+                titel = self.GetItemText(tag)
+                text = self.GetItemPyData(tag)
+                subtree.append((titel,text,getsubtree(tag,[])))
+                tag, cookie = self.GetNextChild(tag, cookie)
+            return subtree
+        def putsubtree(item, subtree):
+            """recursieve functie om de onthouden structuur terug te zetten"""
+            for titel, text, sub in subtree:
+                new = self.AppendItem(item, titel)
+                self.SetItemPyData(new, text)
+                putsubtree(new, sub)
+        if dropitem == self.GetRootItem():
+            return
+        ## print self.GetItemText(dropitem)
+        if dropitem is None:
+            dropitem = self.root
+        dragText = self.GetItemText(dragitem)
+        dragData = self.GetItemPyData(dragitem)
+        dragtree = getsubtree(dragitem, [])
+        pprint.pprint(dragtree)
+        dropText = self.GetItemText(dropitem)
+        dropData = self.GetItemPyData(dropitem)
+        ## print('drop "%s" on "%s" ' % (dragText, dropText))
+        self.Delete(dragitem)
+        item = self.AppendItem(dropitem, dragText)
+        self.SetItemPyData(item, dragData)
+        putsubtree(item, dragtree)
+        self.Expand(dropitem)
+
+
 class main_window(wx.Frame):
     def __init__(self, parent, id, title):
         wx.Frame.__init__(self, parent, -1, title, size = (800, 500),
@@ -47,7 +95,7 @@ class main_window(wx.Frame):
         mainwindow = self
         self.sb = self.CreateStatusBar()
 
-        self.menudata = (
+        self.create_menu((
             ("&Main",(
                     ("Re&Load (Ctrl-L)",self.reread, 'Reread .ini file'),
                     ("&Save (Ctrl-S)",self.save, 'Save .ini file'),
@@ -72,13 +120,14 @@ class main_window(wx.Frame):
                     ("&Keys (F1)",self.help_page, 'Keyboard shortcuts'),
                 ),),
             )
-        self.create_menu()
+        )
 
         self.splitter = wx.SplitterWindow (self, -1, style=wx.NO_3D) # |wx.SP_3D
         self.splitter.SetMinimumPaneSize (1)
 
-        self.tree = wx.TreeCtrl (self.splitter, -1,
-            style=wx.TR_HAS_BUTTONS | wx.TR_EDIT_LABELS | wx.TR_HAS_VARIABLE_ROW_HEIGHT)
+        self.tree = DnDTree(self.splitter, -1,
+            style=wx.TR_HAS_BUTTONS | wx.TR_EDIT_LABELS | wx.TR_HAS_VARIABLE_ROW_HEIGHT
+            )
         self.root = self.tree.AddRoot("MyNotes")
         self.activeitem = self.root
         self.Bind(wx.EVT_TREE_SEL_CHANGING, self.OnSelChanging, self.tree)
@@ -97,9 +146,10 @@ class main_window(wx.Frame):
 
         self.Show(True)
 
-    def create_menu(self):
+    def create_menu(self, menudata):
+        """bouw het menu op"""
         menuBar = wx.MenuBar()
-        for item, data in self.menudata:
+        for item, data in menudata:
             menu_label = item
             submenu = wx.Menu()
             for label, handler, info in data:
@@ -113,6 +163,7 @@ class main_window(wx.Frame):
         self.SetMenuBar(menuBar)
 
     def on_key(self,event):
+        """afhandeling toetscombinaties"""
         skip = True
         keycode = event.GetKeyCode()
         win = event.GetEventObject()
@@ -153,20 +204,26 @@ class main_window(wx.Frame):
             event.Skip()
 
     def OnEvtText(self,event): # seems to work
+        "als er iets met de tekst gebeurt de editor-inhoud als 'aangepast' markeren"
         self.editor.IsModified = True
 
     def OnSelChanging(self, event=None): # works (tm)
-        pass
+        "was ooit bedoeld om acties op de root te blkkeren"
         ## if event.GetItem() == self.root:
             ## event.Veto()
+        event.Skip()
 
     def OnSelChanged(self, event=None): # works (tm)
+        """zorgen dat het eerder actieve item onthouden wordt, daarna het geselecteerde
+        to nieuw actief item benoemen"""
         self.check_active()
         self.activate_item(event.GetItem())
         event.Skip()
 
     def open(self):
+        """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         def maak_item(parent, tag, text, children = None):
+            """recursieve functie om de TreeCtrl op te bouwen vanuit de opgeslagen data"""
             if children is None:
                 children = []
             item = self.tree.AppendItem (parent, tag)
@@ -188,10 +245,12 @@ class main_window(wx.Frame):
             return
         file.close()
         self.tree.DeleteAllItems()
-        self.root = self.tree.AddRoot(os.path.splitext(os.path.split(self.project_file)[1])[0])
+        root = self.tree.AddRoot("hidden_root")
+        self.root = self.tree.AppendItem(root, os.path.splitext(
+            os.path.split(self.project_file)[1])[0])
         item_to_activate = self.root
         self.editor.Clear()
-        self.editor.Enable (False)
+        ## self.editor.Enable (False)
         for key, value in self.nt_data.items():
             if key == 0 and "AskBeforeHide" in value:
                 for key,val in value.items():
@@ -206,7 +265,9 @@ class main_window(wx.Frame):
         self.SetSize(self.opts["ScreenSize"])
         self.splitter.SetSashPosition(self.opts["SashPosition"], True)
         self.tree.Expand (self.root)
+        print item_to_activate, self.tree.GetItemText(item_to_activate)
         self.tree.SelectItem(item_to_activate)
+        print self.activeitem, self.tree.GetItemText(self.activeitem)
         self.tree.SetFocus()
 
     def reread(self,event=None):
@@ -216,7 +277,9 @@ class main_window(wx.Frame):
             self.open()
 
     def save(self, event=None):
+        """settings en tree data in een structuur omzetten en opslaan"""
         def lees_item(item):
+            """recursieve functie om de data in een pickle-bare structuur om te zetten"""
             titel = self.tree.GetItemText(item)
             text = self.tree.GetItemPyData(item)
             kids = []
@@ -251,6 +314,7 @@ class main_window(wx.Frame):
         dlg.Destroy()
 
     def hide(self, event=None):
+        """applicatie verbergen"""
         if self.opts["AskBeforeHide"]:
             dlg = CheckDialog(self,-1,'DocTree')
             dlg.ShowModal()
@@ -264,25 +328,29 @@ class main_window(wx.Frame):
         self.Hide()
 
     def revive(self, event=None):
+        """applicatie weer zichtbaar maken"""
         self.Show()
         self.tbi.Destroy()
 
     def afsl(self, event=None):
+        """applicatie afsluiten"""
         self.save()
         self.Close()
 
     def add_item(self, event=None, root=None): # works
-        # kijk waar de cursor staat (of altijd onderaan toevoegen?)
+        """nieuw item toevoegen onder het geselecteerde"""
+        print "add_item - root:",self.tree.GetItemText(root)
+        if root is None:
+            root = self.activeitem if self.activeitem else self.root
+            print "add_item - root was None ->", self.tree.GetItemText(root)
         title = "Geef een titel op voor het nieuwe item"
-        ## root = self.activeitem
-        ## if root is None:
-            ## root = self.root
         text = ""
         new = self.ask_title(title, text)
         if not new:
             return
         new_title, extra_title = new
         self.check_active()
+        print "add_item - root na check_active:",self.tree.GetItemText(root)
         item = self.tree.AppendItem (root, new_title)
         self.tree.SetItemPyData(item, "")
         ## self.editor.Clear()
@@ -296,7 +364,7 @@ class main_window(wx.Frame):
             self.editor.SetFocus()
 
     def insert_item(self, event=None): # works
-        # kijk waar de cursor staat (of altijd onderaan toevoegen?)
+        """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
         title = "Geef een titel op voor het nieuwe item"
         root = self.tree.GetItemParent(self.activeitem)
         text = ""
@@ -318,6 +386,7 @@ class main_window(wx.Frame):
             self.editor.SetFocus()
 
     def delete_item(self, event=None):
+        """item verwijderen"""
         item = self.tree.GetSelection()
         if item != self.root:
             prev = self.tree.GetPrevSibling(item)
@@ -331,6 +400,7 @@ class main_window(wx.Frame):
             MsgBox(self, "Can't delete root", "Error")
 
     def rename_item(self):
+        """titel van item wijzigen"""
         title = 'Nieuwe titel voor het huidige item:'
         root = item = self.activeitem
         text = self.tree.GetItemText(item)
@@ -352,6 +422,7 @@ class main_window(wx.Frame):
             self.editor.SetFocus()
 
     def ask_title(self, _title, _text):
+        """vraag titel voor item"""
         dlg = wx.TextEntryDialog(self, _title,
                 'DocTree', _text)
         if dlg.ShowModal() == wx.ID_OK:
@@ -376,6 +447,7 @@ class main_window(wx.Frame):
             self.tree.SelectItem(item)
 
     def check_active(self,message=None): # works, I guess
+        """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         if self.activeitem:
             self.tree.SetItemBold(self.activeitem, False)
             if self.editor.IsModified:
@@ -384,6 +456,7 @@ class main_window(wx.Frame):
                 self.tree.SetItemPyData(self.activeitem,self.editor.GetValue())
 
     def activate_item(self, item): # works too, it would seem
+        """geselecteerd item "actief" maken (accentueren)"""
         self.activeitem = item
         ## if item != self.root:
         self.tree.SetItemBold(item, True)
@@ -394,6 +467,7 @@ class main_window(wx.Frame):
             ## self.editor.Enable(False)
 
     def info_page(self,event=None):
+        """help -> about"""
         info = [
             "DocTree door Albert Visser",
             "Electronisch notitieblokje",
@@ -404,6 +478,7 @@ class main_window(wx.Frame):
         dlg.Destroy()
 
     def help_page(self,event=None):
+        """help -> keys"""
         info = [
             "Ctrl-N                   - nieuwe notitie onder huidige",
             "Shift-Ctrl-N             - nieuwe notitie onder hoogste niveau",
