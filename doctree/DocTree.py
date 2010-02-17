@@ -50,22 +50,26 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
         een ander (dropitem)
         Het komt er altijd *onder* te hangen als laatste item"""
-        def getsubtree(item, subtree):
-            """recusrsieve functie om de strucuur onder de te verplaatsen data
+        def getsubtree(item):
+            """recursieve functie om de strucuur onder de te verplaatsen data
             te onthouden"""
+            titel = self.GetItemText(item)
+            text = self.GetItemPyData(item)
+            subtree = []
             tag, cookie = self.GetFirstChild(item)
             while tag.IsOk():
-                titel = self.GetItemText(tag)
-                text = self.GetItemPyData(tag)
-                subtree.append((titel,text,getsubtree(tag,[])))
-                tag, cookie = self.GetNextChild(tag, cookie)
-            return subtree
-        def putsubtree(item, subtree):
+                subtree.append(getsubtree(tag))
+                tag, cookie = self.GetNextChild(item, cookie)
+            return titel, text, subtree
+        def putsubtree(parent, titel, text, subtree=None):
             """recursieve functie om de onthouden structuur terug te zetten"""
-            for titel, text, sub in subtree:
-                new = self.AppendItem(item, titel)
-                self.SetItemPyData(new, text)
-                putsubtree(new, sub)
+            if subtree is None:
+                subtree = []
+            new = self.AppendItem(parent, titel)
+            self.SetItemPyData(new, text)
+            for sub in subtree:
+                putsubtree(new, *sub)
+            return new
         if dropitem == self.GetRootItem():
             return
         ## print self.GetItemText(dropitem)
@@ -73,15 +77,15 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
             dropitem = self.root
         dragText = self.GetItemText(dragitem)
         dragData = self.GetItemPyData(dragitem)
-        dragtree = getsubtree(dragitem, [])
-        pprint.pprint(dragtree)
+        dragtree = getsubtree(dragitem)
+        ## pprint.pprint(dragtree)
         dropText = self.GetItemText(dropitem)
         dropData = self.GetItemPyData(dropitem)
         ## print('drop "%s" on "%s" ' % (dragText, dropText))
         self.Delete(dragitem)
-        item = self.AppendItem(dropitem, dragText)
-        self.SetItemPyData(item, dragData)
-        putsubtree(item, dragtree)
+        ## item = self.AppendItem(dropitem, dragText)
+        ## self.SetItemPyData(item, dragData)
+        putsubtree(dropitem, *dragtree)
         self.Expand(dropitem)
 
 
@@ -208,14 +212,14 @@ class main_window(wx.Frame):
         self.editor.IsModified = True
 
     def OnSelChanging(self, event=None): # works (tm)
-        "was ooit bedoeld om acties op de root te blkkeren"
+        "was ooit bedoeld om acties op de root te blokkeren"
         ## if event.GetItem() == self.root:
             ## event.Veto()
         event.Skip()
 
     def OnSelChanged(self, event=None): # works (tm)
         """zorgen dat het eerder actieve item onthouden wordt, daarna het geselecteerde
-        to nieuw actief item benoemen"""
+        tot nieuw actief item benoemen"""
         self.check_active()
         self.activate_item(event.GetItem())
         event.Skip()
@@ -286,7 +290,7 @@ class main_window(wx.Frame):
             tag, cookie = self.tree.GetFirstChild(item)
             while tag.IsOk():
                 kids.append(lees_item(tag))
-                tag, cookie = self.tree.GetNextChild(tag, cookie)
+                tag, cookie = self.tree.GetNextChild(item, cookie) # tag, cookie)
             return titel, text, kids
         self.check_active() # even zorgen dat de editor inhoud geassocieerd wordt
         self.opts["ScreenSize"] = self.GetSize()
