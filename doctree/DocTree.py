@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-
 # -*- coding: latin-1 -*-
 # het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 import os
@@ -202,6 +201,9 @@ class main_window(wx.Frame):
             self.insert_item() # insert_at_current_level
         elif keycode == wx.WXK_DELETE and win == self.tree:
             self.delete_item()
+        elif keycode == wx.WXK_TAB and win == self.editor:
+            if self.editor.IsModified:
+                self.tree.SetItemPyData(self.activeitem,self.editor.GetValue())
         elif keycode == wx.WXK_ESCAPE:
             self.afsl()
         if event and skip:
