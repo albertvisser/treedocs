@@ -8,6 +8,28 @@ import wx.lib.mixins.treemixin as treemix
 import pickle
 import pprint
 
+def getsubtree(tree,item):
+    """recursieve functie om de strucuur onder de te verplaatsen data
+    te onthouden"""
+    titel = tree.GetItemText(item)
+    text = tree.GetItemPyData(item)
+    subtree = []
+    tag, cookie = tree.GetFirstChild(item)
+    while tag.IsOk():
+        subtree.append(getsubtree(tree,tag))
+        tag, cookie = tree.GetNextChild(item, cookie)
+    return titel, text, subtree
+
+def putsubtree(tree, parent, titel, text, subtree=None):
+    """recursieve functie om de onthouden structuur terug te zetten"""
+    if subtree is None:
+        subtree = []
+    new = tree.AppendItem(parent, titel)
+    tree.SetItemPyData(new, text)
+    for sub in subtree:
+        putsubtree(tree, new, *sub)
+    return new
+
 def MsgBox(window, string, title):
     """Toon een boodschap"""
     dlg=wx.MessageDialog(window, string, title, wx.OK)
@@ -50,26 +72,6 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
         een ander (dropitem)
         Het komt er altijd *onder* te hangen als laatste item"""
-        def getsubtree(item):
-            """recursieve functie om de strucuur onder de te verplaatsen data
-            te onthouden"""
-            titel = self.GetItemText(item)
-            text = self.GetItemPyData(item)
-            subtree = []
-            tag, cookie = self.GetFirstChild(item)
-            while tag.IsOk():
-                subtree.append(getsubtree(tag))
-                tag, cookie = self.GetNextChild(item, cookie)
-            return titel, text, subtree
-        def putsubtree(parent, titel, text, subtree=None):
-            """recursieve functie om de onthouden structuur terug te zetten"""
-            if subtree is None:
-                subtree = []
-            new = self.AppendItem(parent, titel)
-            self.SetItemPyData(new, text)
-            for sub in subtree:
-                putsubtree(new, *sub)
-            return new
         if dropitem == self.GetRootItem():
             return
         ## print self.GetItemText(dropitem)
@@ -77,7 +79,7 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
             dropitem = self.root
         dragText = self.GetItemText(dragitem)
         dragData = self.GetItemPyData(dragitem)
-        dragtree = getsubtree(dragitem)
+        dragtree = getsubtree(self,dragitem)
         ## pprint.pprint(dragtree)
         dropText = self.GetItemText(dropitem)
         dropData = self.GetItemPyData(dropitem)
@@ -85,9 +87,8 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
         self.Delete(dragitem)
         ## item = self.AppendItem(dropitem, dragText)
         ## self.SetItemPyData(item, dragData)
-        putsubtree(dropitem, *dragtree)
+        putsubtree(self, dropitem, *dragtree)
         self.Expand(dropitem)
-
 
 class main_window(wx.Frame):
     def __init__(self, parent, id, title):
@@ -457,29 +458,21 @@ class main_window(wx.Frame):
         self.reorder_items(self.root, recursive=True)
 
     def reorder_items(self, root, recursive=False):
-        print "sorteren werkt nog niet helemaal niet"
-        return
+        ## print "sorteren werkt nog niet helemaal niet"
+        ## return
         # dit moet eigenlijk met recursieve ondervoeg routines die ook bij copy-paste gebruikt
         # (kunnen) worden
         print "reorder_items"
         data = []
         tag, cookie = self.tree.GetFirstChild(root)
         while tag.IsOk():
-            data.append((self.tree.GetItemText(tag),self.tree.GetItemPyData(tag)),)
-            data.sort()
             if recursive:
-                self.reorder_items(tag)
-            subdata =[]
-            sub, subcook = self.tree.GetFirstChild(tag)
-            while sub.IsOk():
-                subdata.append(sub)
-                sub, subcook = self.tree.GetNextChild(tag, subcook)
+                self.reorder_items(tag, recursive)
+            data.append(getsubtree(self.tree,tag))
             tag, cookie = self.tree.GetNextChild(root, cookie)
         self.tree.DeleteChildren(root)
-        for tag,text in data:
-            item = self.tree.AppendItem(root,tag)
-            self.tree.SetItemPyData(item, text)
-
+        for item in sorted(data):
+            putsubtree(self.tree, root, *item)
 
     def order_this(self,event=None):
         print "order_this"
