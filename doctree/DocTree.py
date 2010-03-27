@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+
 # -*- coding: latin-1 -*-
 # het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 import os
@@ -104,6 +105,8 @@ class main_window(wx.Frame):
                     ("&Save (Ctrl-S)",self.save, 'Save .ini file'),
                     ("",None,None),
                     ("&Root title (Shift-F2)", self.rename, 'Rename root'),
+                    ("Items sorteren", self.order_top, 'Bovenste niveau sorteren op titel'),
+                    ("Items recursief sorteren", self.order_all, 'Alle niveaus sorteren op titel'),
                     ("",None,None),
                     ("&Hide (Ctrl-H)", self.hide, 'verbergen in system tray'),
                     ("",None,None),
@@ -113,7 +116,10 @@ class main_window(wx.Frame):
                     ("&New (Ctrl-N)", self.add_item, 'Add note (below current level)'),
                     ("&Add (Insert)", self.insert_item, 'Add note (after current)'),
                     ("&Delete (Ctrl-D, Del)", self.delete_item, 'Remove note'),
+                    ("",None,None),
                     ("Note &Title (F2)",self.ask_title, 'Rename current note'),
+                    ("Subitems sorteren", self.order_this, 'Onderliggend niveau sorteren op titel'),
+                    ("Subitems recursief sorteren", self.order_lower, 'Alle onderliggende niveaus sorteren op titel'),
                     ("",None,None),
                     ("&Forward (Ctrl-PgDn)",self.next_note,'View next note'),
                     ("&Back (Ctrl-PgUp)",self.prev_note,'View previous note'),
@@ -441,6 +447,47 @@ class main_window(wx.Frame):
                     new_title, extra_title = data,""
                 return new_title, extra_title
         return
+
+    def order_top(self,event=None):
+        print "order_top"
+        self.reorder_items(self.root)
+
+    def order_all(self,event=None):
+        print "order_all"
+        self.reorder_items(self.root, recursive=True)
+
+    def reorder_items(self, root, recursive=False):
+        print "sorteren werkt nog niet helemaal niet"
+        return
+        # dit moet eigenlijk met recursieve ondervoeg routines die ook bij copy-paste gebruikt
+        # (kunnen) worden
+        print "reorder_items"
+        data = []
+        tag, cookie = self.tree.GetFirstChild(root)
+        while tag.IsOk():
+            data.append((self.tree.GetItemText(tag),self.tree.GetItemPyData(tag)),)
+            data.sort()
+            if recursive:
+                self.reorder_items(tag)
+            subdata =[]
+            sub, subcook = self.tree.GetFirstChild(tag)
+            while sub.IsOk():
+                subdata.append(sub)
+                sub, subcook = self.tree.GetNextChild(tag, subcook)
+            tag, cookie = self.tree.GetNextChild(root, cookie)
+        self.tree.DeleteChildren(root)
+        for tag,text in data:
+            item = self.tree.AppendItem(root,tag)
+            self.tree.SetItemPyData(item, text)
+
+
+    def order_this(self,event=None):
+        print "order_this"
+        self.reorder_items(self.activeitem)
+
+    def order_lower(self,event=None):
+        print "order_lower"
+        self.reorder_items(self.activeitem, recursive=True)
 
     def next_note(self, event=None):
         item = self.tree.GetNextSibling(self.activeitem)
