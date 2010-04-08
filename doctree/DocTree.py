@@ -3,6 +3,7 @@
 # -*- coding: latin-1 -*-
 # het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 import os
+import shutil
 import wx
 import wx.lib.mixins.treemixin as treemix
 import pickle
@@ -251,11 +252,11 @@ class main_window(wx.Frame):
         try:
             file = open(self.project_file)
         except IOError:
-            return
+            return "couldn't open "+ self.project_file
         try:
             self.nt_data = pickle.load(file)
         except EOFError:
-            return
+            return "couldn't load data"
         file.close()
         self.tree.DeleteAllItems()
         root = self.tree.AddRoot("hidden_root")
@@ -315,6 +316,7 @@ class main_window(wx.Frame):
                 self.opts["ActiveItem"] = ky
             self.nt_data[ky] = lees_item(tag)
             tag, cookie = self.tree.GetNextChild(self.root, cookie)
+        shutil.copyfile(self.project_file,self.project_file + "w")
         file = open(self.project_file,"w")
         pickle.dump(self.nt_data, file)
         file.close()
@@ -551,11 +553,13 @@ class main_window(wx.Frame):
 class App(wx.App):
     def __init__(self,fn):
         self.fn = fn
-        wx.App.__init__(self,False)
+        wx.App.__init__(self,redirect=True,filename="doctree.log")
         frame = main_window(None, -1, "DocTree - " + self.fn)
         self.SetTopWindow(frame)
         frame.project_file = self.fn
-        frame.open()
+        e = frame.open()
+        if e:
+            MsgBox(frame, e, "Error")
 
 if __name__ == "__main__":
     app = App('DocTree.ini')
