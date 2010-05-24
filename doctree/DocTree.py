@@ -3,11 +3,12 @@
 # -*- coding: latin-1 -*-
 # het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 import os
-import shutil
 import wx
 import wx.lib.mixins.treemixin as treemix
 import pickle
+import shutil
 import pprint
+import datetime as dt
 
 def getsubtree(tree,item):
     """recursieve functie om de strucuur onder de te verplaatsen data
@@ -103,28 +104,31 @@ class main_window(wx.Frame):
 
         self.create_menu((
             ("&Main",(
-                    ("Re&Load (Ctrl-L)",self.reread, 'Reread .ini file'),
-                    ("&Save (Ctrl-S)",self.save, 'Save .ini file'),
-                    ("",None,None),
-                    ("&Root title (Shift-F2)", self.rename, 'Rename root'),
-                    ("Items sorteren", self.order_top, 'Bovenste niveau sorteren op titel'),
-                    ("Items recursief sorteren", self.order_all, 'Alle niveaus sorteren op titel'),
-                    ("",None,None),
-                    ("&Hide (Ctrl-H)", self.hide, 'verbergen in system tray'),
-                    ("",None,None),
-                    ("e&Xit (Ctrl-Q, Esc)",self.afsl, 'Exit program'),
+                ("Re&Load (Ctrl-L)",self.reread, 'Reread .ini file'),
+                ("&Open (Shift-Ctrl-L)",self.open,"Choose and open .ini file"),
+                ("&Init (Ctrl-I)",self.new,'Start a new .ini file'),
+                ("&Save (Ctrl-S)",self.save, 'Save .ini file'),
+                ("Save as (Shift-Ctrl-S)",self.saveas, 'Name and save .ini file'),
+                ("",None,None),
+                ("&Root title (Shift-F2)", self.rename, 'Rename root'),
+                ("Items sorteren", self.order_top, 'Bovenste niveau sorteren op titel'),
+                ("Items recursief sorteren", self.order_all, 'Alle niveaus sorteren op titel'),
+                ("",None,None),
+                ("&Hide (Ctrl-H)", self.hide, 'verbergen in system tray'),
+                ("",None,None),
+                ("e&Xit (Ctrl-Q, Esc)",self.afsl, 'Exit program'),
                 ),),
             ("&Note",(
-                    ("&New (Ctrl-N)", self.add_item, 'Add note (below current level)'),
-                    ("&Add (Insert)", self.insert_item, 'Add note (after current)'),
-                    ("&Delete (Ctrl-D, Del)", self.delete_item, 'Remove note'),
-                    ("",None,None),
-                    ("Note &Title (F2)",self.ask_title, 'Rename current note'),
-                    ("Subitems sorteren", self.order_this, 'Onderliggend niveau sorteren op titel'),
-                    ("Subitems recursief sorteren", self.order_lower, 'Alle onderliggende niveaus sorteren op titel'),
-                    ("",None,None),
-                    ("&Forward (Ctrl-PgDn)",self.next_note,'View next note'),
-                    ("&Back (Ctrl-PgUp)",self.prev_note,'View previous note'),
+                ("&New (Ctrl-N)", self.add_item, 'Add note (below current level)'),
+                ("&Add (Insert)", self.insert_item, 'Add note (after current)'),
+                ("&Delete (Ctrl-D, Del)", self.delete_item, 'Remove note'),
+                ("",None,None),
+                ("Note &Title (F2)",self.ask_title, 'Rename current note'),
+                ("Subitems sorteren", self.order_this, 'Onderliggend niveau sorteren op titel'),
+                ("Subitems recursief sorteren", self.order_lower, 'Alle onderliggende niveaus sorteren op titel'),
+                ("",None,None),
+                ("&Forward (Ctrl-PgDn)",self.next_note,'View next note'),
+                ("&Back (Ctrl-PgUp)",self.prev_note,'View previous note'),
                 ),),
             ("&Help",(
                     ("&About",self.info_page, 'About this application'),
@@ -177,12 +181,18 @@ class main_window(wx.Frame):
         """afhandeling toetscombinaties"""
         skip = True
         keycode = event.GetKeyCode()
+        mods = event.GetModifiers()
         win = event.GetEventObject()
-        if event.GetModifiers() == wx.MOD_CONTROL: # evt.ControlDown()
+        if mods == wx.MOD_CONTROL: # evt.ControlDown()
             if keycode == ord("L"): # 76: Ctrl-L reload tabs
-                self.reread()
+                if mods == wx.MOD_SHIFT:
+                    self.reread()
+                else:
+                    self.open()
+            elif keycode == ord("I"):
+                self.new()
             elif keycode == ord("N"): # 78: Ctrl-N nieuwe tab
-                if event.GetModifiers() == wx.MOD_SHIFT:
+                if mods == wx.MOD_SHIFT:
                     self.add_item(root=self.tree) # eigenlijk: add_item_at_top
                 else:
                     self.add_item(root=self.activeitem)
@@ -191,7 +201,10 @@ class main_window(wx.Frame):
             elif keycode == ord("H"): # 72: Ctrl-H Hide/minimize
                 self.hide()
             elif keycode == ord("S"): # 83: Ctrl-S saven zonder afsluiten
-                self.save()
+                if mods == wx.MOD_SHIFT:
+                    self.saveas()
+                else:
+                    self.save()
             elif keycode == ord("Q"): # 81: Ctrl-Q afsluiten na saven
                 self.afsl()
             elif keycode == wx.WXK_PAGEDOWN: #  and win == self.editor:
@@ -201,7 +214,7 @@ class main_window(wx.Frame):
         elif keycode == wx.WXK_F1:
             self.help_page()
         elif keycode == wx.WXK_F2: # and win == self.tree:
-            if event.GetModifiers() == wx.MOD_SHIFT:
+            if mods == wx.MOD_SHIFT:
                 self.rename()
             else:
                 self.rename_item()
@@ -234,7 +247,53 @@ class main_window(wx.Frame):
         self.activate_item(event.GetItem())
         event.Skip()
 
-    def open(self):
+    def open(self, event=None):
+        self.dirname = os.path.dirname(self.project_file)
+        dlg = wx.FileDialog(self, "DocTree - choose file to open",
+            self.dirname, "", "INI files|*.ini", wx.OPEN)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.filename=dlg.GetFilename()
+            self.dirname=dlg.GetDirectory()
+            self.save_needed()
+            self.save()
+            self.project_file = os.path.join(self.dirname,self.filename)
+            e = self.read()
+            if e:
+                MsgBox(self,e, "Error")
+            else:
+                self.SetTitle("DocTree - " + self.filename)
+        dlg.Destroy()
+
+    def new(self, event=None):
+        self.save_needed()
+        self.dirname = os.path.dirname(self.project_file)
+        dlg = wx.FileDialog(self, "DocTree - enter name for new file",
+            self.dirname, "", "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.filename=dlg.GetFilename()
+            self.dirname=dlg.GetDirectory()
+            self.project_file = os.path.join(self.dirname,self.filename)
+            self.nt_data = {}
+            self.tree.DeleteAllItems()
+            root = self.tree.AddRoot("hidden_root")
+            item = self.tree.AppendItem(root, os.path.splitext(
+                os.path.split(self.project_file)[1])[0])
+            self.activeitem = self.root = item
+            self.tree.SetItemBold(item, True)
+            self.editor.Enable(True)
+            self.editor.Clear()
+            self.SetTitle("DocTree - New File")
+            self.tree.SetFocus()
+
+    def save_needed(self):
+        return
+        dlg=wx.MessageDialog(self, "Save current file before continuing?",
+            "DocTree", wx.YESNO)
+        if dlg.ShowModal() == wx.YES:
+            self.save()
+        dlg.Destroy()
+
+    def read(self):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         def maak_item(parent, tag, text, children = None):
             """recursieve functie om de TreeCtrl op te bouwen vanuit de opgeslagen data"""
@@ -245,6 +304,7 @@ class main_window(wx.Frame):
             for child in children:
                 maak_item(item, *child)
             return item
+        ## print self.project_file.join(("reading: ","..."))
         self.opts = {
             "AskBeforeHide": True,"ActiveItem": 0, "SashPosition": 180,
             "ScreenSize": (800, 500), "RootTitle": "MyNotes", "RootData": ""}
@@ -262,7 +322,7 @@ class main_window(wx.Frame):
         root = self.tree.AddRoot("hidden_root")
         self.root = self.tree.AppendItem(root, os.path.splitext(
             os.path.split(self.project_file)[1])[0])
-        item_to_activate = self.root
+        self.activeitem = item_to_activate = self.root
         self.editor.Clear()
         ## self.editor.Enable (False)
         for key, value in self.nt_data.items():
@@ -279,18 +339,23 @@ class main_window(wx.Frame):
         self.SetSize(self.opts["ScreenSize"])
         self.splitter.SetSashPosition(self.opts["SashPosition"], True)
         self.tree.Expand (self.root)
-        print item_to_activate, self.tree.GetItemText(item_to_activate)
-        self.tree.SelectItem(item_to_activate)
-        print self.activeitem, self.tree.GetItemText(self.activeitem)
+        if item_to_activate != self.activeitem:
+            self.tree.SelectItem(item_to_activate)
         self.tree.SetFocus()
 
     def reread(self,event=None):
         dlg=wx.MessageDialog(self, 'OK to reload?', 'DocTree', wx.OK | wx.CANCEL)
         result = dlg.ShowModal()
         if result == wx.ID_OK:
-            self.open()
+            self.read()
 
     def save(self, event=None):
+        if self.project_file:
+            self.write()
+        else:
+            self.saveas()
+
+    def write(self, event=None):
         """settings en tree data in een structuur omzetten en opslaan"""
         def lees_item(item):
             """recursieve functie om de data in een pickle-bare structuur om te zetten"""
@@ -302,6 +367,7 @@ class main_window(wx.Frame):
                 kids.append(lees_item(tag))
                 tag, cookie = self.tree.GetNextChild(item, cookie) # tag, cookie)
             return titel, text, kids
+        ## print "save - active item was",self.tree.GetItemText(self.activeitem)
         self.check_active() # even zorgen dat de editor inhoud geassocieerd wordt
         self.opts["ScreenSize"] = self.GetSize()
         self.opts["SashPosition"] = self.splitter.GetSashPosition()
@@ -316,10 +382,25 @@ class main_window(wx.Frame):
                 self.opts["ActiveItem"] = ky
             self.nt_data[ky] = lees_item(tag)
             tag, cookie = self.tree.GetNextChild(self.root, cookie)
-        shutil.copyfile(self.project_file,self.project_file + "w")
+        shutil.copyfile(self.project_file,self.project_file + ".bak")
         file = open(self.project_file,"w")
         pickle.dump(self.nt_data, file)
         file.close()
+        self.SetTitle("DocTree - " + self.filename)
+
+    def saveas(self, event=None):
+        ## original_name = self.project_file
+        self.dirname = os.path.dirname(self.project_file)
+        dlg = wx.FileDialog(self,"DocTree - Save File as:", self.dirname, "",
+            "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.filename=dlg.GetFilename()
+            self.dirname=dlg.GetDirectory()
+            self.project_file = os.path.join(self.dirname,self.filename)
+            self.write()
+            ## if self.original_name:
+                ## self.project_file = original_name
+        dlg.Destroy()
 
     def rename(self, event=None):
         dlg = wx.TextEntryDialog(self, 'Geef nieuwe titel voor het hoofditem:',
@@ -365,7 +446,6 @@ class main_window(wx.Frame):
             return
         new_title, extra_title = new
         self.check_active()
-        print "add_item - root na check_active:",self.tree.GetItemText(root)
         item = self.tree.AppendItem (root, new_title)
         self.tree.SetItemPyData(item, "")
         ## self.editor.Clear()
@@ -496,6 +576,7 @@ class main_window(wx.Frame):
 
     def check_active(self,message=None): # works, I guess
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
+        ## print "check_active",self.activeitem
         if self.activeitem:
             self.tree.SetItemBold(self.activeitem, False)
             if self.editor.IsModified:
@@ -536,8 +617,11 @@ class main_window(wx.Frame):
             "Ctrl-PgUp    in editor of"
             " CursorUp   in tree      - vorige notitie",
             "Ctrl-D of Delete in tree - verwijder notitie",
-            "Ctrl-S                   - alles opslaan",
-            "Ctrl-L                   - alles opnieuw laden",
+            "Ctrl-S                   - alle notities opslaan",
+            "Shift-Ctrl-S             - alle notities opslaan omder andere naam",
+            "Ctrl-L                   - alle notities opnieuw laden",
+            "Shift-Ctrl-L             - ander bestand met notities laden",
+            "Ctrl-I                   - initialiseer (nieuw) notitiebestand"
             "Ctrl-Q, Esc              - opslaan en sluiten",
             "Ctrl-H                   - verbergen in system tray",
             "",
@@ -553,11 +637,12 @@ class main_window(wx.Frame):
 class App(wx.App):
     def __init__(self,fn):
         self.fn = fn
-        wx.App.__init__(self,redirect=True,filename="doctree.log")
+        wx.App.__init__(self, redirect=True, filename="doctree.log")
+        print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(("\n------------------","------------------\n"))
         frame = main_window(None, -1, "DocTree - " + self.fn)
         self.SetTopWindow(frame)
         frame.project_file = self.fn
-        e = frame.open()
+        e = frame.read()
         if e:
             MsgBox(frame, e, "Error")
 
