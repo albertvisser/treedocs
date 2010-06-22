@@ -255,7 +255,6 @@ class main_window(wx.Frame):
             self.filename=dlg.GetFilename()
             self.dirname=dlg.GetDirectory()
             self.save_needed()
-            self.save()
             self.project_file = os.path.join(self.dirname,self.filename)
             e = self.read()
             if e:
@@ -265,13 +264,13 @@ class main_window(wx.Frame):
         dlg.Destroy()
 
     def new(self, event=None):
-        self.save_needed()
         self.dirname = os.path.dirname(self.project_file)
         dlg = wx.FileDialog(self, "DocTree - enter name for new file",
             self.dirname, "", "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
         if dlg.ShowModal() == wx.ID_OK:
             self.filename=dlg.GetFilename()
             self.dirname=dlg.GetDirectory()
+            self.save_needed()
             self.project_file = os.path.join(self.dirname,self.filename)
             self.nt_data = {}
             self.tree.DeleteAllItems()
@@ -282,10 +281,14 @@ class main_window(wx.Frame):
             self.tree.SetItemBold(item, True)
             self.editor.Enable(True)
             self.editor.Clear()
-            self.SetTitle("DocTree - New File")
+            self.SetTitle("DocTree - " + self.filename)
             self.tree.SetFocus()
+        dlg.Destroy()
 
     def save_needed(self):
+        """eigenlijk bedoeld om te reageren op een indicatie dat er iets aan de
+        verzameling notities is gewijzigd (de oorspronkelijke self.project_dirty)"""
+        self.save()
         return
         dlg=wx.MessageDialog(self, "Save current file before continuing?",
             "DocTree", wx.YESNO)
@@ -382,7 +385,10 @@ class main_window(wx.Frame):
                 self.opts["ActiveItem"] = ky
             self.nt_data[ky] = lees_item(tag)
             tag, cookie = self.tree.GetNextChild(self.root, cookie)
-        shutil.copyfile(self.project_file,self.project_file + ".bak")
+        try:
+            shutil.copyfile(self.project_file,self.project_file + ".bak")
+        except IOError:
+            pass
         file = open(self.project_file,"w")
         pickle.dump(self.nt_data, file)
         file.close()
