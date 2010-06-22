@@ -352,13 +352,13 @@ class main_window(wx.Frame):
         if result == wx.ID_OK:
             self.read()
 
-    def save(self, event=None):
+    def save(self, event=None, meld=True):
         if self.project_file:
-            self.write()
+            self.write(meld=meld)
         else:
             self.saveas()
 
-    def write(self, event=None):
+    def write(self, event=None, meld=True):
         """settings en tree data in een structuur omzetten en opslaan"""
         def lees_item(item):
             """recursieve functie om de data in een pickle-bare structuur om te zetten"""
@@ -392,7 +392,9 @@ class main_window(wx.Frame):
         file = open(self.project_file,"w")
         pickle.dump(self.nt_data, file)
         file.close()
-        self.SetTitle("DocTree - " + self.filename)
+        if meld:
+            MsgBox(self, self.project_file + " is opgeslagen","DocTool")
+        self.SetTitle("DocTree - " + self.project_file)
 
     def saveas(self, event=None):
         ## original_name = self.project_file
@@ -436,7 +438,7 @@ class main_window(wx.Frame):
 
     def afsl(self, event=None):
         """applicatie afsluiten"""
-        self.save()
+        self.save(meld=False)
         self.Close()
 
     def add_item(self, event=None, root=None): # works
