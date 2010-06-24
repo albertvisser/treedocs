@@ -5,7 +5,7 @@
 import os
 import wx
 import wx.lib.mixins.treemixin as treemix
-import pickle
+import cPickle as pck
 import shutil
 import pprint
 import datetime as dt
@@ -139,6 +139,7 @@ class main_window(wx.Frame):
 
         self.splitter = wx.SplitterWindow (self, -1, style=wx.NO_3D) # |wx.SP_3D
         self.splitter.SetMinimumPaneSize (1)
+        self.splitter.SetSashPosition(180, True)
 
         self.tree = DnDTree(self.splitter, -1,
             style=wx.TR_HAS_BUTTONS | wx.TR_EDIT_LABELS | wx.TR_HAS_VARIABLE_ROW_HEIGHT
@@ -317,7 +318,7 @@ class main_window(wx.Frame):
         except IOError:
             return "couldn't open "+ self.project_file
         try:
-            self.nt_data = pickle.load(file)
+            self.nt_data = pck.load(file)
         except EOFError:
             return "couldn't load data"
         file.close()
@@ -390,7 +391,7 @@ class main_window(wx.Frame):
         except IOError:
             pass
         file = open(self.project_file,"w")
-        pickle.dump(self.nt_data, file)
+        pck.dump(self.nt_data, file)
         file.close()
         if meld:
             MsgBox(self, self.project_file + " is opgeslagen","DocTool")
@@ -507,6 +508,7 @@ class main_window(wx.Frame):
         title = 'Nieuwe titel voor het huidige item:'
         root = item = self.activeitem
         text = self.tree.GetItemText(item)
+        self.check_active()
         new = self.ask_title(title, text)
         if not new:
             return
@@ -518,8 +520,8 @@ class main_window(wx.Frame):
             new_item = self.tree.AppendItem(self.activeitem, extra_title)
             self.tree.SetItemPyData(new_item, data)
             item = new_item
-        self.activate_item(item)
         self.tree.Expand (root)
+        self.tree.SelectItem(item)
         if item != self.root:
             self.editor.SetInsertionPoint(0)
             self.editor.SetFocus()
