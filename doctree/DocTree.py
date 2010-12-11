@@ -185,33 +185,31 @@ class main_window(wx.Frame):
         mods = event.GetModifiers()
         win = event.GetEventObject()
         if mods == wx.MOD_CONTROL: # evt.ControlDown()
-            if keycode == ord("L"): # 76: Ctrl-L reload tabs
-                if mods == wx.MOD_SHIFT:
-                    self.reread()
-                else:
-                    self.open()
+            if keycode == ord("L"): # 76: Ctrl-L Load tabs
+                self.open()
             elif keycode == ord("I"):
                 self.new()
             elif keycode == ord("N"): # 78: Ctrl-N nieuwe tab
-                if mods == wx.MOD_SHIFT:
-                    self.add_item(root=self.tree) # eigenlijk: add_item_at_top
-                else:
-                    self.add_item(root=self.activeitem)
+                self.add_item(root=self.activeitem)
             elif keycode == ord("D"):
                 self.delete_item()
             elif keycode == ord("H"): # 72: Ctrl-H Hide/minimize
                 self.hide()
             elif keycode == ord("S"): # 83: Ctrl-S saven zonder afsluiten
-                if mods == wx.MOD_SHIFT:
-                    self.saveas()
-                else:
-                    self.save()
+                self.save()
             elif keycode == ord("Q"): # 81: Ctrl-Q afsluiten na saven
                 self.afsl()
             elif keycode == wx.WXK_PAGEDOWN: #  and win == self.editor:
                 self.next_note()
             elif keycode == wx.WXK_PAGEUP: #  and win == self.editor:
                 self.prev_note()
+        elif mods == wx.MOD_CONTROL | wx.MOD_SHIFT: # evt.ControlDown()
+            if keycode == ord("L"): # 76: Shift-Ctrl-L reload tabs
+                self.reread()
+            elif keycode == ord("N"): # 78: Shift-Ctrl-N nieuwe tab
+                self.add_item(root=self.root) # eigenlijk: add_item_at_top
+            elif keycode == ord("S"): # 83: Shift-Ctrl-S
+                self.saveas()
         elif keycode == wx.WXK_F1:
             self.help_page()
         elif keycode == wx.WXK_F2: # and win == self.tree:
@@ -444,10 +442,8 @@ class main_window(wx.Frame):
 
     def add_item(self, event=None, root=None): # works
         """nieuw item toevoegen onder het geselecteerde"""
-        print "add_item - root:",self.tree.GetItemText(root)
         if root is None:
             root = self.activeitem if self.activeitem else self.root
-            print "add_item - root was None ->", self.tree.GetItemText(root)
         title = "Geef een titel op voor het nieuwe item"
         text = ""
         new = self.ask_title(title, text)
