@@ -34,6 +34,7 @@ def putsubtree(tree, parent, titel, text, subtree=None):
 
 def MsgBox(window, string, title):
     """Toon een boodschap"""
+    print "MsgBox aangeroepen:", string
     dlg=wx.MessageDialog(window, string, title, wx.OK)
     dlg.ShowModal()
     dlg.Destroy()
@@ -253,8 +254,9 @@ class main_window(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             self.filename=dlg.GetFilename()
             self.dirname=dlg.GetDirectory()
-            self.save_needed()
+            ## self.save_needed()
             self.project_file = os.path.join(self.dirname,self.filename)
+            print "ok, reading", self.project_file
             e = self.read()
             if e:
                 MsgBox(self,e, "Error")
@@ -287,8 +289,8 @@ class main_window(wx.Frame):
     def save_needed(self):
         """eigenlijk bedoeld om te reageren op een indicatie dat er iets aan de
         verzameling notities is gewijzigd (de oorspronkelijke self.project_dirty)"""
-        self.save()
-        return
+        ## self.save()
+        ## return
         dlg=wx.MessageDialog(self, "Save current file before continuing?",
             "DocTree", wx.YESNO)
         if dlg.ShowModal() == wx.YES:
@@ -312,7 +314,7 @@ class main_window(wx.Frame):
             "ScreenSize": (800, 500), "RootTitle": "MyNotes", "RootData": ""}
         self.nt_data = {}
         try:
-            file = open(self.project_file)
+            file = open(self.project_file,"rb")
         except IOError:
             return "couldn't open "+ self.project_file
         try:
@@ -371,7 +373,7 @@ class main_window(wx.Frame):
             return titel, text, kids
         ## print "save - active item was",self.tree.GetItemText(self.activeitem)
         self.check_active() # even zorgen dat de editor inhoud geassocieerd wordt
-        self.opts["ScreenSize"] = self.GetSize()
+        self.opts["ScreenSize"] = tuple(self.GetSize())
         self.opts["SashPosition"] = self.splitter.GetSashPosition()
         self.opts["RootTitle"] = self.tree.GetItemText(self.root)
         self.opts["RootData"] = self.tree.GetItemPyData(self.root)
