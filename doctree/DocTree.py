@@ -303,8 +303,8 @@ class main_window(wx.Frame):
             """recursieve functie om de TreeCtrl op te bouwen vanuit de opgeslagen data"""
             if children is None:
                 children = []
-            item = self.tree.AppendItem (parent, tag)
-            self.tree.SetItemPyData(item, text)
+            item = self.tree.AppendItem (parent, tag.rstrip())
+            self.tree.SetItemPyData(item, text.rstrip())
             for child in children:
                 maak_item(item, *child)
             return item
@@ -337,7 +337,7 @@ class main_window(wx.Frame):
                 item = maak_item(self.root, *value)
                 if key == self.opts["ActiveItem"]:
                     item_to_activate = item
-        self.tree.SetItemText(self.root,self.opts["RootTitle"])
+        self.tree.SetItemText(self.root,self.opts["RootTitle"].rstrip())
         self.tree.SetItemPyData(self.root, self.opts["RootData"])
         self.editor.SetValue(self.opts["RootData"])
         self.SetSize(self.opts["ScreenSize"])
