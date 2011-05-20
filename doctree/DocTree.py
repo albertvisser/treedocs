@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-
 # -*- coding: latin-1 -*-
 # het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 import os
@@ -105,8 +104,8 @@ class main_window(wx.Frame):
 
         self.create_menu((
             ("&Main",(
-                ("Re&Load (Ctrl-L)",self.reread, 'Reread .ini file'),
-                ("&Open (Shift-Ctrl-L)",self.open,"Choose and open .ini file"),
+                ("Re&Load (Ctrl-R)",self.reread, 'Reread .ini file'),
+                ("&Open (Ctrl-O)",self.open,"Choose and open .ini file"),
                 ("&Init (Ctrl-I)",self.new,'Start a new .ini file'),
                 ("&Save (Ctrl-S)",self.save, 'Save .ini file'),
                 ("Save as (Shift-Ctrl-S)",self.saveas, 'Name and save .ini file'),
@@ -185,31 +184,31 @@ class main_window(wx.Frame):
         keycode = event.GetKeyCode()
         mods = event.GetModifiers()
         win = event.GetEventObject()
-        if mods == wx.MOD_CONTROL: # evt.ControlDown()
-            if keycode == ord("L"): # 76: Ctrl-L Load tabs
+        if mods == wx.MOD_CONTROL:
+            if keycode == ord("O"):
                 self.open()
+            elif keycode == ord("R"):
+                self.reread()
             elif keycode == ord("I"):
                 self.new()
-            elif keycode == ord("N"): # 78: Ctrl-N nieuwe tab
+            elif keycode == ord("N"):
                 self.add_item(root=self.activeitem)
             elif keycode == ord("D"):
                 self.delete_item()
-            elif keycode == ord("H"): # 72: Ctrl-H Hide/minimize
+            elif keycode == ord("H"):
                 self.hide()
-            elif keycode == ord("S"): # 83: Ctrl-S saven zonder afsluiten
+            elif keycode == ord("S"):
                 self.save()
-            elif keycode == ord("Q"): # 81: Ctrl-Q afsluiten na saven
+            elif keycode == ord("Q"):
                 self.afsl()
             elif keycode == wx.WXK_PAGEDOWN: #  and win == self.editor:
                 self.next_note()
             elif keycode == wx.WXK_PAGEUP: #  and win == self.editor:
                 self.prev_note()
         elif mods == wx.MOD_CONTROL | wx.MOD_SHIFT: # evt.ControlDown()
-            if keycode == ord("L"): # 76: Shift-Ctrl-L reload tabs
-                self.reread()
-            elif keycode == ord("N"): # 78: Shift-Ctrl-N nieuwe tab
+            if keycode == ord("N"):
                 self.add_item(root=self.root) # eigenlijk: add_item_at_top
-            elif keycode == ord("S"): # 83: Shift-Ctrl-S
+            elif keycode == ord("S"):
                 self.saveas()
         elif keycode == wx.WXK_F1:
             self.help_page()
@@ -230,17 +229,17 @@ class main_window(wx.Frame):
         if event and skip:
             event.Skip()
 
-    def OnEvtText(self,event): # seems to work
+    def OnEvtText(self,event):
         "als er iets met de tekst gebeurt de editor-inhoud als 'aangepast' markeren"
         self.editor.IsModified = True
 
-    def OnSelChanging(self, event=None): # works (tm)
+    def OnSelChanging(self, event=None):
         "was ooit bedoeld om acties op de root te blokkeren"
         ## if event.GetItem() == self.root:
             ## event.Veto()
         event.Skip()
 
-    def OnSelChanged(self, event=None): # works (tm)
+    def OnSelChanged(self, event=None):
         """zorgen dat het eerder actieve item onthouden wordt, daarna het geselecteerde
         tot nieuw actief item benoemen"""
         self.check_active()
@@ -443,7 +442,7 @@ class main_window(wx.Frame):
         self.save(meld=False)
         self.Close()
 
-    def add_item(self, event=None, root=None): # works
+    def add_item(self, event=None, root=None):
         """nieuw item toevoegen onder het geselecteerde"""
         if root is None:
             root = self.activeitem if self.activeitem else self.root
@@ -549,10 +548,6 @@ class main_window(wx.Frame):
         self.reorder_items(self.root, recursive=True)
 
     def reorder_items(self, root, recursive=False):
-        ## print "sorteren werkt nog niet helemaal niet"
-        ## return
-        # dit moet eigenlijk met recursieve ondervoeg routines die ook bij copy-paste gebruikt
-        # (kunnen) worden
         print "reorder_items"
         data = []
         tag, cookie = self.tree.GetFirstChild(root)
@@ -583,7 +578,7 @@ class main_window(wx.Frame):
         if item.IsOk():
             self.tree.SelectItem(item)
 
-    def check_active(self,message=None): # works, I guess
+    def check_active(self,message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         ## print "check_active",self.activeitem
         if self.activeitem:
@@ -593,7 +588,7 @@ class main_window(wx.Frame):
                     print(message)
                 self.tree.SetItemPyData(self.activeitem,self.editor.GetValue())
 
-    def activate_item(self, item): # works too, it would seem
+    def activate_item(self, item):
         """geselecteerd item "actief" maken (accentueren)"""
         self.activeitem = item
         ## if item != self.root:
@@ -628,8 +623,8 @@ class main_window(wx.Frame):
             "Ctrl-D of Delete in tree - verwijder notitie",
             "Ctrl-S                   - alle notities opslaan",
             "Shift-Ctrl-S             - alle notities opslaan omder andere naam",
-            "Ctrl-L                   - alle notities opnieuw laden",
-            "Shift-Ctrl-L             - ander bestand met notities laden",
+            "Ctrl-R                   - alle notities opnieuw laden",
+            "Ctrl-O                   - ander bestand met notities laden",
             "Ctrl-I                   - initialiseer (nieuw) notitiebestand",
             "Ctrl-Q, Esc              - opslaan en sluiten",
             "Ctrl-H                   - verbergen in system tray",
@@ -647,7 +642,8 @@ class App(wx.App):
     def __init__(self,fn):
         self.fn = fn
         wx.App.__init__(self, redirect=True, filename="doctree.log")
-        print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(("\n------------------","------------------\n"))
+        print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
+            ("\n------------------","------------------\n"))
         frame = main_window(None, -1, "DocTree - " + self.fn)
         self.SetTopWindow(frame)
         frame.project_file = self.fn
