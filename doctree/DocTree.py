@@ -292,8 +292,9 @@ class main_window(wx.Frame):
         ## self.save()
         ## return
         dlg=wx.MessageDialog(self, "Save current file before continuing?",
-            "DocTree", wx.YESNO)
-        if dlg.ShowModal() == wx.YES:
+            "DocTree", wx.YES_NO)
+        h = dlg.ShowModal()
+        if h == wx.ID_YES:
             self.save()
         dlg.Destroy()
 
@@ -395,7 +396,6 @@ class main_window(wx.Frame):
         file.close()
         if meld:
             MsgBox(self, self.project_file + " is opgeslagen","DocTool")
-        self.SetTitle("DocTree - " + self.project_file)
 
     def saveas(self, event=None):
         ## original_name = self.project_file
@@ -405,8 +405,9 @@ class main_window(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             self.filename=dlg.GetFilename()
             self.dirname=dlg.GetDirectory()
-            self.project_file = os.path.join(self.dirname,self.filename)
             self.write()
+            self.project_file = os.path.join(self.dirname,self.filename)
+            self.SetTitle("DocTree - " + self.project_file)
             ## if self.original_name:
                 ## self.project_file = original_name
         dlg.Destroy()
@@ -609,7 +610,7 @@ class main_window(wx.Frame):
             "DocTree door Albert Visser",
             "Electronisch notitieblokje",
             ]
-        dlg = wx.MessageDialog(self, "\n".join(info),'Apropos',
+        dlg = wx.MessageDialog(self, "\n".join(info),'DocTree',
             wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
@@ -629,7 +630,7 @@ class main_window(wx.Frame):
             "Shift-Ctrl-S             - alle notities opslaan omder andere naam",
             "Ctrl-L                   - alle notities opnieuw laden",
             "Shift-Ctrl-L             - ander bestand met notities laden",
-            "Ctrl-I                   - initialiseer (nieuw) notitiebestand"
+            "Ctrl-I                   - initialiseer (nieuw) notitiebestand",
             "Ctrl-Q, Esc              - opslaan en sluiten",
             "Ctrl-H                   - verbergen in system tray",
             "",
@@ -637,7 +638,7 @@ class main_window(wx.Frame):
             "F2                       - wijzig notitie titel",
             "Shift-F2                 - wijzig root titel",
             ]
-        dlg = wx.MessageDialog(self, "\n".join(info),'Apropos',
+        dlg = wx.MessageDialog(self, "\n".join(info),'DocTree',
             wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
