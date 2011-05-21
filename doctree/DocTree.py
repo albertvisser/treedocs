@@ -31,9 +31,9 @@ def putsubtree(tree, parent, titel, text, subtree=None):
         putsubtree(tree, new, *sub)
     return new
 
-def MsgBox(window, string, title):
+def messagebox(window, string, title):
     """Toon een boodschap"""
-    print "MsgBox aangeroepen:", string
+    print "messagebox aangeroepen:", string
     dlg=wx.MessageDialog(window, string, title, wx.OK)
     dlg.ShowModal()
     dlg.Destroy()
@@ -92,7 +92,7 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
         putsubtree(self, dropitem, *dragtree)
         self.Expand(dropitem)
 
-class main_window(wx.Frame):
+class MainWindow(wx.Frame):
     def __init__(self, parent, id, title):
         wx.Frame.__init__(self, parent, -1, title, size = (800, 500),
                          style=wx.DEFAULT_FRAME_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
@@ -159,6 +159,7 @@ class main_window(wx.Frame):
         self.splitter.SetSashPosition(180, True)
         self.splitter.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.Bind(wx.EVT_KEY_DOWN, self.on_key)
+        self.Bind(wx.EVT_CLOSE, self.afsl)
 
         self.Show(True)
 
@@ -200,7 +201,7 @@ class main_window(wx.Frame):
             elif keycode == ord("S"):
                 self.save()
             elif keycode == ord("Q"):
-                self.afsl()
+                self.Close()
             elif keycode == wx.WXK_PAGEDOWN: #  and win == self.editor:
                 self.next_note()
             elif keycode == wx.WXK_PAGEUP: #  and win == self.editor:
@@ -225,7 +226,7 @@ class main_window(wx.Frame):
             if self.editor.IsModified:
                 self.tree.SetItemPyData(self.activeitem,self.editor.GetValue())
         elif keycode == wx.WXK_ESCAPE:
-            self.afsl()
+            self.Close()
         if event and skip:
             event.Skip()
 
@@ -258,7 +259,7 @@ class main_window(wx.Frame):
             print "ok, reading", self.project_file
             e = self.read()
             if e:
-                MsgBox(self,e, "Error")
+                messagebox(self,e, "Error")
             else:
                 self.SetTitle("DocTree - " + self.filename)
         dlg.Destroy()
@@ -354,6 +355,7 @@ class main_window(wx.Frame):
             self.read()
 
     def save(self, event=None, meld=True):
+        print "self.save called"
         if self.project_file:
             self.write(meld=meld)
         else:
@@ -394,7 +396,7 @@ class main_window(wx.Frame):
         pck.dump(self.nt_data, file)
         file.close()
         if meld:
-            MsgBox(self, self.project_file + " is opgeslagen","DocTool")
+            messagebox(self, self.project_file + " is opgeslagen","DocTool")
 
     def saveas(self, event=None):
         ## original_name = self.project_file
@@ -439,8 +441,10 @@ class main_window(wx.Frame):
 
     def afsl(self, event=None):
         """applicatie afsluiten"""
+        print("self.afsl called")
         self.save(meld=False)
-        self.Close()
+        if event:
+            event.Skip()
 
     def add_item(self, event=None, root=None):
         """nieuw item toevoegen onder het geselecteerde"""
@@ -499,7 +503,7 @@ class main_window(wx.Frame):
             self.tree.Delete(item)
             self.activate_item(prev)
         else:
-            MsgBox(self, "Can't delete root", "Error")
+            messagebox(self, "Can't delete root", "Error")
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -644,12 +648,12 @@ class App(wx.App):
         wx.App.__init__(self, redirect=True, filename="doctree.log")
         print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
             ("\n------------------","------------------\n"))
-        frame = main_window(None, -1, "DocTree - " + self.fn)
+        frame = MainWindow(None, -1, "DocTree - " + self.fn)
         self.SetTopWindow(frame)
         frame.project_file = self.fn
         e = frame.read()
         if e:
-            MsgBox(frame, e, "Error")
+            messagebox(frame, e, "Error")
 
 if __name__ == "__main__":
     app = App('DocTree.ini')
