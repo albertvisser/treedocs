@@ -152,7 +152,7 @@ class MainWindow(wx.Frame):
 
         self.editor = wx.TextCtrl(self.splitter, -1, style=wx.TE_MULTILINE)
         self.editor.Enable(0)
-        self.editor.Bind(wx.EVT_TEXT, self.OnEvtText)
+        ## self.editor.Bind(wx.EVT_TEXT, self.OnEvtText)
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.splitter.SplitVertically(self.tree, self.editor)
@@ -223,16 +223,16 @@ class MainWindow(wx.Frame):
         elif keycode == wx.WXK_DELETE and win == self.tree:
             self.delete_item()
         elif keycode == wx.WXK_TAB and win == self.editor:
-            if self.editor.IsModified:
+            if self.editor.IsModified():
                 self.tree.SetItemPyData(self.activeitem,self.editor.GetValue())
         elif keycode == wx.WXK_ESCAPE:
             self.Close()
         if event and skip:
             event.Skip()
 
-    def OnEvtText(self,event):
-        "als er iets met de tekst gebeurt de editor-inhoud als 'aangepast' markeren"
-        self.editor.IsModified = True
+    ## def OnEvtText(self,event):
+        ## "als er iets met de tekst gebeurt de editor-inhoud als 'aangepast' markeren"
+        ## self.editor.IsModified = True
 
     def OnSelChanging(self, event=None):
         "was ooit bedoeld om acties op de root te blokkeren"
@@ -355,7 +355,6 @@ class MainWindow(wx.Frame):
             self.read()
 
     def save(self, event=None, meld=True):
-        print "self.save called"
         if self.project_file:
             self.write(meld=meld)
         else:
@@ -441,7 +440,6 @@ class MainWindow(wx.Frame):
 
     def afsl(self, event=None):
         """applicatie afsluiten"""
-        print("self.afsl called")
         self.save(meld=False)
         if event:
             event.Skip()
@@ -587,7 +585,7 @@ class MainWindow(wx.Frame):
         ## print "check_active",self.activeitem
         if self.activeitem:
             self.tree.SetItemBold(self.activeitem, False)
-            if self.editor.IsModified:
+            if self.editor.IsModified():
                 if message:
                     print(message)
                 self.tree.SetItemPyData(self.activeitem,self.editor.GetValue())
