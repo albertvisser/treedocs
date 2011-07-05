@@ -148,7 +148,7 @@ class MainWindow(wx.Frame):
                 ("&Add (Insert)", self.insert_item, 'Add note (after current)'),
                 ("&Delete (Ctrl-D, Del)", self.delete_item, 'Remove note'),
                 ("",None,None),
-                ("Note &Title (F2)",self.ask_title, 'Rename current note'),
+                ("Note &Title (F2)",self.rename_item, 'Rename current note'),
                 ("Subitems sorteren", self.order_this, 'Onderliggend niveau sorteren op titel'),
                 ("Subitems recursief sorteren", self.order_lower, 'Alle onderliggende niveaus sorteren op titel'),
                 ("",None,None),
@@ -470,6 +470,8 @@ class MainWindow(wx.Frame):
             data = []
             tag, cookie = view.GetFirstChild(self.root)
             while tag.IsOk():
+                if tag == self.activeitem:
+                    self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree.GetItemPyData(tag)
                 data.append(lees_item(tag))
                 tag, cookie = self.tree.GetNextChild(self.root, cookie)
             views.append(data)
