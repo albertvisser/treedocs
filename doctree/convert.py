@@ -1,6 +1,13 @@
 #! /usr/bin/env python
 # -*- coding: latin-1 -*-
 
+"""
+usage: [python] convert.py [<filename> [<method>]]
+
+<filename> is a pre-richedit doctree file, can even be a pre-views one.
+           If none is given, the name 'MyMan.ini' is used.
+<method> can be 'wx' or 'qt', if none is given 'qt' is used.
+"""
 import os
 import sys
 import cPickle as pck
@@ -37,26 +44,12 @@ self.nt_data = {
     }
 subitem: net zo opgebouwd als item dus als (verwijzing naar item, lijst met subitems)
 data-item: opgebouwd als (titel, tekst)
+
+deze nog weer omzetten naar eens structuur als de vorige, maar dan
+met rich text buffers voor de teksten, al is het maar een paa xml tags eromheen
 """
 data_list = []
 items_list = {}
-
-def read_file(filenaam):
-    try:
-        file = open(filenaam,"rb")
-    except ValueError:
-        try:
-            file = open(filenaam,"rb")
-        except IOError:
-            return "couldn't open "+ filenaam
-    except IOError:
-        return "couldn't open "+ filenaam
-    try:
-        data = pck.load(file)
-    except EOFError:
-        return "couldn't load data"
-    file.close()
-    return data
 
 def unravel(item):
     titel, tekst, subitems = item
@@ -68,9 +61,8 @@ def unravel(item):
         subitem_list.append(unravel(subitem))
     return data_item
 
-def convert(filenaam):
+def convert(data):
     # lezen van de data
-    data = read_file(filenaam)
     try:
         data.strip()
     except AttributeError:
@@ -87,7 +79,7 @@ def convert(filenaam):
     for key, value in data.items():
         if key == 0:
             continue
-        print key, value
+        ## print key, value
         data_list.append(unravel(value))
         data.pop(key)
     data[0]["ActiveItem"] = [activeitem,]
@@ -95,18 +87,53 @@ def convert(filenaam):
     data[0]["ActiveView"] = 0
     data[1] = (data_list,)
     data[2] = items_list
-    ## pprint.pprint(data)
-    file = open(filenaam + "_new","wb")
-    pck.dump(data, file)
-    file.close()
-    return
+
+def make_richtext(data, methode):
+    omzetdict = {
+        'wx': "richtext_wx.xml",
+        'qt': 'richtext_qt.html',
+        }
+    try:
+        fnaam = omzetdict[methode]
+    except KeyError:
+        raise
+    with open(fnaam) as f_in:
+        template = f_in.read()
+    data[0]['RootData'] = template.format(data[0]['RootData'])
+    for key, item in data[2].iteritems():
+        titel, tekst = item
+        content = template.format(tekst)
+        data[2][key] = titel, content
+    return data
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        fnaam = sys.argv[1]
+        filenaam = sys.argv[1]
+        if 'help' in filenaam or '?' in filenaam:
+            print(__doc__)
+            sys.exit()
     else:
-        fnaam = "MyMan.ini"
-    convert(fnaam)
-
-
-
+        filenaam = "MyMan.ini"
+    if len(sys.argv) > 2:
+        methode = sys.argv[2]
+    else:
+        methode = 'qt'
+    file = open(filenaam,"rb")
+    ## try:
+        ## file = open(fnaam,"rb")
+    ## except ValueError:
+        ## file = open(fnaam,"r")
+    data = pck.load(file)
+    file.close()
+    if len(data) != 3:
+        print 'converting to multiple view format'
+        convert(data)
+        file = open("_multi".join(os.path.splitext(filenaam)),"wb")
+        pck.dump(data, file)
+        file.close()
+    print 'converting to rich text format'
+    data = make_richtext(data, methode)
+    ## pprint.pprint(data)
+    file = open("_{}".format(methode).join(os.path.splitext(filenaam)),"wb")
+    pck.dump(data, file)
+    file.close()
