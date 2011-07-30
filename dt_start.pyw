@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-from doctree.DocTree import App
+from doctree.doctree import App
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
