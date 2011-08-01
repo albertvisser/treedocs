@@ -13,45 +13,11 @@ import sys
 import cPickle as pck
 import pprint
 
-"""
-self.nt_data = {
-    0: {
-        naam instelling: waarde voor instelling
-        };
-    n: (
-        titel,
-        tekst,
-        subitems
-        );
-    }
-een dictionary met genummerde keys
-    de eerste heeft als waarde een dictionary met instellingen
-    de volgende hebben als waarde een tuple bestaande uit de titel, de tekst en
-        en list met onderliggende waarden, deze zijn op dezelfde manier opgebouwd
-
-omzetten naar
-
-self.nt_data = {
-    0: {
-        naam instelling: waarde voor instelling, [...]
-        };
-    1: [
-        (verwijzing naar item, lijst met subitems), [...]
-        ];
-    2: {
-        verwijzing: data-item, [...]
-        }
-    }
-subitem: net zo opgebouwd als item dus als (verwijzing naar item, lijst met subitems)
-data-item: opgebouwd als (titel, tekst)
-
-deze nog weer omzetten naar eens structuur als de vorige, maar dan
-met rich text buffers voor de teksten, al is het maar een paa xml tags eromheen
-"""
 data_list = []
 items_list = {}
 
 def unravel(item):
+    "recursieve functie voor het opbouwen van de view"
     titel, tekst, subitems = item
     newkey = len(items_list)
     items_list[newkey] = (titel, tekst)
@@ -62,7 +28,38 @@ def unravel(item):
     return data_item
 
 def convert(data):
-    # lezen van de data
+    """
+    self.nt_data = {
+        0: {
+            naam instelling: waarde voor instelling
+            };
+        n: (
+            titel,
+            tekst,
+            subitems
+            );
+        }
+    een dictionary met genummerde keys
+        de eerste heeft als waarde een dictionary met instellingen
+        de volgende hebben als waarde een tuple bestaande uit de titel, de tekst en
+            en list met onderliggende waarden, deze zijn op dezelfde manier opgebouwd
+
+    omzetten naar
+
+    self.nt_data = {
+        0: {
+            naam instelling: waarde voor instelling, [...]
+            };
+        1: [
+            (verwijzing naar item, lijst met subitems), [...]
+            ];
+        2: {
+            verwijzing: data-item, [...]
+            }
+        }
+    subitem: net zo opgebouwd als item dus als (verwijzing naar item, lijst met subitems)
+    data-item: opgebouwd als (titel, tekst)
+    """
     try:
         data.strip()
     except AttributeError:
@@ -89,6 +86,10 @@ def convert(data):
     data[2] = items_list
 
 def make_richtext(data, methode):
+    """
+    plain text buffers vervangen door rich text buffers door er wat XML (voor wx versie)
+    of HTML (voor qt versie) omheen te zetten
+    """
     omzetdict = {
         'wx': "richtext_wx.xml",
         'qt': 'richtext_qt.html',
@@ -97,7 +98,7 @@ def make_richtext(data, methode):
         fnaam = omzetdict[methode]
     except KeyError:
         raise
-    with open(fnaam) as f_in:
+    with open(os.path.join(os.path.dirname(__file__), fnaam)) as f_in:
         template = f_in.read()
     data[0]['RootData'] = template.format(data[0]['RootData'])
     for key, item in data[2].iteritems():
@@ -107,6 +108,9 @@ def make_richtext(data, methode):
     return data
 
 if __name__ == "__main__":
+    """
+    data file laden, unpicklen, converteren, picklen en terugschrijven
+    """
     if len(sys.argv) > 1:
         filenaam = sys.argv[1]
         if 'help' in filenaam or '?' in filenaam:
