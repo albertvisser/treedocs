@@ -11,6 +11,7 @@ import cPickle as pck
 import shutil
 import pprint
 import datetime as dt
+HERE = os.path.dirname(__file__)
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -123,7 +124,7 @@ class EditorPanel(gui.QTextEdit):
         self.parent = parent
         gui.QTextEdit.__init__(self)
         self.setAcceptRichText(True)
-        self.setTabChangesFocus(True)
+        ## self.setTabChangesFocus(True)
         self.setAutoFormatting(gui.QTextEdit.AutoAll)
         self.connect(self, core.SIGNAL('currentCharFormatChanged(QTextCharFormat)'),
              self.charformat_changed)
@@ -131,15 +132,18 @@ class EditorPanel(gui.QTextEdit):
              self.cursorposition_changed)
         font = self.currentFont()
         self.setTabStopWidth(tabsize(font.pointSize()))
-        print('tabwidth set to {}'.format(self.tabStopWidth()))
 
     def set_contents(self, data):
         "load contents into editor"
-        self.setHtml(data)
+        ## self.setHtml(data)
+        self.codec = core.QTextCodec.codecForHtml(data)
+        self.setHtml(self.codec.toUnicode(data))
 
     def get_contents(self):
         "return contents from editor"
-        return str(self.toHtml())
+        ## return str(self.toHtml())
+        data = self.codec.fromUnicode(self.toHtml())
+        return data
 
     def text_bold(self, event = None):
         "selectie vet maken"
@@ -192,10 +196,14 @@ class EditorPanel(gui.QTextEdit):
 
     def indent_more(self, event = None):
         "alinea verder laten inspringen"
-        fmt = gui.QTextBlockFormat()
+        ## print(self.document().indentWidth())
+        where = self.textCursor().block()
+        ## fmt = gui.QTextBlockFormat()
+        fmt = where.blockFormat()
         wid = fmt.indent()
         print('indent_more called, current indent is {}'.format(wid))
         fmt.setIndent(wid + 100)
+        print('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
         # maar hier is geen merge methode voor, lijkt het...
 
     def indent_less(self, event = None):
@@ -214,14 +222,14 @@ class EditorPanel(gui.QTextEdit):
             fmt.setFont(font)
             ## pointsize = float(font.pointSize())
             self.setTabStopWidth(tabsize(font.pointSize()))
-            print('tabwidth set to {}'.format(self.tabStopWidth()))
             self.mergeCurrentCharFormat(fmt)
 
     def text_family(self, family):
         "lettertype instellen"
         fmt = gui.QTextCharFormat()
         fmt.setFontFamily(family);
-        self.mergeCurrentCharFormat(fmt);
+        self.mergeCurrentCharFormat(fmt)
+        self.setFocus()
 
     def text_size(self, size):
         "lettergrootte instellen"
@@ -231,6 +239,7 @@ class EditorPanel(gui.QTextEdit):
             fmt.setFontPointSize(pointsize)
             self.setTabStopWidth(tabsize(pointsize))
             self.mergeCurrentCharFormat(fmt)
+            self.setFocus()
 
     def text_color(self, event = None):
         "tekstkleur instellen"
@@ -266,9 +275,9 @@ class EditorPanel(gui.QTextEdit):
         self.parent.actiondict["&Underline"].setChecked(font.underline())
 
     def color_changed(self, col):
-        print("""kleur aanpassen
+        """kleur aanpassen
 
-        het icon in de toolbar krijgt een andere kleur""")
+        het icon in de toolbar krijgt een andere kleur"""
         pix = gui.QPixmap(16, 16)
         pix.fill(col)
         self.parent.actiondict["&Color..."].setIcon(gui.QIcon(pix))
@@ -307,8 +316,7 @@ class MainWindow(gui.QMainWindow):
             "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
             "RootTitle": "MyNotes", "RootData": ""}
         gui.QMainWindow.__init__(self)
-        self.nt_icon = gui.QIcon(os.path.join(
-            os.path.dirname(__file__),"doctree.xpm"))
+        self.nt_icon = gui.QIcon(os.path.join(HERE, "doctree.xpm"))
         self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
         self.connect(self.tray_icon, core.SIGNAL('clicked'),
@@ -348,6 +356,7 @@ class MainWindow(gui.QMainWindow):
                 ("Items recursief sorteren", self.order_all, '', '', 'Alle niveaus sorteren op titel'),
                 (),
                 ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
+                ("Switch pane", self.change_pane, 'Ctrl+Tab', '', 'switch tussen tree en editor'),
                 (),
                 ## ("e&Xit", self.afsl, 'Ctrl+Q', 'icons/exit.png', 'Exit program'),
                 ("e&Xit", core.SLOT('close()'), 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'),
@@ -411,9 +420,15 @@ class MainWindow(gui.QMainWindow):
                 ), ),
             )
         )
-        ## pprint.pprint(self.actiondict)
-
         self.create_stylestoolbar()
+
+    def change_pane(self, event=None):
+        "wissel tussen tree en editor"
+        if self.tree.hasFocus():
+            self.editor.setFocus()
+        elif self.editor.hasFocus():
+            self.check_active()
+            self.tree.setFocus()
 
     def create_menu(self, menubar, menudata):
         """bouw het menu en de meeste toolbars op"""
@@ -428,7 +443,7 @@ class MainWindow(gui.QMainWindow):
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if icon:
-                    action = gui.QAction(gui.QIcon(icon), label, self)
+                    action = gui.QAction(gui.QIcon(os.path.join(HERE, icon)), label, self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
                         toolbar.setIconSize(core.QSize(16,16))
@@ -462,8 +477,8 @@ class MainWindow(gui.QMainWindow):
         toolbar = self.addToolBar('styles')
         self.combo_font = gui.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
-        self.connect(self.combo_font, core.SIGNAL('activated(QString)'), self.editor.text_family)
-
+        self.connect(self.combo_font, core.SIGNAL('activated(QString)'),
+            self.editor.text_family)
         self.combo_size = gui.QComboBox(toolbar)
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
@@ -617,7 +632,6 @@ class MainWindow(gui.QMainWindow):
             test = nt_data[0]["AskBeforeHide"]
         except (ValueError, KeyError):
             return "{} is not a valid Doctree data file".format(self.project_file)
-        ## pprint.pprint(nt_data)
         for key, value in nt_data[0].items():
             if key == 'RootData' and value is None:
                 value = ""
@@ -631,7 +645,6 @@ class MainWindow(gui.QMainWindow):
             self.itemdict = nt_data[2]
         except KeyError:
             self.itemdict = {}
-        print("loading...")
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         try:
             self.splitter.restoreState(self.opts['SashPosition'])
@@ -659,8 +672,6 @@ class MainWindow(gui.QMainWindow):
         self.has_treedata = True
         self.root.setExpanded(True)
         if item_to_activate != self.activeitem:
-            print(item_to_activate.text(0))
-            print(item_to_activate.text(1))
             self.tree.setCurrentItem(item_to_activate)
         self.set_title()
         self.tree.setFocus()
@@ -846,7 +857,6 @@ class MainWindow(gui.QMainWindow):
 
     def add_item(self, event = None, root = None, under = True):
         """nieuw item toevoegen (default: onder het geselecteerde)"""
-        print(self.activeitem.text(0))
         if under:
             if root is None:
                 root = self.activeitem or self.root
@@ -892,12 +902,10 @@ class MainWindow(gui.QMainWindow):
 
     def root_item(self, event = None):
         """nieuw item toevoegen onder root"""
-        print("new root item")
         self.add_item(root = self.root)
 
     def insert_item(self, event=None):
         """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
-        print event
         self.add_item(event = event, under = False)
 
     def delete_item(self, event = None):
@@ -940,7 +948,6 @@ class MainWindow(gui.QMainWindow):
         def check_item(view, ref, subref):
             """zoeken waar het subitem moet worden toegevoegd"""
             retval = ""
-            print(view)
             for itemref, subview in view:
                 if itemref == ref:
                     subview.append((subref, []))
