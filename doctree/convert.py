@@ -100,10 +100,12 @@ def make_richtext(data, methode):
         raise
     with open(os.path.join(os.path.dirname(__file__), fnaam)) as f_in:
         template = f_in.read()
-    data[0]['RootData'] = template.format(data[0]['RootData'])
+    print data[0]['RootData']
+    data[0]['RootData'] = template.format(
+        data[0]['RootData'].replace('\n', '<br/>').encode('utf-8'))
     for key, item in data[2].iteritems():
         titel, tekst = item
-        content = template.format(tekst)
+        content = template.format(tekst.replace('\n', '<br/>').encode('utf-8'))
         data[2][key] = titel, content
     return data
 
