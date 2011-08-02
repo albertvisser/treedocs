@@ -10,8 +10,13 @@ import PyQt4.QtCore as core
 import cPickle as pck
 import shutil
 import pprint
+import logging
 import datetime as dt
 HERE = os.path.dirname(__file__)
+
+def log(message):
+    "write message to logfile"
+    logging.info(message)
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -133,17 +138,20 @@ class EditorPanel(gui.QTextEdit):
         font = self.currentFont()
         self.setTabStopWidth(tabsize(font.pointSize()))
 
-    def set_contents(self, data):
+    def set_contents(self, data, where='root'):
         "load contents into editor"
-        ## self.setHtml(data)
-        self.codec = core.QTextCodec.codecForHtml(data)
-        self.setHtml(self.codec.toUnicode(data))
+        ## try:
+            ## self.codec = core.QTextCodec.codecForHtml(str(data))
+            ## self.setHtml(self.codec.toUnicode(data))
+        ## except TypeError:
+            ## log('typeerror on data at: {}'.format(where))
+        self.setHtml(data)
 
     def get_contents(self):
         "return contents from editor"
-        ## return str(self.toHtml())
-        data = self.codec.fromUnicode(self.toHtml())
-        return data
+        return self.toHtml()
+        ## data = self.codec.fromUnicode(self.toHtml())
+        ## return unicode(data)
 
     def text_bold(self, event = None):
         "selectie vet maken"
@@ -196,21 +204,20 @@ class EditorPanel(gui.QTextEdit):
 
     def indent_more(self, event = None):
         "alinea verder laten inspringen"
-        ## print(self.document().indentWidth())
         where = self.textCursor().block()
         ## fmt = gui.QTextBlockFormat()
         fmt = where.blockFormat()
         wid = fmt.indent()
-        print('indent_more called, current indent is {}'.format(wid))
+        log('indent_more called, current indent is {}'.format(wid))
         fmt.setIndent(wid + 100)
-        print('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
+        log('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
         # maar hier is geen merge methode voor, lijkt het...
 
     def indent_less(self, event = None):
         "alinea minder ver laten inspringen"
         fmt = gui.QTextBlockFormat()
         wid = fmt.indent()
-        print('indent_less called, current indent is {}'.format(wid))
+        log('indent_less called, current indent is {}'.format(wid))
         if wid > 100:
             fmt.setIndent(wid - 100)
 
@@ -1025,25 +1032,31 @@ class MainWindow(gui.QMainWindow):
     def next_note(self, event = None):
         """move to next item"""
         parent = self.activeitem.parent()
-        pos = parent.indexOfChild(self.activeitem)
-        if pos < parent.childCount() - 1:
-            item = parent.child(pos + 1)
-            self.tree.setCurrentItem(item)
+        if parent is not None:
+            pos = parent.indexOfChild(self.activeitem)
+            if pos < parent.childCount() - 1:
+                item = parent.child(pos + 1)
+                self.tree.setCurrentItem(item)
+                return
+        gui.QMessageBox.information(self, "DocTree", "Geen volgend item op dit niveau")
 
     def prev_note(self, event = None):
         """move to previous item"""
         parent = self.activeitem.parent()
-        pos = parent.indexOfChild(self.activeitem)
-        if pos > 0:
-            item = parent.child(pos - 1)
-            self.tree.setCurrentItem(item)
+        if parent is not None:
+            pos = parent.indexOfChild(self.activeitem)
+            if pos > 0:
+                item = parent.child(pos - 1)
+                self.tree.setCurrentItem(item)
+                return
+        gui.QMessageBox.information(self, "DocTree", "Geen vorig item op dit niveau")
 
     def check_active(self, message = None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         if self.activeitem:
             if self.editor.document().isModified():
                 if message:
-                    print(message) # moet dit niet messagebox zijn?
+                    gui.QMessageBox.information(self, 'Doctree', message)
                 ref = self.activeitem.text(1)
                 content = self.editor.get_contents()
                 try:
@@ -1064,7 +1077,7 @@ class MainWindow(gui.QMainWindow):
         except (KeyError, ValueError):
             self.editor.set_contents(ref)
         else:
-            self.editor.set_contents(tekst)
+            self.editor.set_contents(tekst, titel)
         self.editor.setReadOnly(False)
 
     def info_page(self, event = None):
@@ -1102,6 +1115,8 @@ class MainWindow(gui.QMainWindow):
         gui.QMessageBox.information(self, "DocTree", "\n".join(info),)
 
 def main(fnaam):
+    logging.basicConfig(filename='doctool_qt.log', level=logging.DEBUG,
+        format='%(asctime)s %(message)s')
     app = gui.QApplication(sys.argv)
     main = MainWindow(fnaam = fnaam)
     app.setWindowIcon(main.nt_icon)
