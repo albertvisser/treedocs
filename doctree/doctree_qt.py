@@ -120,6 +120,7 @@ class TreePanel(gui.QTreeWidget):
         """
         dragitem = self.selectedItems()[0]
         gui.QTreeWidget.dropEvent(self, event)
+        self.parent.project_dirty = True
         dropitem = dragitem.parent()
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
@@ -365,7 +366,6 @@ class MainWindow(gui.QMainWindow):
                 ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
                 ("Switch pane", self.change_pane, 'Ctrl+Tab', '', 'switch tussen tree en editor'),
                 (),
-                ## ("e&Xit", self.afsl, 'Ctrl+Q', 'icons/exit.png', 'Exit program'),
                 ("e&Xit", core.SLOT('close()'), 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'),
                 ), ),
             ("&Note", (
@@ -428,6 +428,7 @@ class MainWindow(gui.QMainWindow):
             )
         )
         self.create_stylestoolbar()
+        self.project_dirty = False
 
     def change_pane(self, event=None):
         "wissel tussen tree en editor"
@@ -525,7 +526,9 @@ class MainWindow(gui.QMainWindow):
 
     def new(self, event = None):
         "Afhandelen Menu - Init / Ctrl-I"
-        self.save_needed()
+        ret = self.save_needed()
+        if ret == gui.QMessageBox.Cancel:
+            return
         dirname = os.path.dirname(self.project_file)
         filename = gui.QFileDialog.getSaveFileName(self, "DocTree - enter name for new file",
             dirname, "INI files (*.ini)")
@@ -559,18 +562,24 @@ class MainWindow(gui.QMainWindow):
         self.editor.set_contents(self.opts["RootData"])
         self.editor.setReadOnly(False)
         self.set_title()
+        self.project_dirty = False
         self.tree.setFocus()
 
-    def save_needed(self):
-        """eigenlijk bedoeld om te reageren op een indicatie dat er iets aan de
-        verzameling notities is gewijzigd (de oorspronkelijke self.project_dirty)"""
+    def save_needed(self, meld=True):
+        """vraag of het bestand opgeslagen moet worden als er iets aan de
+        verzameling notities is gewijzigd"""
         if not self.has_treedata:
             return
-        retval = gui.QMessageBox.question(self, "DocTree",
-            "Save current file before continuing?",
-            gui.QMessageBox.Yes | gui.QMessageBox.No)
-        if retval == gui.QMessageBox.Yes:
-            self.save()
+        if self.editor.hasFocus():
+            self.check_active()
+        if self.project_dirty:
+            retval = gui.QMessageBox.question(self, "DocTree",
+                "Data changed - save current file before continuing?",
+                gui.QMessageBox.Yes | gui.QMessageBox.No | gui.QMessageBox.Cancel,
+                defaultButton = gui.QMessageBox.Yes)
+            if retval == gui.QMessageBox.Yes:
+                self.save(meld=meld)
+            return retval
 
     def treetoview(self):
         """zet de visuele tree om in een tree om op te slaan"""
@@ -681,12 +690,14 @@ class MainWindow(gui.QMainWindow):
         if item_to_activate != self.activeitem:
             self.tree.setCurrentItem(item_to_activate)
         self.set_title()
+        self.project_dirty = False
         self.tree.setFocus()
 
     def reread(self, event = None):
         """afhandelen Menu > Reload (Ctrl-R)"""
         retval = gui.QMessageBox.question(self, "DocTree", "OK to reload?",
-            gui.QMessageBox.Ok | gui.QMessageBox.Cancel)
+            gui.QMessageBox.Ok | gui.QMessageBox.Cancel
+            defaultButton = gui.QMessageBox.Ok)
         if retval == gui.QMessageBox.Ok:
             self.read()
 
@@ -712,6 +723,7 @@ class MainWindow(gui.QMainWindow):
         f_out = open(self.project_file,"w")
         pck.dump(nt_data, f_out)
         f_out.close()
+        self.project_dirty = False
         if meld:
             gui.QMessageBox.information(self, "DocTool",
                 self.project_file + " is opgeslagen", gui.QMessageBox.Ok)
@@ -743,10 +755,14 @@ class MainWindow(gui.QMainWindow):
             self.show()
             self.tray_icon.hide()
 
-    def afsl(self, event = None):
+    ## def afsl(self, event = None):
+    def closeEvent(self,event):
         """applicatie afsluiten"""
-        if self.has_treedata:
-            self.save(meld=False)
+        ret = self.save_needed(meld=False)
+        if ret == gui.QMessageBox.Cancel:
+            event.ignore()
+        else:
+            event.accept()
 
     def add_view(self, event = None):
         "handles Menu > View > New view"
@@ -781,6 +797,7 @@ class MainWindow(gui.QMainWindow):
         self.views.append(newtree)
         tree_item = self.viewtotree()
         self.set_title()
+        self.project_dirty = True
         self.tree.setCurrentItem(tree_item)
 
     def rename_view(self, event = None):
@@ -794,6 +811,7 @@ class MainWindow(gui.QMainWindow):
             if newname != oldname:
                 self.viewmenu.actions()[self.opts["ActiveView"] + 4].setText(newname)
                 self.opts["ViewNames"][self.opts["ActiveView"]] = newname
+                self.project_dirty = True
                 self.set_title()
 
     def select_view(self, event = None):
@@ -825,7 +843,8 @@ class MainWindow(gui.QMainWindow):
         "handles Menu > View > Delete current view"
         retval = gui.QMessageBox.question(self, "DocTree",
             "Are you sure you want to remove this view?",
-            gui.QMessageBox.Yes | gui.QMessageBox.No)
+            gui.QMessageBox.Yes | gui.QMessageBox.No,
+            defaultButton = gui.QMessageBox.Yes)
         if retval == gui.QMessageBox.Yes:
             self.viewcount -= 1
             viewname = self.opts["ViewNames"][self.opts["ActiveView"]]
@@ -849,6 +868,7 @@ class MainWindow(gui.QMainWindow):
             self.tree.addTopLevelItem(self.root)
             self.activeitem = self.root
             self.tree.setCurrentItem(self.viewtotree())
+            self.project_dirty = True
             self.set_title()
 
     def rename_root(self, event=None):
@@ -859,6 +879,7 @@ class MainWindow(gui.QMainWindow):
         if ok:
             data = str(data)
             if data:
+                self.project_dirty = True
                 self.root.setText(0, data)
                 self.opts['RootTitle'] = data
 
@@ -903,6 +924,7 @@ class MainWindow(gui.QMainWindow):
                     subitem.append((subkey, []))
                 view.append((newkey, subitem))
         root.setExpanded(True)
+        self.project_dirty = True
         self.tree.setCurrentItem(item)
         if item != self.root:
             self.editor.setFocus()
@@ -930,7 +952,14 @@ class MainWindow(gui.QMainWindow):
                         break
             return klaar
         item = self.tree.selectedItems()[0]
-        if item != self.root:
+        if item == self.root:
+            gui.QMessageBox.error(self, "DocTree", "Can't delete root")
+            return
+        retval = gui.QMessageBox.question(self, "DocTree",
+            "Are you sure you want to remove this item?",
+            gui.QMessageBox.Yes | gui.QMessageBox.No,
+            defaultButton = gui.QMessageBox.Yes)
+        if retval == gui.QMessageBox.Yes:
             parent = item.parent()
             pos = parent.indexOfChild(item)
             if pos - 1 >= 0:
@@ -946,9 +975,8 @@ class MainWindow(gui.QMainWindow):
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
                     check_item(view, ref)
+            self.project_dirty = True
             self.tree.setCurrentItem(prev)
-        else:
-            messagebox(self, "Can't delete root", "Error")
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -969,8 +997,12 @@ class MainWindow(gui.QMainWindow):
         new = self.ask_title('Nieuwe titel voor het huidige item:', item.text(0))
         if not new:
             return
+        self.project_dirty = True
         new_title, extra_title = new
         self.activeitem.setText(0, new_title)
+        if item == self.root:
+            self.opts['RootTitle'] = new_title
+            return
         ref = self.activeitem.text(1)
         old_title, data = self.itemdict[int(ref)]
         self.itemdict[int(ref)] = (new_title, data)
@@ -989,8 +1021,8 @@ class MainWindow(gui.QMainWindow):
                     check_item(view, ref, subref)
         root.setExpanded(True)
         self.tree.setCurrentItem(item)
-        if item != self.root:
-            self.editor.setFocus()
+        ## if item != self.root:
+            ## self.editor.setFocus()
 
     def ask_title(self, _title, _text):
         """vraag titel voor item"""
@@ -1020,6 +1052,7 @@ class MainWindow(gui.QMainWindow):
             for num in range(root.childCount()):
                 tag = root.child(num)
                 self.reorder_items(tag, recursive)
+        self.project_dirty = True
 
     def order_this(self, event = None):
         """order items directly under current level"""
@@ -1067,6 +1100,7 @@ class MainWindow(gui.QMainWindow):
                         self.opts["RootData"] = content
                 else:
                     self.itemdict[int(ref)] = (titel, content)
+                self.project_dirty = True
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
@@ -1115,7 +1149,7 @@ class MainWindow(gui.QMainWindow):
         gui.QMessageBox.information(self, "DocTree", "\n".join(info),)
 
 def main(fnaam):
-    logging.basicConfig(filename='doctool_qt.log', level=logging.DEBUG,
+    logging.basicConfig(filename='doctree_qt.log', level=logging.DEBUG,
         format='%(asctime)s %(message)s')
     app = gui.QApplication(sys.argv)
     main = MainWindow(fnaam = fnaam)
