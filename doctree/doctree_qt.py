@@ -156,6 +156,8 @@ class EditorPanel(gui.QTextEdit):
 
     def text_bold(self, event = None):
         "selectie vet maken"
+        if not self.hasFocus():
+            return
         fmt = gui.QTextCharFormat()
         if self.parent.actiondict['&Bold'].isChecked():
             fmt.setFontWeight(gui.QFont.Bold)
@@ -165,18 +167,24 @@ class EditorPanel(gui.QTextEdit):
 
     def text_italic(self, event = None):
         "selectie schuin schrijven"
+        if not self.hasFocus():
+            return
         fmt = gui.QTextCharFormat()
         fmt.setFontItalic(self.parent.actiondict['&Italic'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
     def text_underline(self, event = None):
         "selectie onderstrepen"
+        if not self.hasFocus():
+            return
         fmt = gui.QTextCharFormat()
         fmt.setFontUnderline(self.parent.actiondict['&Underline'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
     def align_left(self, event = None):
         "alinea links uitlijnen"
+        if not self.hasFocus():
+            return
         self.parent.actiondict["C&enter"].setChecked(False)
         self.parent.actiondict["Align &Right"].setChecked(False)
         self.parent.actiondict["&Justify"].setChecked(False)
@@ -184,6 +192,8 @@ class EditorPanel(gui.QTextEdit):
 
     def align_center(self, event = None):
         "alinea centreren"
+        if not self.hasFocus():
+            return
         self.parent.actiondict["Align &Left"].setChecked(False)
         self.parent.actiondict["Align &Right"].setChecked(False)
         self.parent.actiondict["&Justify"].setChecked(False)
@@ -191,6 +201,8 @@ class EditorPanel(gui.QTextEdit):
 
     def align_right(self, event = None):
         "alinea rechts uitlijnen"
+        if not self.hasFocus():
+            return
         self.parent.actiondict["Align &Left"].setChecked(False)
         self.parent.actiondict["C&enter"].setChecked(False)
         self.parent.actiondict["&Justify"].setChecked(False)
@@ -198,6 +210,8 @@ class EditorPanel(gui.QTextEdit):
 
     def text_justify(self, event = None):
         "alinea aan weerszijden uitlijnen"
+        if not self.hasFocus():
+            return
         self.parent.actiondict["Align &Left"].setChecked(False)
         self.parent.actiondict["C&enter"].setChecked(False)
         self.parent.actiondict["Align &Right"].setChecked(False)
@@ -205,6 +219,8 @@ class EditorPanel(gui.QTextEdit):
 
     def indent_more(self, event = None):
         "alinea verder laten inspringen"
+        if not self.hasFocus():
+            return
         where = self.textCursor().block()
         ## fmt = gui.QTextBlockFormat()
         fmt = where.blockFormat()
@@ -216,6 +232,8 @@ class EditorPanel(gui.QTextEdit):
 
     def indent_less(self, event = None):
         "alinea minder ver laten inspringen"
+        if not self.hasFocus():
+            return
         fmt = gui.QTextBlockFormat()
         wid = fmt.indent()
         log('indent_less called, current indent is {}'.format(wid))
@@ -224,6 +242,8 @@ class EditorPanel(gui.QTextEdit):
 
     def text_font(self, event = None):
         "lettertype en/of -grootte instellen"
+        if not self.hasFocus():
+            return
         font, ok = gui.QFontDialog.getFont(self.currentFont(), self)
         if ok:
             fmt = gui.QTextCharFormat()
@@ -251,6 +271,8 @@ class EditorPanel(gui.QTextEdit):
 
     def text_color(self, event = None):
         "tekstkleur instellen"
+        if not self.hasFocus():
+            return
         col = gui.QColorDialog.getColor(self.textColor(), self)
         if not col.isValid():
             return
@@ -696,7 +718,7 @@ class MainWindow(gui.QMainWindow):
     def reread(self, event = None):
         """afhandelen Menu > Reload (Ctrl-R)"""
         retval = gui.QMessageBox.question(self, "DocTree", "OK to reload?",
-            gui.QMessageBox.Ok | gui.QMessageBox.Cancel
+            gui.QMessageBox.Ok | gui.QMessageBox.Cancel,
             defaultButton = gui.QMessageBox.Ok)
         if retval == gui.QMessageBox.Ok:
             self.read()
