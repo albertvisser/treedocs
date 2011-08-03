@@ -408,6 +408,9 @@ class MainWindow(gui.QMainWindow):
                 ('&Rename Current View', self.rename_view, '', '', 'Rename the current tree view'),
                 ('&Delete Current View', self.remove_view, '', '', 'Remove the current tree view'),
                 (),
+                ('Next View', self.next_view, 'Ctrl++', '', 'Switch to the next view in the list'),
+                ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
+                (),
                 ), ), # label, handler, shortcut, icon, info
             ('&Edit', (
                 ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
@@ -567,9 +570,9 @@ class MainWindow(gui.QMainWindow):
         self.has_treedata = True
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         menuitem_list = [x for x in self.viewmenu.actions()]
-        for menuitem in menuitem_list[4:]:
+        for menuitem in menuitem_list[7:]:
             self.viewmenu.removeAction(menuitem)
-        action = gui.QAction('&Default', self)
+        action = gui.QAction('&1 Default', self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
         self.connect(action, core.SIGNAL('triggered()'), self.select_view)
@@ -696,10 +699,10 @@ class MainWindow(gui.QMainWindow):
         self.activeitem = item_to_activate = self.root
         self.editor.set_contents(self.opts["RootData"])
         menuitem_list = [x for x in self.viewmenu.actions()]
-        for menuitem in menuitem_list[4:]:
+        for menuitem in menuitem_list[7:]:
             self.viewmenu.removeAction(menuitem)
         for idx, name in enumerate(self.opts["ViewNames"]):
-            action = gui.QAction(name, self)
+            action = gui.QAction('&{} {}'.format(idx + 1, name), self)
             action.setStatusTip("switch to this view")
             action.setCheckable(True)
             self.connect(action, core.SIGNAL('triggered()'), self.select_view)
@@ -797,10 +800,10 @@ class MainWindow(gui.QMainWindow):
         active = self.opts["ActiveItem"][self.opts["ActiveView"]]
         self.opts["ActiveItem"].append(active)
         menuitem_list = [x for x in self.viewmenu.actions()]
-        for idx, menuitem in enumerate(menuitem_list[4:]):
+        for idx, menuitem in enumerate(menuitem_list[7:]):
             if idx == self.opts["ActiveView"]:
                 menuitem.setChecked(False)
-        action = gui.QAction(new_view, self)
+        action = gui.QAction('&{} {}'.format(self.viewcount, new_view), self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
         self.connect(action, core.SIGNAL('triggered()'), self.select_view)
@@ -831,10 +834,55 @@ class MainWindow(gui.QMainWindow):
         if ok:
             newname = str(data)
             if newname != oldname:
-                self.viewmenu.actions()[self.opts["ActiveView"] + 4].setText(newname)
+                action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
+                action.setText('&{} {}'.format(action.text().split()[0], newname))
                 self.opts["ViewNames"][self.opts["ActiveView"]] = newname
                 self.project_dirty = True
                 self.set_title()
+
+    def next_view(self, prev=False):
+        """cycle to next view, if available (default direction / forward)"""
+        if self.viewcount == 1:
+            gui.QMessageBox.information(self, 'Doctree', "This is the only view")
+            return
+        self.check_active()
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        self.editor.clear()
+        menuitem_list = [x for x in self.viewmenu.actions()][7:]
+        if prev:
+            menuitem_list.reverse()
+        found_item = False
+        for menuitem in menuitem_list:
+            if menuitem.isChecked():
+                found_item = True
+                menuitem.setChecked(False)
+            elif found_item:
+                menuitem.setChecked(True)
+                found_item = False
+                break
+        if found_item:
+            menuitem_list[0].setChecked(True)
+        if prev:
+            self.opts["ActiveView"] -= 1
+            if self.opts["ActiveView"] < 0:
+                self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
+        else:
+            self.opts["ActiveView"] += 1
+            if self.opts["ActiveView"] >= len(self.opts["ViewNames"]):
+                self.opts["ActiveView"] = 0
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = gui.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = self.root
+        tree_item = self.viewtotree()
+        self.set_title()
+        self.tree.setCurrentItem(tree_item)
+
+    def prev_view(self):
+        """cycle to previous view (alternate direction / backward)"""
+        self.next_view(prev=True)
 
     def select_view(self, event = None):
         "handles Menu > View > <view name>"
@@ -843,14 +891,15 @@ class MainWindow(gui.QMainWindow):
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.editor.clear()
         menuitem_list = [x for x in self.viewmenu.actions()]
-        for menuitem in menuitem_list[4:]:
+        for menuitem in menuitem_list[7:]:
             if menuitem == sender:
                 newview = sender.text()
                 sender.setChecked(True)
             else:
                 if menuitem.isChecked():
                     menuitem.setChecked(False)
-        self.opts["ActiveView"] = self.opts["ViewNames"].index(newview)
+        self.opts["ActiveView"] = self.opts["ViewNames"].index(
+            str(newview).split(None,1)[1])
         self.root = self.tree.takeTopLevelItem(0)
         self.root = gui.QTreeWidgetItem()
         self.root.setText(0, self.opts["RootTitle"])
@@ -879,13 +928,17 @@ class MainWindow(gui.QMainWindow):
             if self.opts["ActiveView"] > 0:
                 self.opts["ActiveView"] -= 1
             menuitem_list = [x for x in self.viewmenu.actions()]
-            menuitem_list[self.opts["ActiveView"] + 4].setChecked(True)
-            for menuitem in menuitem_list:
-                if menuitem.text() == viewname:
+            menuitem_list[self.opts["ActiveView"] + 7].setChecked(True)
+            removed = False
+            for menuitem in menuitem_list[7:]:
+                if removed:
+                    num, naam = str(menuitem.text()).split(None, 1)
+                    menuitem.setText('&{} {}'.format(int(num[1:]) - 1, naam))
+                if str(menuitem.text()).split(None,1)[1] == viewname:
                     self.viewmenu.removeAction(menuitem)
-                    break
+                    removed = True
             if self.opts["ActiveView"] == 0:
-                menuitem_list[4].setChecked(True)
+                menuitem_list[7].setChecked(True)
             self.root = self.tree.takeTopLevelItem(0)
             self.root = gui.QTreeWidgetItem()
             self.root.setText(0, self.opts["RootTitle"])
