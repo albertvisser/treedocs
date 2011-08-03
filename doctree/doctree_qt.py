@@ -863,6 +863,9 @@ class MainWindow(gui.QMainWindow):
 
     def remove_view(self, event = None):
         "handles Menu > View > Delete current view"
+        if self.viewcount == 1:
+            gui.QMessageBox.information(self, 'Doctree', "Can't delete the last (only) view")
+            return
         retval = gui.QMessageBox.question(self, "DocTree",
             "Are you sure you want to remove this view?",
             gui.QMessageBox.Yes | gui.QMessageBox.No,
@@ -975,7 +978,7 @@ class MainWindow(gui.QMainWindow):
             return klaar
         item = self.tree.selectedItems()[0]
         if item == self.root:
-            gui.QMessageBox.error(self, "DocTree", "Can't delete root")
+            gui.QMessageBox.information(self, "DocTree", "Can't delete root")
             return
         retval = gui.QMessageBox.question(self, "DocTree",
             "Are you sure you want to remove this item?",
