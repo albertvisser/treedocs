@@ -1,709 +1,625 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-# het principe (splitter window met een tree en een tekst deel) komt oorspronkelijk van een ibm site
 
-# TODO - toolbar definitie afmaken (is misschien niet nodig)
+"DocTree PyQt versie"
 
 import os
-import wx
-import wx.lib.mixins.treemixin as treemix
-import wx.richtext as rt
+import sys
+import PyQt4.QtGui as gui
+import PyQt4.QtCore as core
 import cPickle as pck
 import shutil
 import pprint
+import logging
 import datetime as dt
-import StringIO as io
 HERE = os.path.dirname(__file__)
 
-def getsubtree(tree, item):
+def log(message):
+    "write message to logfile"
+    logging.info(message)
+
+def tabsize(pointsize):
+     "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
+     x, y = divmod(pointsize * 8, 10)
+     return x * 4 if y < 5 else (x + 1) * 4
+
+def getsubtree(item):
     """recursieve functie om de strucuur onder de te verplaatsen data
     te onthouden"""
-    titel = tree.GetItemText(item)
-    ## print("calling getsubtree on {}".format(titel))
-    text = tree.GetItemPyData(item)
+    titel = item.text(0)
+    text = item.text(1)
     subtree = []
-    tag, cookie = tree.GetFirstChild(item)
-    while tag.IsOk():
-        subtree.append(getsubtree(tree, tag))
-        tag, cookie = tree.GetNextChild(item, cookie)
+    for num in range(item.childCount()):
+        kid = item.child(num)
+        subtree.append(getsubtree(kid))
     return titel, text, subtree
 
-def putsubtree(tree, parent, titel, text, subtree=None):
+def putsubtree(parent, titel, text, subtree=None):
     """recursieve functie om de onthouden structuur terug te zetten"""
     if subtree is None:
         subtree = []
-    new = tree.AppendItem(parent, titel)
-    ## print("calling putsubtree on {}".format(titel))
-    tree.SetItemPyData(new, text)
+    new = gui.QTreeWidgetItem()
+    new.setText(0, titel)
+    new.setText(1, text)
+    parent.addChild(new)
     for sub in subtree:
-        putsubtree(tree, new, *sub)
+        putsubtree(new, *sub)
     return new
 
-def messagebox(window, string, title="DocTree"):
-    """Toon een boodschap"""
-    ## print "messagebox aangeroepen:", string
-    dlg = wx.MessageDialog(window, string, title, wx.OK)
-    dlg.ShowModal()
-    dlg.Destroy()
-
-class CheckDialog(wx.Dialog):
+class CheckDialog(gui.QDialog):
     """Dialoog om te melden dat de applicatie verborgen gaat worden
     AskBeforeHide bepaalt of deze getoond wordt of niet"""
-    def __init__(self, parent, _id, title, size=(-1, 120), pos = wx.DefaultPosition,
-            style = wx.DEFAULT_DIALOG_STYLE):
-        wx.Dialog.__init__(self, parent, _id, title, pos, size, style)
-        pnl = wx.Panel(self, -1)
-        sizer0 = wx.BoxSizer(wx.VERTICAL)
-        sizer0.Add(wx.StaticText(pnl, -1, "\n".join((
-                "DocTree gaat nu slapen in de System tray",
-                "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"
-                ))), 1, wx.ALL, 5)
-        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.check_box = wx.CheckBox(pnl, -1, "Deze melding niet meer laten zien")
-        sizer1.Add(self.check_box, 0, wx.EXPAND)
-        sizer0.Add(sizer1, 0, wx.ALIGN_CENTER_HORIZONTAL)
-        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(pnl, id = wx.ID_OK)
-        ## self.bOk.Bind(wx.EVT_BUTTON,self.on_ok)
-        sizer1.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
-        sizer0.Add(sizer1, 0,
-            wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 5)
-        pnl.SetSizer(sizer0)
-        pnl.SetAutoLayout(True)
-        sizer0.Fit(pnl)
-        sizer0.SetSizeHints(pnl)
-        pnl.Layout()
+    def __init__(self, parent):
+        self.parent = parent
+        gui.QDialog.__init__(self, parent)
+        self.setWindowTitle('DocTree')
+        self.setWindowIcon(self.nt_icon)
+        txt = gui.QLabel("\n".join((
+            "DocTree gaat nu slapen in de System tray",
+            "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"
+                )), self)
+        self.check = gui.QCheckBox("Deze melding niet meer laten zien", self)
+        ok_button = gui.QPushButton("&Ok", self)
+        self.connect(ok_button, core.SIGNAL('clicked()'), self.klaar)
 
-class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
-    """TreeCtrl met drag&drop faciliteit"""
-    def __init__(self, *args, **kwargs):
-        super(DnDTree, self).__init__(*args, **kwargs)
+        vbox = gui.QVBoxLayout()
 
-    def OnDrop(self, dropitem, dragitem):
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(txt)
+        vbox.addLayout(hbox)
+
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(self.check)
+        vbox.addLayout(hbox)
+
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(ok_button)
+        hbox.insertStretch(0, 1)
+        hbox.addStretch(1)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+        ## self.resize(574 + breedte, 480)
+        self.exec_()
+
+    def klaar(self):
+        "dialoog afsluiten"
+        if self.check.isChecked():
+            self.parent.opts["AskBeforeHide"] = False
+        gui.QDialog.done(self, 0)
+
+
+class TreePanel(gui.QTreeWidget):
+    def __init__(self, parent):
+        self.parent = parent
+        gui.QTreeWidget.__init__(self)
+        self.setColumnCount(2)
+        self.hideColumn(1)
+        self.setItemHidden(self.headerItem(), True)
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setSelectionMode(self.SingleSelection)
+        self.setDragDropMode(self.InternalMove)
+        self.setDropIndicatorShown(True)
+
+    def selectionChanged(self, newsel, oldsel):
+        """wordt aangeroepen als de selectie gewijzigd is
+
+        de tekst van de oude selectie wordt in de itemdict geactualiseerd
+        en die van de nieuwe wordt erin opgezocht en getoond"""
+        # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
+        self.parent.check_active()
+        h = self.currentItem()
+        self.parent.activate_item(h)
+
+    def dropEvent(self, event):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
         een ander (dropitem)
-        Het komt er altijd *onder* te hangen als laatste item"""
-        if dropitem == self.GetRootItem():
-            return
-        if dropitem is None:
-            dropitem = self.root
-        dragText = self.GetItemText(dragitem) # alleen gebruikt in print statement?
-        dragData = self.GetItemPyData(dragitem) # niet gebruikt?
-        dragtree = getsubtree(self, dragitem)
-        ## pprint.pprint(dragtree)
-        dropText = self.GetItemText(dropitem) # alleen gebruikt in print statement?
-        dropData = self.GetItemPyData(dropitem) # niet gebruikt?
-        self.Delete(dragitem)
-        ## item = self.AppendItem(dropitem, dragText)
-        ## self.SetItemPyData(item, dragData)
-        putsubtree(self, dropitem, *dragtree)
-        self.Expand(dropitem)
+        Het komt er altijd *onder* te hangen als laatste item
+        deze methode breidt de Treewidget methode uit met wat visuele zaken
+        """
+        dragitem = self.selectedItems()[0]
+        gui.QTreeWidget.dropEvent(self, event)
+        self.parent.project_dirty = True
+        dropitem = dragitem.parent()
+        self.setCurrentItem(dragitem)
+        dropitem.setExpanded(True)
 
-class RTCEditor(rt.RichTextCtrl):
-    def __init__(self, parent, _id):
-        rt.RichTextCtrl.__init__(self, parent, _id,
-            style=wx.VSCROLL|wx.HSCROLL|wx.NO_BORDER)
-        self.textAttr = rt.RichTextAttr()
+class EditorPanel(gui.QTextEdit):
+    def __init__(self, parent):
+        self.parent = parent
+        gui.QTextEdit.__init__(self)
+        self.setAcceptRichText(True)
+        ## self.setTabChangesFocus(True)
+        self.setAutoFormatting(gui.QTextEdit.AutoAll)
+        self.connect(self, core.SIGNAL('currentCharFormatChanged(QTextCharFormat)'),
+             self.charformat_changed)
+        self.connect(self, core.SIGNAL('cursorPositionChanged()'),
+             self.cursorposition_changed)
+        font = self.currentFont()
+        self.setTabStopWidth(tabsize(font.pointSize()))
 
-    def on_url(self, evt):
-        wx.MessageBox(evt.GetString(), "URL Clicked")
-
-    def set_contents(self, data):
+    def set_contents(self, data, where='root'):
         "load contents into editor"
-        self.Clear()
-        if data.startswith("<?xml"):
-            out = io.StringIO()
-            handler = rt.RichTextXMLHandler()
-            _buffer = self.GetBuffer()
-            _buffer.AddHandler(handler)
-            out.write(data)
-            out.seek(0)
-            handler.LoadStream(_buffer, out)
-        else:
-            self.WriteText(data)
-        self.Refresh()
+        ## try:
+            ## self.codec = core.QTextCodec.codecForHtml(str(data))
+            ## self.setHtml(self.codec.toUnicode(data))
+        ## except TypeError:
+            ## log('typeerror on data at: {}'.format(where))
+        self.setHtml(data)
 
     def get_contents(self):
         "return contents from editor"
-        out = io.StringIO()
-        handler = rt.RichTextXMLHandler()
-        _buffer = self.GetBuffer()
-        handler.SaveStream(_buffer, out)
-        out.seek(0)
-        content = out.read()
-        return content
+        return self.toHtml()
+        ## data = self.codec.fromUnicode(self.toHtml())
+        ## return unicode(data)
 
-    def text_bold(self, evt):
+    def text_bold(self, event = None):
         "selectie vet maken"
-        self.ApplyBoldToSelection()
-
-    def text_italic(self, evt):
-        "selectie schuin schrijven"
-        self.ApplyItalicToSelection()
-
-    def text_underline(self, evt):
-        "selectie onderstrepen"
-        self.ApplyUnderlineToSelection()
-
-    def align_left(self, evt):
-        "alinea links uitlijnen"
-        self.ApplyAlignmentToSelection(rt.TEXT_ALIGNMENT_LEFT)
-
-    def align_center(self, evt):
-        "alinea centreren"
-        self.ApplyAlignmentToSelection(rt.TEXT_ALIGNMENT_CENTRE)
-
-    def align_right(self, evt):
-        "alinea rechts uitlijnen"
-        self.ApplyAlignmentToSelection(rt.TEXT_ALIGNMENT_RIGHT)
-
-    def indent_more(self, evt):
-        "alinea verder laten inspringen"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_LEFT_INDENT)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-            attr.SetLeftIndent(attr.GetLeftIndent() + 100)
-            attr.SetFlags(rt.TEXT_ATTR_LEFT_INDENT)
-            self.SetStyle(r, attr)
-
-    def indent_less(self, evt):
-        "alinea minder ver laten inspringen"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_LEFT_INDENT)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-        if attr.GetLeftIndent() >= 100:
-            attr.SetLeftIndent(attr.GetLeftIndent() - 100)
-            attr.SetFlags(rt.TEXT_ATTR_LEFT_INDENT)
-            self.SetStyle(r, attr)
-
-    def paragraphspacing_more(self, evt):
-        "ruimte tussen alinea's vergroten"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_PARA_SPACING_AFTER)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-            attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() + 20)
-            attr.SetFlags(rt.TEXT_ATTR_PARA_SPACING_AFTER)
-            self.SetStyle(r, attr)
-
-    def paragraphspacing_less(self, evt):
-        "ruimte tussen alinea's verkleinen"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_PARA_SPACING_AFTER)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-            if attr.GetParagraphSpacingAfter() >= 20:
-                attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() - 20)
-                attr.SetFlags(rt.TEXT_ATTR_PARA_SPACING_AFTER)
-                self.SetStyle(r, attr)
-
-
-    def linespacing_single(self, evt):
-        "enkele regelafstand instellen"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_LINE_SPACING)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-
-            attr.SetFlags(rt.TEXT_ATTR_LINE_SPACING)
-            attr.SetLineSpacing(10)
-            self.SetStyle(r, attr)
-
-
-    def linespacing_half(self, evt):
-        "halve regelafstand instellen"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_LINE_SPACING)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-
-            attr.SetFlags(rt.TEXT_ATTR_LINE_SPACING)
-            attr.SetLineSpacing(15)
-            self.SetStyle(r, attr)
-
-
-    def linespacing_double(self, evt):
-        "dubbele regelafstand instellen"
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_LINE_SPACING)
-        ip = self.GetInsertionPoint()
-        if self.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.HasSelection():
-                r = self.GetSelectionRange()
-
-            attr.SetFlags(rt.TEXT_ATTR_LINE_SPACING)
-            attr.SetLineSpacing(20)
-            self.SetStyle(r, attr)
-
-
-    def text_font(self, evt):
-        "lettertype en/of grootte instellen"
-        if not self.HasSelection():
+        if not self.hasFocus():
             return
+        fmt = gui.QTextCharFormat()
+        if self.parent.actiondict['&Bold'].isChecked():
+            fmt.setFontWeight(gui.QFont.Bold)
+        else:
+            fmt.setFontWeight(gui.QFont.Normal)
+        self.mergeCurrentCharFormat(fmt)
 
-        r = self.GetSelectionRange()
-        fontData = wx.FontData()
-        fontData.EnableEffects(False)
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_FONT)
-        if self.GetStyle(self.GetInsertionPoint(), attr):
-            fontData.SetInitialFont(attr.GetFont())
+    def text_italic(self, event = None):
+        "selectie schuin schrijven"
+        if not self.hasFocus():
+            return
+        fmt = gui.QTextCharFormat()
+        fmt.setFontItalic(self.parent.actiondict['&Italic'].isChecked())
+        self.mergeCurrentCharFormat(fmt)
 
-        dlg = wx.FontDialog(self, fontData)
-        if dlg.ShowModal() == wx.ID_OK:
-            fontData = dlg.GetFontData()
-            font = fontData.GetChosenFont()
-            if font:
-                attr.SetFlags(rt.TEXT_ATTR_FONT)
-                attr.SetFont(font)
-                self.SetStyle(r, attr)
-        dlg.Destroy()
+    def text_underline(self, event = None):
+        "selectie onderstrepen"
+        if not self.hasFocus():
+            return
+        fmt = gui.QTextCharFormat()
+        fmt.setFontUnderline(self.parent.actiondict['&Underline'].isChecked())
+        self.mergeCurrentCharFormat(fmt)
 
+    def align_left(self, event = None):
+        "alinea links uitlijnen"
+        if not self.hasFocus():
+            return
+        self.parent.actiondict["C&enter"].setChecked(False)
+        self.parent.actiondict["Align &Right"].setChecked(False)
+        self.parent.actiondict["&Justify"].setChecked(False)
+        self.setAlignment(core.Qt.AlignLeft | core.Qt.AlignAbsolute)
 
-    def text_color(self, evt):
+    def align_center(self, event = None):
+        "alinea centreren"
+        if not self.hasFocus():
+            return
+        self.parent.actiondict["Align &Left"].setChecked(False)
+        self.parent.actiondict["Align &Right"].setChecked(False)
+        self.parent.actiondict["&Justify"].setChecked(False)
+        self.setAlignment(core.Qt.AlignHCenter)
+
+    def align_right(self, event = None):
+        "alinea rechts uitlijnen"
+        if not self.hasFocus():
+            return
+        self.parent.actiondict["Align &Left"].setChecked(False)
+        self.parent.actiondict["C&enter"].setChecked(False)
+        self.parent.actiondict["&Justify"].setChecked(False)
+        self.setAlignment(core.Qt.AlignRight | core.Qt.AlignAbsolute)
+
+    def text_justify(self, event = None):
+        "alinea aan weerszijden uitlijnen"
+        if not self.hasFocus():
+            return
+        self.parent.actiondict["Align &Left"].setChecked(False)
+        self.parent.actiondict["C&enter"].setChecked(False)
+        self.parent.actiondict["Align &Right"].setChecked(False)
+        self.setAlignment(core.Qt.AlignJustify)
+
+    def indent_more(self, event = None):
+        "alinea verder laten inspringen"
+        if not self.hasFocus():
+            return
+        where = self.textCursor().block()
+        ## fmt = gui.QTextBlockFormat()
+        fmt = where.blockFormat()
+        wid = fmt.indent()
+        log('indent_more called, current indent is {}'.format(wid))
+        fmt.setIndent(wid + 100)
+        log('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
+        # maar hier is geen merge methode voor, lijkt het...
+
+    def indent_less(self, event = None):
+        "alinea minder ver laten inspringen"
+        if not self.hasFocus():
+            return
+        fmt = gui.QTextBlockFormat()
+        wid = fmt.indent()
+        log('indent_less called, current indent is {}'.format(wid))
+        if wid > 100:
+            fmt.setIndent(wid - 100)
+
+    def text_font(self, event = None):
+        "lettertype en/of -grootte instellen"
+        if not self.hasFocus():
+            return
+        font, ok = gui.QFontDialog.getFont(self.currentFont(), self)
+        if ok:
+            fmt = gui.QTextCharFormat()
+            fmt.setFont(font)
+            ## pointsize = float(font.pointSize())
+            self.setTabStopWidth(tabsize(font.pointSize()))
+            self.mergeCurrentCharFormat(fmt)
+
+    def text_family(self, family):
+        "lettertype instellen"
+        fmt = gui.QTextCharFormat()
+        fmt.setFontFamily(family);
+        self.mergeCurrentCharFormat(fmt)
+        self.setFocus()
+
+    def text_size(self, size):
+        "lettergrootte instellen"
+        pointsize = float(size)
+        if pointsize > 0:
+            fmt = gui.QTextCharFormat()
+            fmt.setFontPointSize(pointsize)
+            self.setTabStopWidth(tabsize(pointsize))
+            self.mergeCurrentCharFormat(fmt)
+            self.setFocus()
+
+    def text_color(self, event = None):
         "tekstkleur instellen"
-        colourData = wx.ColourData()
-        attr = rt.TextAttrEx()
-        attr.SetFlags(rt.TEXT_ATTR_TEXT_COLOUR)
-        if self.GetStyle(self.GetInsertionPoint(), attr):
-            colourData.SetColour(attr.GetTextColour())
+        if not self.hasFocus():
+            return
+        col = gui.QColorDialog.getColor(self.textColor(), self)
+        if not col.isValid():
+            return
+        fmt = gui.QTextCharFormat()
+        fmt.setForeground(col)
+        self.mergeCurrentCharFormat(fmt)
+        self.color_changed(col)
 
-        dlg = wx.ColourDialog(self, colourData)
-        if dlg.ShowModal() == wx.ID_OK:
-            colourData = dlg.GetColourData()
-            colour = colourData.GetColour()
-            if colour:
-                if not self.HasSelection():
-                    self.BeginTextColour(colour)
-                else:
-                    r = self.GetSelectionRange()
-                    attr.SetFlags(rt.TEXT_ATTR_TEXT_COLOUR)
-                    attr.SetTextColour(colour)
-                    self.SetStyle(r, attr)
-        dlg.Destroy()
+    def charformat_changed(self, format):
+        "wordt aangeroepen als het tekstformat gewijzigd is"
+        self.font_changed(format.font());
+        self.color_changed(format.foreground().color())
 
-    def update_bold(self, evt):
-        "het betreffende menuitem aanvinken indien van toepassing"
-        evt.Check(self.IsSelectionBold())
+    def cursorposition_changed(self):
+        "wordt aangeroepen als de cursorpositie gewijzigd is"
+        self.alignment_changed(self.alignment())
 
-    def update_italic(self, evt):
-        "het betreffende menuitem aanvinken indien van toepassing"
-        evt.Check(self.IsSelectionItalics())
+    def font_changed(self, font):
+        """fontgegevens aanpassen
 
-    def update_underline(self, evt):
-        "het betreffende menuitem aanvinken indien van toepassing"
-        evt.Check(self.IsSelectionUnderlined())
+        de selectie in de comboboxen wordt aangepast, de van toepassing zijnde
+        menuopties worden aangevinkt, en en de betreffende toolbaricons worden
+        geaccentueerd"""
+        self.parent.combo_font.setCurrentIndex(
+            self.parent.combo_font.findText(gui.QFontInfo(font).family()))
+        self.parent.combo_size.setCurrentIndex(
+            self.parent.combo_size.findText(str(font.pointSize())))
+        self.parent.actiondict["&Bold"].setChecked(font.bold())
+        self.parent.actiondict["&Italic"].setChecked(font.italic())
+        self.parent.actiondict["&Underline"].setChecked(font.underline())
 
-    def update_alignleft(self, evt):
-        "het betreffende menuitem aanvinken indien van toepassing"
-        evt.Check(self.IsSelectionAligned(rt.TEXT_ALIGNMENT_LEFT))
+    def color_changed(self, col):
+        """kleur aanpassen
 
-    def update_center(self, evt):
-        "het betreffende menuitem aanvinken indien van toepassing"
-        evt.Check(self.IsSelectionAligned(rt.TEXT_ALIGNMENT_CENTRE))
+        het icon in de toolbar krijgt een andere kleur"""
+        pix = gui.QPixmap(16, 16)
+        pix.fill(col)
+        self.parent.actiondict["&Color..."].setIcon(gui.QIcon(pix))
 
-    def update_alignright(self, evt):
-        "het betreffende menuitem aanvinken indien van toepassing"
-        evt.Check(self.IsSelectionAligned(rt.TEXT_ALIGNMENT_RIGHT))
+    def alignment_changed(self, align):
+        """alignment aanpassen
 
-class MainWindow(wx.Frame):
+        de van toepassing zijnde menuitems worden aangevinkt
+        en de betreffende toolbaricons worden geaccentueerd"""
+        self.parent.actiondict["Align &Left"].setChecked(False)
+        self.parent.actiondict["C&enter"].setChecked(False)
+        self.parent.actiondict["Align &Right"].setChecked(False)
+        self.parent.actiondict["&Justify"].setChecked(False)
+        if align & core.Qt.AlignLeft:
+            self.parent.actiondict["Align &Left"].setChecked(True)
+        elif align & core.Qt.AlignHCenter:
+            self.parent.actiondict["C&enter"].setChecked(True)
+        elif align & core.Qt.AlignRight:
+            self.parent.actiondict["Align &Right"].setChecked(True)
+        elif align & core.Qt.AlignJustify:
+            self.parent.actiondict["&Justify"].setChecked(True)
+
+    def mergeCurrentCharFormat(self, format):
+        "de geselecteerde tekst op de juiste manier weergeven"
+        cursor = self.textCursor()
+        if not cursor.hasSelection():
+            cursor.select(gui.QTextCursor.WordUnderCursor)
+        cursor.mergeCharFormat(format)
+        gui.QTextEdit.mergeCurrentCharFormat(self, format)
+
+class MainWindow(gui.QMainWindow):
     """Hoofdscherm van de applicatie"""
-    def __init__(self, parent, _id, title):
+    def __init__(self, parent = None, fnaam = ""):
         self.opts = {
             "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
             "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
             "RootTitle": "MyNotes", "RootData": ""}
-        wx.Frame.__init__(self, parent, _id, title, size = self.opts['ScreenSize'],
-                         style=wx.DEFAULT_FRAME_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
-        self.nt_icon = wx.Icon(os.path.join(HERE, "doctree.ico"),wx.BITMAP_TYPE_ICO)
-        self.SetIcon(self.nt_icon)
-        self.statbar = self.CreateStatusBar()
+        gui.QMainWindow.__init__(self)
+        self.nt_icon = gui.QIcon(os.path.join(HERE, "doctree.xpm"))
+        self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
+        self.tray_icon.setToolTip("Click to revive DocTree")
+        self.connect(self.tray_icon, core.SIGNAL('clicked'),
+            self.revive)
+        tray_signal = "activated(QSystemTrayIcon::ActivationReason)"
+        self.connect(self.tray_icon, core.SIGNAL(tray_signal),
+            self.revive)
+        self.tray_icon.hide()
 
-        ## tbar = wx.ToolBar(self, -1)
-        menuBar = wx.MenuBar()
-        self.SetMenuBar(menuBar)
+        self.statusbar = self.statusBar()
+        self.statusbar.showMessage('Ready')
 
-        self.splitter = wx.SplitterWindow (self, -1, style = wx.NO_3D) # |wx.SP_3D
-        self.splitter.SetMinimumPaneSize (1)
+        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1]) # 800, 500)
+        self.setWindowTitle('DocTree')
 
-        self.tree = DnDTree(self.splitter, -1,
-            style=wx.TR_HAS_BUTTONS | wx.TR_EDIT_LABELS | wx.TR_HAS_VARIABLE_ROW_HEIGHT
-            )
-        self.root = self.tree.AddRoot("MyNotes")
-        self.activeitem = self.root
-        self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, self.tree)
-        self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
-
-        self.editor = RTCEditor(self.splitter, -1)
-        self.editor.Enable(0)
+        self.actiondict = {}
+        menubar = self.menuBar()
+        self.splitter = gui.QSplitter(self)
+        self.setCentralWidget(self.splitter)
+        self.tree = TreePanel(self)
+        self.splitter.addWidget(self.tree)
+        self.editor = EditorPanel(self)
+        self.editor.setReadOnly(True)
         self.editor.new_content = True
-        self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
-
-        ## self.create_toolbar(tbar) # frm)
-        self.create_menu(menuBar, (
+        self.splitter.addWidget(self.editor)
+        ## splitter.moveSplitter(180, 0)
+        self.create_menu(menubar, (
             ("&Main", (
-                ("Re&Load (Ctrl-R)", self.reread, 'Reread .ini file'),
-                ("&Open (Ctrl-O)", self.open, "Choose and open .ini file"),
-                ("&Init (Ctrl-I)", self.new, 'Start a new .ini file'),
-                ("&Save (Ctrl-S)", self.save, 'Save .ini file'),
-                ("Save as (Shift-Ctrl-S)", self.saveas, 'Name and save .ini file'),
-                ("", None, None),
-                ("&Root title (Shift-F2)", self.rename_root, 'Rename root'),
-                ("Items sorteren", self.order_top, 'Bovenste niveau sorteren op titel'),
-                ("Items recursief sorteren", self.order_all, 'Alle niveaus sorteren op titel'),
-                ("", None, None),
-                ("&Hide (Ctrl-H)", self.hide, 'verbergen in system tray'),
-                ("", None, None),
-                ("e&Xit (Ctrl-Q, Esc)", self.afsl, 'Exit program'),
+                ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png', 'Reread .ini file'),
+                ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png', "Choose and open .ini file"),
+                ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png', 'Start a new .ini file'),
+                ("&Save", self.save, 'Ctrl+S', 'icons/filesave.png', 'Save .ini file'),
+                ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png', 'Name and save .ini file'),
+                (),
+                ("&Root title", self.rename_root, 'Shift+F2', '', 'Rename root'),
+                ("Items sorteren", self.order_top, '', '', 'Bovenste niveau sorteren op titel'),
+                ("Items recursief sorteren", self.order_all, '', '', 'Alle niveaus sorteren op titel'),
+                (),
+                ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
+                ("Switch pane", self.change_pane, 'Ctrl+Tab', '', 'switch tussen tree en editor'),
+                (),
+                ("e&Xit", core.SLOT('close()'), 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'),
                 ), ),
             ("&Note", (
-                ("&New (Ctrl-N)", self.add_item, 'Add note (below current level)'),
-                ("&Add (Insert)", self.insert_item, 'Add note (after current)'),
-                ("&Delete (Ctrl-D, Del)", self.delete_item, 'Remove note'),
-                ("", None, None),
-                ("Note &Title (F2)", self.rename_item, 'Rename current note'),
-                ("Subitems sorteren", self.order_this, 'Onderliggend niveau sorteren op titel'),
-                ("Subitems recursief sorteren", self.order_lower, 'Alle onderliggende niveaus sorteren op titel'),
-                ("", None, None),
-                ("&Forward (Ctrl-PgDn)", self.next_note, 'View next note'),
-                ("&Back (Ctrl-PgUp)", self.prev_note, 'View previous note'),
+                ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
+                ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
+                ("New under &Root", self.root_item, 'Shift+Ctrl+N', '', 'Add note (below root)'),
+                ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
+                (),
+                ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
+                ("Subitems sorteren", self.order_this, '', '', 'Onderliggend niveau sorteren op titel'),
+                ("Subitems recursief sorteren", self.order_lower, '', '', 'Alle onderliggende niveaus sorteren op titel'),
+                (),
+                ("&Forward", self.next_note, 'Ctrl+PgDown', '', 'View next note'),
+                ("&Back", self.prev_note, 'Ctrl+PgUp', '', 'View previous note'),
                 ),),
             ("&View", (
-                ('&New View', self.add_view, 'Add an alternative view (tree) to this data'),
-                ('&Rename Current View', self.rename_view, 'Rename the current tree view'),
-                ('&Delete Current View', self.remove_view, 'Remove the current tree view'),
-                ("", None, None),
-                ), ),
+                ('&New View', self.add_view, '', '', 'Add an alternative view (tree) to this data'),
+                ('&Rename Current View', self.rename_view, '', '', 'Rename the current tree view'),
+                ('&Delete Current View', self.remove_view, '', '', 'Remove the current tree view'),
+                (),
+                ('Next View', self.next_view, 'Ctrl++', '', 'Switch to the next view in the list'),
+                ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
+                (),
+                ), ), # label, handler, shortcut, icon, info
             ('&Edit', (
-                ("&Undo\tCtrl+Z", self.forward_event, self.forward_event, wx.ID_UNDO, "", None),
-                ("&Redo\tCtrl+Y", self.forward_event, self.forward_event, wx.ID_REDO, "", None),
-                ("", None, None),
-                ("Cu&t\tCtrl+X", self.forward_event, self.forward_event, wx.ID_CUT, "", None),
-                ("&Copy\tCtrl+C", self.forward_event, self.forward_event, wx.ID_COPY, "", None),
-                ("&Paste\tCtrl+V", self.forward_event, self.forward_event, wx.ID_PASTE, "", None),
-                ("&Delete\tDel", self.forward_event, self.forward_event, wx.ID_CLEAR, "", None),
-                ("", None, None),
-                ("Select A&ll\tCtrl+A", self.forward_event, self.forward_event, wx.ID_SELECTALL, "", None),
+                ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
+                ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
+                (),
+                ('Cu&t', self.editor.cut, 'Ctrl+X', 'icons/edit-cut.png', 'Copy the selection and delete from text'),
+                ('&Copy', self.editor.copy, 'Ctrl+C', 'icons/edit-copy.png', 'Just copy the selection'),
+                ('&Paste', self.editor.paste, 'Ctrl+V', 'icons/edit-paste.png', 'Paste the copied selection'),
+                (),
+                ('Select A&ll', self.editor.selectAll, 'Ctrl+A', "", 'Select the entire text'),
+                ("&Clear All (can't undo)", self.editor.clear, '', '', 'Delete the entire text'),
                 ), ),
             ('&Format', (
-                ("&Bold\tCtrl+B", self.editor.text_bold, self.editor.update_bold, -1, "", wx.ITEM_CHECK),
-                ("&Italic\tCtrl+I", self.editor.text_italic, self.editor.update_italic, -1, "", wx.ITEM_CHECK),
-                ("&Underline\tCtrl+U", self.editor.text_underline, self.editor.update_underline, -1, "", wx.ITEM_CHECK),
-                ("", None, None),
-                ("L&eft Align", self.editor.align_left, self.editor.update_alignleft, -1, "", wx.ITEM_CHECK),
-                ("&Centre", self.editor.align_center, self.editor.update_center, -1, "", wx.ITEM_CHECK),
-                ("&Right Align", self.editor.align_right, self.editor.update_alignright, -1, "", wx.ITEM_CHECK),
-                ("", None, None),
-                ("Indent &More", self.editor.indent_more, 'Increase indentation'),
-                ("Indent &Less", self.editor.indent_less, 'Decrease indentation'),
-                ("", None, None),
-                ("Increase Paragraph &Spacing", self.editor.paragraphspacing_more, ''),
-                ("Decrease &Paragraph Spacing", self.editor.paragraphspacing_less, ''),
-                ("", None, None),
-                ("Normal Line Spacing", self.editor.linespacing_single, ''),
-                ("1.5 Line Spacing", self.editor.linespacing_half,''),
-                ("Double Line Spacing", self.editor.linespacing_double, ''),
-                ("", None, None),
-                ("&Font...", self.editor.text_font, 'Set/change font'),
+                ('&Bold', self.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png', 'CheckB'),
+                ('&Italic', self.editor.text_italic, 'Ctrl+I', 'icons/format-text-italic.png', 'CheckI'),
+                ('&Underline', self.editor.text_underline, 'Ctrl+U', 'icons/format-text-underline.png', 'CheckU'),
+                (),
+                ('Align &Left', self.editor.align_left, 'Shift+Ctrl+L', 'icons/format-justify-left.png', 'Check'),
+                ('C&enter', self.editor.align_center, 'Shift+Ctrl+C', 'icons/format-justify-center.png', 'Check'),
+                ('Align &Right', self.editor.align_right, 'Shift+Ctrl+R', 'icons/format-justify-right.png', 'Check'),
+                ('&Justify', self.editor.text_justify, 'Shift+Ctrl+J', 'icons/format-justify-fill.png', 'Check'),
+                (),
+                ## ("Indent &More", self.editor.indent_more, 'Ctrl+]', '', 'Increase indentation'),
+                ## ("Indent &Less", self.editor.indent_less, 'Ctrl+[', '', 'Decrease indentation'),
+                ## (),
+                ## ("Increase Paragraph &Spacing", self.editor.OnParagraphSpacingMore, ''),
+                ## ("Decrease &Paragraph Spacing", self.editor.OnParagraphSpacingLess, ''),
+                ## (),
+                ## ("Normal Line Spacing", self.editor.OnLineSpacingSingle, ''),
+                ## ("1.5 Line Spacing", self.editor.OnLineSpacingHalf,''),
+                ## ("Double Line Spacing", self.editor.OnLineSpacingDouble, ''),
+                ## (),
+                ("&Font...", self.editor.text_font, '', '', 'Set/change font'),
+                ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
                 ), ),
             ("&Help", (
-                ("&About", self.info_page, 'About this application'),
-                ("&Keys (F1)", self.help_page, 'Keyboard shortcuts'),
+                ("&About", self.info_page, '', '', 'About this application'),
+                ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'),
                 ), ),
             )
         )
+        self.create_stylestoolbar()
+        self.project_dirty = False
 
-        self.splitter.SplitVertically(self.tree, self.editor)
-        self.splitter.SetSashPosition(self.opts['SashPosition'], True)
-        ## self.splitter.Bind(wx.EVT_KEY_DOWN, self.on_key)
-        ## self.Bind(wx.EVT_KEY_DOWN, self.on_key)
-        self.Bind(wx.EVT_CLOSE, self.afsl)
+    def change_pane(self, event=None):
+        "wissel tussen tree en editor"
+        if self.tree.hasFocus():
+            self.editor.setFocus()
+        elif self.editor.hasFocus():
+            self.check_active()
+            self.tree.setFocus()
 
-        self.tree.SetFocus()
-        self.Show(True)
-
-    def forward_event(self, evt):
-        # The RichTextCtrl can handle menu and update events for undo,
-        # redo, cut, copy, paste, delete, and select all, so just
-        # forward the event to it.
-        self.editor.ProcessEvent(evt)
-
-    def create_menu(self, menuBar, menudata):
-        """bouw het menu op"""
+    def create_menu(self, menubar, menudata):
+        """bouw het menu en de meeste toolbars op"""
         for item, data in menudata:
-            menu_label = item
-            submenu = wx.Menu()
+            menu = menubar.addMenu(item)
+            toolbar_added = False
             if item == "&View":
-                self.viewmenu = submenu
+                self.viewmenu = menu
             for menudef in data:
-                if len(menudef) == 3:
-                    label, handler, info = menudef
-                    if label != "":
-                        menu_item = wx.MenuItem(submenu, -1, label, info)
-                        self.Bind(wx.EVT_MENU, handler, menu_item)
-                        submenu.AppendItem(menu_item)
-                    else:
-                        submenu.AppendSeparator()
-                elif len(menudef) == 6:
-                    label, handler, updateUI, _id, info, _type = menudef
-                    if label != "":
-                        if _type is None:
-                            menu_item = wx.MenuItem(submenu, _id, label, info)
-                        else:
-                            menu_item = wx.MenuItem(submenu, _id, label, info, _type)
-                        self.Bind(wx.EVT_MENU, handler, menu_item)
-                        submenu.AppendItem(menu_item)
-                        if updateUI is not None:
-                            self.Bind(wx.EVT_UPDATE_UI, updateUI, menu_item)
-            menuBar.Append(submenu, menu_label)
-
-    def create_toolbar(self, tbar): # , parent)
-        def doBind(item, handler, updateUI=None):
-            self.Bind(wx.EVT_TOOL, handler, item)
-            if updateUI is not None:
-                self.Bind(wx.EVT_UPDATE_UI, updateUI, item)
-
-        doBind(tbar.AddTool(wx.ID_CUT, wx.Icon(os.path.join(
-                HERE, "icons", "edit-cut.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Cut"), self.forward_event, self.forward_event)
-        doBind(tbar.AddTool(wx.ID_COPY, wx.Icon(os.path.join(
-                HERE, "icons", "edit-copy.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Copy"), self.forward_event, self.forward_event)
-        doBind(tbar.AddTool(wx.ID_PASTE, wx.Icon(os.path.join(
-                HERE, "icons", "edit-paste.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Paste"), self.forward_event, self.forward_event)
-        tbar.AddSeparator()
-        doBind(tbar.AddTool(wx.ID_UNDO, wx.Icon(os.path.join(
-                HERE, "icons", "edit-undo.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Undo"), self.forward_event, self.forward_event)
-        doBind(tbar.AddTool(wx.ID_REDO, wx.Icon(os.path.join(
-                HERE, "icons", "edit-redo.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Redo"), self.forward_event, self.forward_event)
-        tbar.AddSeparator()
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-text-bold.png"), wx.BITMAP_TYPE_PNG), isToggle=True,
-                shortHelpString="Bold"), self.editor.text_bold, self.editor.update_bold)
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-text-italic.png"), wx.BITMAP_TYPE_PNG), isToggle=True,
-                shortHelpString="Italic"), self.editor.text_italic, self.editor.update_italic)
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-text-underline.png"), wx.BITMAP_TYPE_PNG), isToggle=True,
-                shortHelpString="Underline"), self.editor.text_underline, self.editor.update_underline)
-        tbar.AddSeparator()
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-justify-left.png"), wx.BITMAP_TYPE_PNG), isToggle=True,
-                shortHelpString="Align Left"), self.editor.align_left, self.editor.update_alignleft)
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-justify-center.png"), wx.BITMAP_TYPE_PNG), isToggle=True,
-                shortHelpString="Center"), self.editor.align_center, self.editor.update_center)
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-justtify-right.png"), wx.BITMAP_TYPE_PNG), isToggle=True,
-                shortHelpString="Align Right"), self.editor.align_right, self.editor.update_alignright)
-        tbar.AddSeparator()
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "format-indent-less.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Indent Less"), self.editor.indent_less)
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(HERE, "icons",
-                "formt-indent-more.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Indent More"), self.editor.indent_more)
-        tbar.AddSeparator()
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(
-                HERE, "icons", "gnome-settings-font.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Font"), self.editor.text_font)
-        doBind(tbar.AddTool(-1, wx.Icon(os.path.join(
-                HERE, "icons", "gnome-settings-font.png"), wx.BITMAP_TYPE_PNG),
-                shortHelpString="Font Colour"), self.editor.text_color)
-        tbar.Realize()
-
-    def on_key(self, event):
-        """afhandeling toetscombinaties"""
-        skip = True
-        keycode = event.GetKeyCode()
-        mods = event.GetModifiers()
-        win = event.GetEventObject()
-        if mods == wx.MOD_CONTROL:
-            if keycode == ord("O"):
-                self.open()
-            elif keycode == ord("R"):
-                self.reread()
-            elif keycode == ord("I"):
-                self.new()
-            elif keycode == ord("N"):
-                self.add_item(root=self.activeitem)
-            elif keycode == ord("D"):
-                self.delete_item()
-            elif keycode == ord("H"):
-                self.hide()
-            elif keycode == ord("S"):
-                self.save()
-            elif keycode == ord("Q"):
-                self.Close()
-            elif keycode == wx.WXK_PAGEDOWN:
-                self.next_note()
-            elif keycode == wx.WXK_PAGEUP:
-                self.prev_note()
-        elif mods == wx.MOD_CONTROL | wx.MOD_SHIFT:
-            if keycode == ord("N"):
-                self.add_item(root = self.root)
-            elif keycode == ord("S"):
-                self.saveas()
-        elif keycode == wx.WXK_F1:
-            self.help_page()
-        elif keycode == wx.WXK_F2:
-            if mods == wx.MOD_SHIFT:
-                self.rename_root()
-            else:
-                self.rename_item()
-        elif keycode == wx.WXK_INSERT and win == self.tree:
-            self.insert_item()
-        elif keycode == wx.WXK_DELETE:
-            print("delete key pressed")
-            if win == self.tree:
-                print("in tree")
-                self.delete_item()
-            elif win == self.editor:
-                print("in editor")
-        elif keycode == wx.WXK_TAB and win == self.editor:
-            if self.editor.IsModified():
-                key = self.tree.GetItemPyData(self.activeitem)
-                try:
-                    titel, tekst = self.itemdict[key]
-                except KeyError:
-                    print "on_key (tab): KeyError, waarschijnlijk op root"
-                    if key:
-                        self.tree.SetItemPyData(self.root, key)
+                if not menudef:
+                    menu.addSeparator()
+                    continue
+                label, handler, shortcut, icon, info = menudef
+                if icon:
+                    action = gui.QAction(gui.QIcon(os.path.join(HERE, icon)), label, self)
+                    if not toolbar_added:
+                        toolbar = self.addToolBar(item)
+                        toolbar.setIconSize(core.QSize(16,16))
+                        toolbar_added = True
+                    toolbar.addAction(action)
                 else:
-                    self.itemdict[key] = (titel, self.editor.get_contents())
-            self.tree.SetFocus()
-            skip = False
-        elif keycode == wx.WXK_ESCAPE:
-            self.Close()
-        if event and skip:
-            event.Skip()
+                    action = gui.QAction(label, self)
+                if shortcut:
+                    action.setShortcuts([x for x in shortcut.split(",")])
+                if info.startswith("Check"):
+                    action.setCheckable(True)
+                    info = info[5:]
+                    if info in ('B', 'I', 'U'):
+                        font = gui.QFont()
+                        if info == 'B':
+                            font.setBold(True)
+                        elif info == 'I':
+                            font.setItalic(True)
+                        elif info == 'U':
+                            font.setUnderline(True)
+                        action.setFont(font)
+                        info = ''
+                if info:
+                    action.setStatusTip(info)
+                self.connect(action, core.SIGNAL('triggered()'), handler)
+                if label:
+                    menu.addAction(action)
+                    self.actiondict[label] = action
 
-    def OnSelChanged(self, event=None):
-        """zorgen dat het eerder actieve item onthouden wordt, daarna het geselecteerde
-        tot nieuw actief item benoemen"""
-        x = event.GetItem()
-        print("onselchanged aangeroepen op '{}'".format(self.tree.GetItemText(x)))
-        self.check_active()
-        self.activate_item(x)
-        event.Skip()
+    def create_stylestoolbar(self):
+        toolbar = self.addToolBar('styles')
+        self.combo_font = gui.QFontComboBox(toolbar)
+        toolbar.addWidget(self.combo_font)
+        self.connect(self.combo_font, core.SIGNAL('activated(QString)'),
+            self.editor.text_family)
+        self.combo_size = gui.QComboBox(toolbar)
+        toolbar.addWidget(self.combo_size)
+        self.combo_size.setEditable(True)
+        db = gui.QFontDatabase()
+        for size in db.standardSizes():
+            self.combo_size.addItem(str(size))
+        self.connect(self.combo_size, core.SIGNAL('activated(QString)'),
+            self.editor.text_size)
+        self.combo_size.setCurrentIndex(self.combo_size.findText(
+            str(self.editor.font().pointSize())))
+
+        pix = gui.QPixmap(16, 16)
+        pix.fill(core.Qt.black)
+        action = gui.QAction(gui.QIcon(pix), "&Color...", self)
+        self.connect(action, core.SIGNAL('triggered()'), self.editor.text_color)
+        toolbar.addAction(action)
+        self.actiondict["&Color..."] = action
 
     def set_title(self):
-        "standaard manier van window titel instellen"
-        self.SetTitle("DocTree - {} (view: {})".format(
+        """standaard titel updaten"""
+        self.setWindowTitle("DocTree - {} (view: {})".format(
             os.path.split(self.project_file)[1],
             self.opts["ViewNames"][self.opts['ActiveView']]))
 
-    def open(self, event=None):
+    def open(self, event = None):
         "afhandelen Menu > Open / Ctrl-O"
         self.save_needed()
         dirname = os.path.dirname(self.project_file)
-        dlg = wx.FileDialog(self, "DocTree - choose file to open",
-            dirname, "", "INI files|*.ini", wx.OPEN)
-        if dlg.ShowModal() == wx.ID_OK:
-            filename, dirname = dlg.GetFilename(), dlg.GetDirectory()
-            self.project_file = os.path.join(dirname, filename)
+        filename = gui.QFileDialog.getOpenFileName(self, "DocTree - choose file to open",
+                    dirname, "INI files (*.ini)")
+        if filename:
+            self.project_file = str(filename)
             err = self.read()
             if err:
-                messagebox(self, err, "Error")
-        dlg.Destroy()
+                gui.QMessageBox.information(self, "Error", err, gui.QMessageBox.Ok)
+            self.statusbar.showMessage('{} opgehaald'.format(self.project_file))
 
-    def new(self, event=None):
+    def new(self, event = None):
         "Afhandelen Menu - Init / Ctrl-I"
-        self.save_needed()
+        ret = self.save_needed()
+        if ret == gui.QMessageBox.Cancel:
+            return
         dirname = os.path.dirname(self.project_file)
-        dlg = wx.FileDialog(self, "DocTree - enter name for new file",
-            dirname, "", "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
-        if dlg.ShowModal() == wx.ID_OK:
-            filename, dirname = dlg.GetFilename(), dlg.GetDirectory()
-            self.project_file = os.path.join(dirname, filename)
-            self.has_treedata = True
-            self.tree.DeleteAllItems()
-            root = self.tree.AddRoot("hidden_root")
-            self.tree.SetItemPyData(root, '')
-            rootitem = self.tree.AppendItem(root, os.path.splitext(
-                os.path.basename(self.project_file))[0])
-            self.activeitem = self.root = rootitem
-            self.tree.SetItemBold(rootitem, True)
-            self.views = [[],]
-            self.viewcount = 1
-            self.itemdict = {}
-            self.opts = {
-                "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
-                "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
-                "RootTitle": "MyNotes", "RootData": ""}
-            menuitem_list = self.viewmenu.GetMenuItems()
-            for menuitem in menuitem_list[4:]:
-                self.viewmenu.DeleteItem(menuitem)
-            _id = wx.NewId()
-            menu_item = wx.MenuItem(self.viewmenu, _id, '&Default',
-                'Switch to this view', wx.ITEM_CHECK)
-            self.Bind(wx.EVT_MENU, self.select_view, menu_item)
-            self.viewmenu.AppendItem(menu_item)
-            menu_item.Check()
-            self.SetSize(self.opts["ScreenSize"])
-            self.splitter.SetSashPosition(self.opts["SashPosition"], True)
-            self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
-            self.tree.SetItemPyData(self.root, self.opts["RootData"])
-            self.editor.set_contents(self.opts["RootData"])
-            self.editor.Enable(True)
-            self.set_title()
-            self.tree.SetFocus()
-        dlg.Destroy()
+        filename = gui.QFileDialog.getSaveFileName(self, "DocTree - enter name for new file",
+            dirname, "INI files (*.ini)")
+        if not filename:
+            return
+        self.project_file = str(filename)
+        self.views = [[],]
+        self.viewcount = 1
+        self.itemdict = {}
+        self.opts = {
+            "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
+            "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
+            "RootTitle": "MyNotes", "RootData": ""}
+        self.has_treedata = True
+        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
+        menuitem_list = [x for x in self.viewmenu.actions()]
+        for menuitem in menuitem_list[7:]:
+            self.viewmenu.removeAction(menuitem)
+        action = gui.QAction('&1 Default', self)
+        action.setStatusTip("switch to this view")
+        action.setCheckable(True)
+        self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+        self.viewmenu.addAction(action)
+        action.setChecked(True)
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = gui.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = item_to_activate = self.root
+        self.editor.set_contents(self.opts["RootData"])
+        self.editor.setReadOnly(False)
+        self.set_title()
+        self.project_dirty = False
+        self.tree.setFocus()
 
-    def save_needed(self):
-        """eigenlijk bedoeld om te reageren op een indicatie dat er iets aan de
-        verzameling notities is gewijzigd (de oorspronkelijke self.project_dirty)"""
+    def save_needed(self, meld=True):
+        """vraag of het bestand opgeslagen moet worden als er iets aan de
+        verzameling notities is gewijzigd"""
         if not self.has_treedata:
             return
-        dlg = wx.MessageDialog(self, "Save current file before continuing?",
-            "DocTree", wx.YES_NO)
-        h = dlg.ShowModal()
-        if h == wx.ID_YES:
-            self.save()
-        dlg.Destroy()
+        if self.editor.hasFocus():
+            self.check_active()
+        if self.project_dirty:
+            retval = gui.QMessageBox.question(self, "DocTree",
+                "Data changed - save current file before continuing?",
+                gui.QMessageBox.Yes | gui.QMessageBox.No | gui.QMessageBox.Cancel,
+                defaultButton = gui.QMessageBox.Yes)
+            if retval == gui.QMessageBox.Yes:
+                self.save(meld=meld)
+            return retval
 
     def treetoview(self):
         """zet de visuele tree om in een tree om op te slaan"""
         def lees_item(item):
             """recursieve functie om de data in een pickle-bare structuur om te zetten"""
-            textref = self.tree.GetItemPyData(item)
+            textref = int(item.text(1))
             if item == self.activeitem:
                 self.opts["ActiveItem"][self.opts["ActiveView"]] = textref
             kids = []
-            tag, cookie = self.tree.GetFirstChild(item)
-            while tag.IsOk():
-                kids.append(lees_item(tag))
-                tag, cookie = self.tree.GetNextChild(item, cookie) # tag, cookie)
+            for num in range(item.childCount()):
+                kids.append(lees_item(item.child(num)))
             return textref, kids
         data = []
-        tag, cookie = self.tree.GetFirstChild(self.root)
-        while tag.IsOk():
-            data.append(lees_item(tag))
-            tag, cookie = self.tree.GetNextChild(self.root, cookie)
+        for num in range(self.root.childCount()):
+            data.append(lees_item(self.root.child(num)))
         return data
 
     def viewtotree(self):
@@ -714,8 +630,10 @@ class MainWindow(wx.Frame):
             if children is None:
                 children = []
             titel, tekst = self.itemdict[item]
-            tree_item = self.tree.AppendItem (parent, titel.rstrip())
-            self.tree.SetItemPyData(tree_item, item)
+            tree_item = gui.QTreeWidgetItem()
+            tree_item.setText(0, titel.rstrip())
+            tree_item.setText(1, str(item))
+            parent.addChild(tree_item)
             if item == self.opts["ActiveItem"][self.opts['ActiveView']]:
                 item_to_activate = tree_item
             for child in children:
@@ -742,28 +660,19 @@ class MainWindow(wx.Frame):
         try:
             f_in = open(self.project_file, "rb")
         except IOError:
-            return "couldn't open "+ self.project_file
+            return "couldn't open {}".format(self.project_file)
         try:
             nt_data = pck.load(f_in)
         except EOFError:
-            mld = "couldn't load data"
+            mld = "couldn't load data from {}".format(self.project_file)
         finally:
             f_in.close()
+        if mld:
+            return mld
         try:
             test = nt_data[0]["AskBeforeHide"]
         except (ValueError, KeyError):
-            mld = "not a valid Doctree data file"
-        if mld:
-            return mld
-        ## pprint.pprint(nt_data)
-        self.has_treedata = True
-        self.tree.DeleteAllItems()
-        root = self.tree.AddRoot("hidden_root")
-        self.tree.SetItemPyData(root, '')
-        self.root = self.tree.AppendItem(root, os.path.splitext(
-            os.path.basename(self.project_file))[0])
-        self.activeitem = item_to_activate = self.root
-        self.editor.Clear()
+            return "{} is not a valid Doctree data file".format(self.project_file)
         for key, value in nt_data[0].items():
             if key == 'RootData' and value is None:
                 value = ""
@@ -777,33 +686,44 @@ class MainWindow(wx.Frame):
             self.itemdict = nt_data[2]
         except KeyError:
             self.itemdict = {}
-        self.SetSize(self.opts["ScreenSize"])
-        self.splitter.SetSashPosition(self.opts["SashPosition"], True)
-        self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
-        self.tree.SetItemPyData(self.root, self.opts["RootData"])
+        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
+        try:
+            self.splitter.restoreState(self.opts['SashPosition'])
+        except TypeError:
+            pass
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = gui.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = item_to_activate = self.root
         self.editor.set_contents(self.opts["RootData"])
-        menuitem_list = [x for x in self.viewmenu.GetMenuItems()]
-        for menuitem in menuitem_list[4:]:
-            self.viewmenu.DeleteItem(menuitem)
+        menuitem_list = [x for x in self.viewmenu.actions()]
+        for menuitem in menuitem_list[7:]:
+            self.viewmenu.removeAction(menuitem)
         for idx, name in enumerate(self.opts["ViewNames"]):
-            menu_item = wx.MenuItem(self.viewmenu, -1, name, "switch to this view",
-                wx.ITEM_CHECK)
-            self.Bind(wx.EVT_MENU, self.select_view, menu_item)
-            self.viewmenu.AppendItem(menu_item)
+            action = gui.QAction('&{} {}'.format(idx + 1, name), self)
+            action.setStatusTip("switch to this view")
+            action.setCheckable(True)
+            self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+            self.viewmenu.addAction(action)
             if idx == self.opts["ActiveView"]:
-                menu_item.Check()
+                action.setChecked(True)
         item_to_activate = self.viewtotree()
-        self.tree.Expand(self.root)
+        self.has_treedata = True
+        self.root.setExpanded(True)
         if item_to_activate != self.activeitem:
-            self.tree.SelectItem(item_to_activate)
+            self.tree.setCurrentItem(item_to_activate)
         self.set_title()
-        self.tree.SetFocus()
+        self.project_dirty = False
+        self.tree.setFocus()
 
     def reread(self, event = None):
         """afhandelen Menu > Reload (Ctrl-R)"""
-        dlg = wx.MessageDialog(self, 'OK to reload?', 'DocTree', wx.OK | wx.CANCEL)
-        result = dlg.ShowModal()
-        if result == wx.ID_OK:
+        retval = gui.QMessageBox.question(self, "DocTree", "OK to reload?",
+            gui.QMessageBox.Ok | gui.QMessageBox.Cancel,
+            defaultButton = gui.QMessageBox.Ok)
+        if retval == gui.QMessageBox.Ok:
             self.read()
 
     def save(self, event = None, meld = True):
@@ -812,13 +732,13 @@ class MainWindow(wx.Frame):
             self.write(meld = meld)
         else:
             self.saveas()
-        self.statbar.SetStatusText('{} opgeslagen'.format(self.project_file))
+        self.statusbar.showMessage('{} opgeslagen'.format(self.project_file))
 
     def write(self, event = None, meld = True):
         """settings en tree data in een structuur omzetten en opslaan"""
         self.check_active()
-        self.opts["ScreenSize"] = tuple(self.GetSize())
-        self.opts["SashPosition"] = self.splitter.GetSashPosition()
+        self.opts["ScreenSize"] = self.width(), self.height() # tuple(self.size())
+        self.opts["SashPosition"] = self.splitter.saveState()
         self.views[self.opts["ActiveView"]] = self.treetoview()
         nt_data = {0: self.opts, 1: self.views, 2: self.itemdict}
         try:
@@ -828,130 +748,178 @@ class MainWindow(wx.Frame):
         f_out = open(self.project_file,"w")
         pck.dump(nt_data, f_out)
         f_out.close()
+        self.project_dirty = False
         if meld:
-            messagebox(self, self.project_file + " is opgeslagen","DocTool")
+            gui.QMessageBox.information(self, "DocTool",
+                self.project_file + " is opgeslagen", gui.QMessageBox.Ok)
 
     def saveas(self, event = None):
         """afhandelen Menu > Save As"""
         dirname = os.path.dirname(self.project_file)
-        dlg = wx.FileDialog(self, "DocTree - Save File as:", dirname, "",
-            "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
-        if dlg.ShowModal() == wx.ID_OK:
-            filename, dirname = dlg.GetFilename(), dlg.GetDirectory()
-            self.project_file = os.path.join(dirname, filename)
+        filename = gui.QFileDialog.getSaveFileName(self, "DocTree - save file as:",
+            dirname, "INI files (*.ini)")
+        if filename:
+            self.project_file = str(filename)
             self.write()
             self.set_title()
-        dlg.Destroy()
 
-    def hide(self, event = None):
+    def hide_me(self, event = None):
         """applicatie verbergen"""
         if self.opts["AskBeforeHide"]:
-            dlg = CheckDialog(self, -1, 'DocTree')
-            dlg.ShowModal()
-            if dlg.check_box.GetValue():
-                self.opts["AskBeforeHide"] = False
-            dlg.Destroy()
-        self.tbi = wx.TaskBarIcon()
-        self.tbi.SetIcon(self.nt_icon,"Click to revive DocTree")
-        wx.EVT_TASKBAR_LEFT_UP(self.tbi, self.revive)
-        wx.EVT_TASKBAR_RIGHT_UP(self.tbi, self.revive)
-        self.Hide()
+            dlg = CheckDialog(self)
+        self.tray_icon.show()
+        self.hide()
 
     def revive(self, event = None):
         """applicatie weer zichtbaar maken"""
-        self.Show()
-        self.tbi.Destroy()
+        if event == gui.QSystemTrayIcon.Unknown:
+            self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
+        elif event == gui.QSystemTrayIcon.Context:
+            pass
+        else:
+            self.show()
+            self.tray_icon.hide()
 
-    def afsl(self, event = None):
+    ## def afsl(self, event = None):
+    def closeEvent(self,event):
         """applicatie afsluiten"""
-        if self.has_treedata:
-            self.save(meld=False)
-        if event:
-            event.Skip()
+        ret = self.save_needed(meld=False)
+        if ret == gui.QMessageBox.Cancel:
+            event.ignore()
+        else:
+            event.accept()
 
     def add_view(self, event = None):
         "handles Menu > View > New view"
         self.check_active()
-        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree.GetItemPyData(
-            self.activeitem)
+        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.activeitem.text(1)
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.viewcount += 1
         new_view = "New View #{}".format(self.viewcount)
         self.opts["ViewNames"].append(new_view)
         active = self.opts["ActiveItem"][self.opts["ActiveView"]]
         self.opts["ActiveItem"].append(active)
-        menuitem_list = list(self.viewmenu.GetMenuItems())
-        for idx, menuitem in enumerate(menuitem_list[4:]):
+        menuitem_list = [x for x in self.viewmenu.actions()]
+        for idx, menuitem in enumerate(menuitem_list[7:]):
             if idx == self.opts["ActiveView"]:
-                menuitem.Check(False)
-        menu_item = wx.MenuItem(self.viewmenu, -1, new_view, "switch to this view",
-            wx.ITEM_CHECK)
-        self.Bind(wx.EVT_MENU, self.select_view, menu_item)
-        self.viewmenu.AppendItem(menu_item)
-        menu_item.Check()
+                menuitem.setChecked(False)
+        action = gui.QAction('&{} {}'.format(self.viewcount, new_view), self)
+        action.setStatusTip("switch to this view")
+        action.setCheckable(True)
+        self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+        self.viewmenu.addAction(action)
+        action.setChecked(True)
         self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
-        self.tree.DeleteAllItems()
-        root = self.tree.AddRoot("hidden_root")
-        self.tree.SetItemPyData(root, '')
-        self.activeitem = self.root = self.tree.AppendItem(root, os.path.splitext(
-            os.path.basename(self.project_file))[0])
-        self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
-        self.tree.SetItemPyData(self.root, self.opts["RootData"])
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = gui.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = self.root
         newtree = []
         for key in sorted(self.itemdict.keys()):
             newtree.append((key, []))
         self.views.append(newtree)
         tree_item = self.viewtotree()
         self.set_title()
-        self.tree.SelectItem(tree_item)
+        self.project_dirty = True
+        self.tree.setCurrentItem(tree_item)
 
     def rename_view(self, event = None):
         "handles Menu > View > Rename current view"
         oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
-        dlg = wx.TextEntryDialog(self, 'Geef een nieuwe naam voor de huidige view',
-                'DocTree', oldname)
-        if dlg.ShowModal() == wx.ID_OK:
-            newname = dlg.GetValue()
+        data, ok = gui.QInputDialog.getText(self, 'DocTree',
+            'Geef een nieuwe naam voor de huidige view',
+            gui.QLineEdit.Normal, oldname)
+        if ok:
+            newname = str(data)
             if newname != oldname:
-                self.viewmenu.GetMenuItems()[self.opts["ActiveView"] + 4].SetItemLabel(
-                    newname)
+                action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
+                action.setText('&{} {}'.format(action.text().split()[0], newname))
                 self.opts["ViewNames"][self.opts["ActiveView"]] = newname
+                self.project_dirty = True
                 self.set_title()
-        dlg.Destroy()
+
+    def next_view(self, prev=False):
+        """cycle to next view, if available (default direction / forward)"""
+        if self.viewcount == 1:
+            gui.QMessageBox.information(self, 'Doctree', "This is the only view")
+            return
+        self.check_active()
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        self.editor.clear()
+        menuitem_list = [x for x in self.viewmenu.actions()][7:]
+        if prev:
+            menuitem_list.reverse()
+        found_item = False
+        for menuitem in menuitem_list:
+            if menuitem.isChecked():
+                found_item = True
+                menuitem.setChecked(False)
+            elif found_item:
+                menuitem.setChecked(True)
+                found_item = False
+                break
+        if found_item:
+            menuitem_list[0].setChecked(True)
+        if prev:
+            self.opts["ActiveView"] -= 1
+            if self.opts["ActiveView"] < 0:
+                self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
+        else:
+            self.opts["ActiveView"] += 1
+            if self.opts["ActiveView"] >= len(self.opts["ViewNames"]):
+                self.opts["ActiveView"] = 0
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = gui.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = self.root
+        tree_item = self.viewtotree()
+        self.set_title()
+        self.tree.setCurrentItem(tree_item)
+
+    def prev_view(self):
+        """cycle to previous view (alternate direction / backward)"""
+        self.next_view(prev=True)
 
     def select_view(self, event = None):
         "handles Menu > View > <view name>"
+        sender = self.sender()
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
-        self.editor.Clear()
-        menu_id = event.GetId()
-        menuitem_list = list(self.viewmenu.GetMenuItems())
-        for menuitem in menuitem_list[4:]:
-            if menuitem.GetId() == menu_id:
-                newview = menuitem.GetItemLabelText()
-                menuitem.Check()
+        self.editor.clear()
+        menuitem_list = [x for x in self.viewmenu.actions()]
+        for menuitem in menuitem_list[7:]:
+            if menuitem == sender:
+                newview = sender.text()
+                sender.setChecked(True)
             else:
-                if menuitem.IsChecked():
-                    menuitem.Check(False)
-        self.opts["ActiveView"] = self.opts["ViewNames"].index(newview)
-        self.tree.DeleteChildren(self.root)
-        self.tree.DeleteAllItems()
-        root = self.tree.AddRoot("hidden_root")
-        self.tree.SetItemPyData(root, '')
-        self.activeitem = self.root = self.tree.AppendItem(root, os.path.splitext(
-            os.path.basename(self.project_file))[0])
-        self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
-        self.tree.SetItemPyData(self.root, self.opts["RootData"])
+                if menuitem.isChecked():
+                    menuitem.setChecked(False)
+        self.opts["ActiveView"] = self.opts["ViewNames"].index(
+            str(newview).split(None,1)[1])
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = gui.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = self.root
+        tree_item = self.viewtotree()
         self.set_title()
-
-        self.tree.SelectItem(self.viewtotree())
+        self.tree.setCurrentItem(tree_item)
 
     def remove_view(self, event = None):
         "handles Menu > View > Delete current view"
-        dlg = wx.MessageDialog(self, "Are you sure you want to remove this view?",
-            "DocTree", wx.YES_NO)
-        hlp = dlg.ShowModal()
-        if hlp == wx.ID_YES:
+        if self.viewcount == 1:
+            gui.QMessageBox.information(self, 'Doctree', "Can't delete the last (only) view")
+            return
+        retval = gui.QMessageBox.question(self, "DocTree",
+            "Are you sure you want to remove this view?",
+            gui.QMessageBox.Yes | gui.QMessageBox.No,
+            defaultButton = gui.QMessageBox.Yes)
+        if retval == gui.QMessageBox.Yes:
             self.viewcount -= 1
             viewname = self.opts["ViewNames"][self.opts["ActiveView"]]
             self.opts["ViewNames"].remove(viewname)
@@ -959,34 +927,39 @@ class MainWindow(wx.Frame):
             self.views.pop(self.opts["ActiveView"])
             if self.opts["ActiveView"] > 0:
                 self.opts["ActiveView"] -= 1
-            menuitem_list = self.viewmenu.GetMenuItems()
-            menuitem_list[self.opts["ActiveView"] + 4].Check()
-            for menuitem in menuitem_list:
-                if menuitem.GetItemLabelText() == viewname:
-                    self.viewmenu.DeleteItem(menuitem)
-                    break
+            menuitem_list = [x for x in self.viewmenu.actions()]
+            menuitem_list[self.opts["ActiveView"] + 7].setChecked(True)
+            removed = False
+            for menuitem in menuitem_list[7:]:
+                if removed:
+                    num, naam = str(menuitem.text()).split(None, 1)
+                    menuitem.setText('&{} {}'.format(int(num[1:]) - 1, naam))
+                if str(menuitem.text()).split(None,1)[1] == viewname:
+                    self.viewmenu.removeAction(menuitem)
+                    removed = True
             if self.opts["ActiveView"] == 0:
-                menuitem_list[4].Check()
-            self.tree.DeleteAllItems()
-            root = self.tree.AddRoot("hidden_root")
-            self.tree.SetItemPyData(root, '')
-            self.activeitem = self.root = self.tree.AppendItem(root, os.path.splitext(
-                os.path.basename(self.project_file))[0])
-            self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
-            self.tree.SetItemPyData(self.root, self.opts["RootData"])
-            self.tree.SelectItem(self.viewtotree())
+                menuitem_list[7].setChecked(True)
+            self.root = self.tree.takeTopLevelItem(0)
+            self.root = gui.QTreeWidgetItem()
+            self.root.setText(0, self.opts["RootTitle"])
+            self.root.setText(1, self.opts["RootData"])
+            self.tree.addTopLevelItem(self.root)
+            self.activeitem = self.root
+            self.tree.setCurrentItem(self.viewtotree())
+            self.project_dirty = True
             self.set_title()
-        dlg.Destroy()
 
     def rename_root(self, event=None):
         """afhandelen Menu > Rename Root (Shift-Ctrl-F2"""
-        dlg = wx.TextEntryDialog(self, 'Geef nieuwe titel voor het hoofditem:',
-                'DocTree', self.tree.GetItemText(self.root))
-        if dlg.ShowModal() == wx.ID_OK:
-            newtitle = dlg.GetValue()
-            self.tree.SetItemText(self.root, newtitle)
-            self.opts['RootTitle'] = newtitle
-        dlg.Destroy()
+        data, ok = gui.QInputDialog.getText(self, 'DocTree',
+            'Geef nieuwe titel voor het root item:',
+            gui.QLineEdit.Normal, self.root.text(0))
+        if ok:
+            data = str(data)
+            if data:
+                self.project_dirty = True
+                self.root.setText(0, data)
+                self.opts['RootTitle'] = data
 
     def add_item(self, event = None, root = None, under = True):
         """nieuw item toevoegen (default: onder het geselecteerde)"""
@@ -994,7 +967,7 @@ class MainWindow(wx.Frame):
             if root is None:
                 root = self.activeitem or self.root
         else:
-            root = self.tree.GetItemParent(self.activeitem)
+            root = self.activeitem.parent()
         title = "Geef een titel op voor het nieuwe item"
         text = ""
         new = self.ask_title(title, text)
@@ -1006,16 +979,21 @@ class MainWindow(wx.Frame):
         while newkey in self.itemdict:
             newkey += 1
         self.itemdict[newkey] = (new_title, "")
+        item = gui.QTreeWidgetItem()
+        item.setText(0, new_title)
+        item.setText(1, str(newkey))
         if under:
-            item = self.tree.AppendItem (root, new_title)
+            root.addChild(item)
         else:
-            item = self.tree.InsertItem (root, self.activeitem, new_title)
-        self.tree.SetItemPyData(item, newkey)
+            pos = root.indexOfChild(self.activeitem)
+            root.insertChild(pos + 1, item)
         if extra_title:
             subkey = newkey + 1
             self.itemdict[subkey] = (extra_title, "")
-            sub_item = self.tree.AppendItem(item, extra_title)
-            self.tree.SetItemPyData(sub_item, subkey)
+            sub_item = gui.QTreeWidgetItem() #[extra_title, subkey])
+            sub_item.setText(0, extra_title)
+            sub_item.setText(1, str(subkey))
+            item.addChild(sub_item)
             item = sub_item
         for idx, view in enumerate(self.views):
             if idx != self.opts["ActiveView"]:
@@ -1023,11 +1001,15 @@ class MainWindow(wx.Frame):
                 if extra_title:
                     subitem.append((subkey, []))
                 view.append((newkey, subitem))
-        self.tree.Expand(root)
-        self.tree.SelectItem(item)
+        root.setExpanded(True)
+        self.project_dirty = True
+        self.tree.setCurrentItem(item)
         if item != self.root:
-            self.editor.SetInsertionPoint(0)
-            self.editor.SetFocus()
+            self.editor.setFocus()
+
+    def root_item(self, event = None):
+        """nieuw item toevoegen onder root"""
+        self.add_item(root = self.root)
 
     def insert_item(self, event=None):
         """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
@@ -1047,30 +1029,38 @@ class MainWindow(wx.Frame):
                     if klaar:
                         break
             return klaar
-        item = self.tree.GetSelection()
-        if item != self.root:
-            prev = self.tree.GetPrevSibling(item)
-            if not prev.IsOk():
-                prev = self.tree.GetItemParent(item)
+        item = self.tree.selectedItems()[0]
+        if item == self.root:
+            gui.QMessageBox.information(self, "DocTree", "Can't delete root")
+            return
+        retval = gui.QMessageBox.question(self, "DocTree",
+            "Are you sure you want to remove this item?",
+            gui.QMessageBox.Yes | gui.QMessageBox.No,
+            defaultButton = gui.QMessageBox.Yes)
+        if retval == gui.QMessageBox.Yes:
+            parent = item.parent()
+            pos = parent.indexOfChild(item)
+            if pos - 1 >= 0:
+                prev = parent.child(pos - 1)
+            else:
+                prev = parent
                 if prev == self.root:
-                    prev = self.tree.GetNextSibling(item)
+                    prev = parent.child(pos + 1)
             self.activeitem = None
-            ref = self.tree.GetItemPyData(item)
-            self.itemdict.pop(ref)
-            self.tree.Delete(item)
+            ref = item.text(1)
+            self.itemdict.pop(int(ref))
+            parent.takeChild(pos)
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
                     check_item(view, ref)
-            self.tree.SelectItem(prev)
-        else:
-            messagebox(self, "Can't delete root", "Error")
+            self.project_dirty = True
+            self.tree.setCurrentItem(prev)
 
     def rename_item(self):
         """titel van item wijzigen"""
         def check_item(view, ref, subref):
             """zoeken waar het subitem moet worden toegevoegd"""
             retval = ""
-            print(view)
             for itemref, subview in view:
                 if itemref == ref:
                     subview.append((subref, []))
@@ -1080,47 +1070,48 @@ class MainWindow(wx.Frame):
                 if retval == 'Stop':
                     break
             return retval
-        title = 'Nieuwe titel voor het huidige item:'
         root = item = self.activeitem
-        text = self.tree.GetItemText(item)
         self.check_active()
-        new = self.ask_title(title, text)
+        new = self.ask_title('Nieuwe titel voor het huidige item:', item.text(0))
         if not new:
             return
+        self.project_dirty = True
         new_title, extra_title = new
-        self.tree.SetItemText(self.activeitem, new_title)
-        ref = self.tree.GetItemPyData(self.activeitem)
-        old_title, data = self.itemdict[ref]
-        self.itemdict[ref] = (new_title, data)
+        self.activeitem.setText(0, new_title)
+        if item == self.root:
+            self.opts['RootTitle'] = new_title
+            return
+        ref = self.activeitem.text(1)
+        old_title, data = self.itemdict[int(ref)]
+        self.itemdict[int(ref)] = (new_title, data)
         if extra_title:
-            sub_item = self.tree.AppendItem(self.activeitem, extra_title)
-            subref = ref + 1
+            sub_item = gui.QTreeWidgetItem()
+            subitem.setText(0, extra_title)
+            self.activeitem.addChild(sub_item)
+            subref = int(ref) + 1
             while subref in self.itemdict:
                 subref += 1
             self.itemdict[subref] = (extra_title, data)
-            self.tree.SetItemPyData(sub_item, subref)
+            subitem.setText(1, str(subref))
             item = sub_item
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
                     check_item(view, ref, subref)
-        self.tree.Expand(root)
-        self.tree.SelectItem(item)
-        if item != self.root:
-            self.editor.SetInsertionPoint(0)
-            self.editor.SetFocus()
+        root.setExpanded(True)
+        self.tree.setCurrentItem(item)
+        ## if item != self.root:
+            ## self.editor.setFocus()
 
     def ask_title(self, _title, _text):
         """vraag titel voor item"""
-        dlg = wx.TextEntryDialog(self, _title,
-                'DocTree', _text)
-        if dlg.ShowModal() == wx.ID_OK:
-            data = dlg.GetValue()
-            dlg.Destroy()
+        data, ok = gui.QInputDialog.getText(self, 'DocTree', _title,
+            gui.QLineEdit.Normal, _text)
+        if ok:
             if data:
                 try:
-                    new_title, extra_title = data.split(" \\ ")
+                    new_title, extra_title = str(data).split(" \\ ")
                 except ValueError:
-                    new_title, extra_title = data,""
+                    new_title, extra_title = str(data), ""
                 return new_title, extra_title
         return
 
@@ -1134,16 +1125,12 @@ class MainWindow(wx.Frame):
 
     def reorder_items(self, root, recursive = False):
         "(re)order_items"
-        data = []
-        tag, cookie = self.tree.GetFirstChild(root)
-        while tag.IsOk():
-            if recursive:
+        root.sortChildren(0, core.Qt.AscendingOrder)
+        if recursive:
+            for num in range(root.childCount()):
+                tag = root.child(num)
                 self.reorder_items(tag, recursive)
-            data.append(getsubtree(self.tree, tag))
-            tag, cookie = self.tree.GetNextChild(root, cookie)
-        self.tree.DeleteChildren(root)
-        for item in sorted(data):
-            putsubtree(self.tree, root, *item)
+        self.project_dirty = True
 
     def order_this(self, event = None):
         """order items directly under current level"""
@@ -1155,58 +1142,64 @@ class MainWindow(wx.Frame):
 
     def next_note(self, event = None):
         """move to next item"""
-        item = self.tree.GetNextSibling(self.activeitem)
-        if item.IsOk():
-            self.tree.SelectItem(item)
+        parent = self.activeitem.parent()
+        if parent is not None:
+            pos = parent.indexOfChild(self.activeitem)
+            if pos < parent.childCount() - 1:
+                item = parent.child(pos + 1)
+                self.tree.setCurrentItem(item)
+                return
+        gui.QMessageBox.information(self, "DocTree", "Geen volgend item op dit niveau")
 
     def prev_note(self, event = None):
         """move to previous item"""
-        item = self.tree.GetPrevSibling(self.activeitem)
-        if item.IsOk():
-            self.tree.SelectItem(item)
+        parent = self.activeitem.parent()
+        if parent is not None:
+            pos = parent.indexOfChild(self.activeitem)
+            if pos > 0:
+                item = parent.child(pos - 1)
+                self.tree.setCurrentItem(item)
+                return
+        gui.QMessageBox.information(self, "DocTree", "Geen vorig item op dit niveau")
 
     def check_active(self, message = None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         if self.activeitem:
-            self.tree.SetItemBold(self.activeitem, False)
-            if self.editor.IsModified():
+            if self.editor.document().isModified():
                 if message:
-                    print(message) # moet dit niet messagebox zijn?
-                ref = self.tree.GetItemPyData(self.activeitem)
+                    gui.QMessageBox.information(self, 'Doctree', message)
+                ref = self.activeitem.text(1)
+                content = self.editor.get_contents()
                 try:
-                    titel, tekst = self.itemdict[ref]
-                except KeyError:
-                    ref = self.editor.get_contents()
-                    if ref:
-                        self.tree.SetItemPyData(self.root, ref)
-                        self.opts["RootData"] = ref
+                    titel, tekst = self.itemdict[int(ref)]
+                except (KeyError, ValueError):
+                    if content:
+                        self.root.setText(1, content)
+                        self.opts["RootData"] = content
                 else:
-                    self.itemdict[ref] = (titel, self.editor.get_contents())
+                    self.itemdict[int(ref)] = (titel, content)
+                self.project_dirty = True
 
     def activate_item(self, item):
-        """geselecteerd item "actief" maken (accentueren)"""
+        """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
         self.activeitem = item
-        self.tree.SetItemBold(item, True)
-        ref = self.tree.GetItemPyData(item)
+        ref = item.text(1)
         try:
-            titel, tekst = self.itemdict[ref]
-        except KeyError:
+            titel, tekst = self.itemdict[int(ref)]
+        except (KeyError, ValueError):
             self.editor.set_contents(ref)
         else:
-            self.editor.set_contents(tekst)
-        self.editor.Enable(True)
+            self.editor.set_contents(tekst, titel)
+        self.editor.setReadOnly(False)
 
     def info_page(self, event = None):
         """help -> about"""
         info = [
             "DocTree door Albert Visser",
             "Uitgebreid electronisch notitieblokje",
-            "wxPython versie",
+            "PyQt versie",
             ]
-        dlg = wx.MessageDialog(self, "\n".join(info), 'DocTree',
-            wx.OK | wx.ICON_INFORMATION)
-        dlg.ShowModal()
-        dlg.Destroy()
+        gui.QMessageBox.information(self, "DocTree", "\n".join(info),)
 
     def help_page(self, event = None):
         """help -> keys"""
@@ -1214,13 +1207,13 @@ class MainWindow(wx.Frame):
             "Ctrl-N\t\t- nieuwe notitie onder huidige",
             "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
             "Insert\t\t- nieuwe notitie achter huidige",
-            "Ctrl-PgDn in editor of"
+            "Ctrl-PgDn in editor of",
             " CursorDown in tree\t- volgende notitie",
-            "Ctrl-PgUp in editor of"
+            "Ctrl-PgUp in editor of",
             " CursorUp in tree\t- vorige notitie",
             "Ctrl-D of Delete in tree\t- verwijder notitie",
             "Ctrl-S\t\t- alle notities opslaan",
-            "Shift-Ctrl-S\t\t- alle notities opslaan omder andere naam",
+            "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
             "Ctrl-R\t\t- alle notities opnieuw laden",
             "Ctrl-O\t\t- ander bestand met notities laden",
             "Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
@@ -1231,23 +1224,21 @@ class MainWindow(wx.Frame):
             "F2\t\t- wijzig notitie titel",
             "Shift-F2\t\t- wijzig root titel",
             ]
-        dlg = wx.MessageDialog(self, "\n".join(info), 'DocTree',
-            wx.OK | wx.ICON_INFORMATION)
-        dlg.ShowModal()
-        dlg.Destroy()
+        gui.QMessageBox.information(self, "DocTree", "\n".join(info),)
 
-class App(wx.App):
-    def __init__(self, fname):
-        wx.App.__init__(self, redirect=True, filename="doctree.log")
-        print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
-            ("\n------------------","------------------\n"))
-        frame = MainWindow(None, -1, "DocTree - " + fname)
-        self.SetTopWindow(frame)
-        frame.project_file = fname
-        err = frame.read()
-        if err:
-            messagebox(frame, err, "Error")
+def main(fnaam):
+    logging.basicConfig(filename='doctree_qt.log', level=logging.DEBUG,
+        format='%(asctime)s %(message)s')
+    app = gui.QApplication(sys.argv)
+    main = MainWindow(fnaam = fnaam)
+    app.setWindowIcon(main.nt_icon)
+    main.show()
+    main.project_file = fnaam
+    err = main.read()
+    if err:
+        gui.QMessageBox.information(main, "Error", err, gui.QMessageBox.Ok)
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    app = App('MyMan.ini')
-    app.MainLoop()
+    main('MyMan.ini')
+
