@@ -101,6 +101,10 @@ class TreePanel(gui.QTreeWidget):
         self.setSelectionMode(self.SingleSelection)
         self.setDragDropMode(self.InternalMove)
         self.setDropIndicatorShown(True)
+        print("size hint for row: {}".format(self.sizeHintForRow(0)))
+        print('uniform row heights: {}'.format(self.uniformRowHeights()))
+        print('vertical offset {}'.format(self.verticalOffset()))
+        self.setUniformRowHeights(True)
 
     def selectionChanged(self, newsel, oldsel):
         """wordt aangeroepen als de selectie gewijzigd is
@@ -110,6 +114,7 @@ class TreePanel(gui.QTreeWidget):
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.check_active()
         h = self.currentItem()
+        print('size hint for item {}'.format(h.sizeHint(0)))
         self.parent.activate_item(h)
 
     def dropEvent(self, event):
@@ -1178,6 +1183,7 @@ class MainWindow(gui.QMainWindow):
                         self.opts["RootData"] = content
                 else:
                     self.itemdict[int(ref)] = (titel, content)
+                self.editor.document().setModified(False)
                 self.project_dirty = True
 
     def activate_item(self, item):
