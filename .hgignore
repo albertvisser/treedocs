@@ -7,4 +7,5 @@ syntax: glob
 *log
 *txt
 *ini
+*xml
 pylint*
