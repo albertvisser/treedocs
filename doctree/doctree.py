@@ -101,10 +101,22 @@ class TreePanel(gui.QTreeWidget):
         self.setSelectionMode(self.SingleSelection)
         self.setDragDropMode(self.InternalMove)
         self.setDropIndicatorShown(True)
-        print("size hint for row: {}".format(self.sizeHintForRow(0)))
-        print('uniform row heights: {}'.format(self.uniformRowHeights()))
-        print('vertical offset {}'.format(self.verticalOffset()))
+        log("size hint for row: {}".format(self.sizeHintForRow(0)))
+        log('uniform row heights: {}'.format(self.uniformRowHeights()))
+        log('vertical offset {}'.format(self.verticalOffset()))
+        log('icon size {}'.format(str(self.iconSize())))
+        ## self.setIconSize(core.QSize(32,32)) groter maken helpt niet
         self.setUniformRowHeights(True)
+
+    ## def drawRow(self, painter, options, idx):
+        ## gui.QTreeWidget.drawRow(self, painter, options, idx)
+        ## s = idx.sibling(idx.row(), 0)
+        ## if s.isValid():
+            ## rect = self.visualRect(s)
+            ## print rect.height()
+            ## rect.setHeight(30)
+            ## painter.setPen(core.Qt.DotLine)
+            ## painter.drawRect(rect)
 
     def selectionChanged(self, newsel, oldsel):
         """wordt aangeroepen als de selectie gewijzigd is
@@ -417,7 +429,18 @@ class MainWindow(gui.QMainWindow):
                 ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
                 (),
                 ), ), # label, handler, shortcut, icon, info
-            ('&Edit', (
+            ## ('&Edit (Tree)', (
+                ## ('&Undo', self.tree.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
+                ## ('&Redo', self.tree.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
+                ## (),
+                ## ('Cu&t', self.tree.cut, 'Ctrl+X', 'icons/edit-cut.png', 'Copy the selection and delete from text'),
+                ## ('&Copy', self.tree.copy, 'Ctrl+C', 'icons/edit-copy.png', 'Just copy the selection'),
+                ## ('&Paste', self.tree.paste, 'Ctrl+V', 'icons/edit-paste.png', 'Paste the copied selection'),
+                ## (),
+                ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
+                ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
+                ## ), ),
+            ('&Edit (Text)', (
                 ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
                 (),
@@ -637,6 +660,7 @@ class MainWindow(gui.QMainWindow):
             titel, tekst = self.itemdict[item]
             tree_item = gui.QTreeWidgetItem()
             tree_item.setText(0, titel.rstrip())
+            ## tree_item.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
             tree_item.setText(1, str(item))
             parent.addChild(tree_item)
             if item == self.opts["ActiveItem"][self.opts['ActiveView']]:
@@ -750,7 +774,7 @@ class MainWindow(gui.QMainWindow):
             shutil.copyfile(self.project_file, self.project_file + ".bak")
         except IOError:
             pass
-        f_out = open(self.project_file,"w")
+        f_out = open(self.project_file,"wb")
         pck.dump(nt_data, f_out)
         f_out.close()
         self.project_dirty = False
@@ -1091,13 +1115,14 @@ class MainWindow(gui.QMainWindow):
         self.itemdict[int(ref)] = (new_title, data)
         if extra_title:
             sub_item = gui.QTreeWidgetItem()
-            subitem.setText(0, extra_title)
+            sub_item.setText(0, extra_title)
             self.activeitem.addChild(sub_item)
             subref = int(ref) + 1
             while subref in self.itemdict:
                 subref += 1
             self.itemdict[subref] = (extra_title, data)
-            subitem.setText(1, str(subref))
+            sub_item.setText(1, str(subref))
+            self.activeitem.setExpanded(True)
             item = sub_item
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:

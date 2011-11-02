@@ -1086,13 +1086,14 @@ class MainWindow(gui.QMainWindow):
         self.itemdict[int(ref)] = (new_title, data)
         if extra_title:
             sub_item = gui.QTreeWidgetItem()
-            subitem.setText(0, extra_title)
+            sub_item.setText(0, extra_title)
             self.activeitem.addChild(sub_item)
             subref = int(ref) + 1
             while subref in self.itemdict:
                 subref += 1
             self.itemdict[subref] = (extra_title, data)
-            subitem.setText(1, str(subref))
+            sub_item.setText(1, str(subref))
+            self.activeitem.setExpanded(True)
             item = sub_item
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
