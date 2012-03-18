@@ -101,6 +101,22 @@ class TreePanel(gui.QTreeWidget):
         self.setSelectionMode(self.SingleSelection)
         self.setDragDropMode(self.InternalMove)
         self.setDropIndicatorShown(True)
+        log("size hint for row: {}".format(self.sizeHintForRow(0)))
+        log('uniform row heights: {}'.format(self.uniformRowHeights()))
+        log('vertical offset {}'.format(self.verticalOffset()))
+        log('icon size {}'.format(str(self.iconSize())))
+        ## self.setIconSize(core.QSize(32,32)) groter maken helpt niet
+        self.setUniformRowHeights(True)
+
+    ## def drawRow(self, painter, options, idx):
+        ## gui.QTreeWidget.drawRow(self, painter, options, idx)
+        ## s = idx.sibling(idx.row(), 0)
+        ## if s.isValid():
+            ## rect = self.visualRect(s)
+            ## print rect.height()
+            ## rect.setHeight(30)
+            ## painter.setPen(core.Qt.DotLine)
+            ## painter.drawRect(rect)
 
     def selectionChanged(self, newsel, oldsel):
         """wordt aangeroepen als de selectie gewijzigd is
@@ -110,6 +126,7 @@ class TreePanel(gui.QTreeWidget):
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.check_active()
         h = self.currentItem()
+        print('size hint for item {}'.format(h.sizeHint(0)))
         self.parent.activate_item(h)
 
     def dropEvent(self, event):
@@ -412,7 +429,18 @@ class MainWindow(gui.QMainWindow):
                 ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
                 (),
                 ), ), # label, handler, shortcut, icon, info
-            ('&Edit', (
+            ## ('&Edit (Tree)', (
+                ## ('&Undo', self.tree.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
+                ## ('&Redo', self.tree.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
+                ## (),
+                ## ('Cu&t', self.tree.cut, 'Ctrl+X', 'icons/edit-cut.png', 'Copy the selection and delete from text'),
+                ## ('&Copy', self.tree.copy, 'Ctrl+C', 'icons/edit-copy.png', 'Just copy the selection'),
+                ## ('&Paste', self.tree.paste, 'Ctrl+V', 'icons/edit-paste.png', 'Paste the copied selection'),
+                ## (),
+                ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
+                ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
+                ## ), ),
+            ('&Edit (Text)', (
                 ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
                 (),
@@ -632,6 +660,7 @@ class MainWindow(gui.QMainWindow):
             titel, tekst = self.itemdict[item]
             tree_item = gui.QTreeWidgetItem()
             tree_item.setText(0, titel.rstrip())
+            ## tree_item.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
             tree_item.setText(1, str(item))
             parent.addChild(tree_item)
             if item == self.opts["ActiveItem"][self.opts['ActiveView']]:
@@ -745,7 +774,7 @@ class MainWindow(gui.QMainWindow):
             shutil.copyfile(self.project_file, self.project_file + ".bak")
         except IOError:
             pass
-        f_out = open(self.project_file,"w")
+        f_out = open(self.project_file,"wb")
         pck.dump(nt_data, f_out)
         f_out.close()
         self.project_dirty = False
@@ -1179,6 +1208,7 @@ class MainWindow(gui.QMainWindow):
                         self.opts["RootData"] = content
                 else:
                     self.itemdict[int(ref)] = (titel, content)
+                self.editor.document().setModified(False)
                 self.project_dirty = True
 
     def activate_item(self, item):
