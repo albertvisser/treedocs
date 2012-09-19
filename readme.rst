@@ -16,4 +16,9 @@ Another is visually organizing the same collection of notes in different ways.
 This application also supports saving and loading files under different names,
 and reordering items by sorting or using drag 'n drop.
 
+Requirements
+------------
 
+- Python
+- PyQT4 for the current GUI version
+- wxPython for the older GUI version
