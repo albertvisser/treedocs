@@ -64,9 +64,9 @@ def putsubtree(parent, titel, key, subtree=None, pos=-1, add_nodes=None,
         parent.addChild(new)
     else:
         parent.insertChild(pos + 1, new)
-    for sub in subtree:
-        putsubtree(new, *sub)
-    return new
+    for subtitel, subkey, subsubtree in subtree:
+        putsubtree(new, subtitel, subkey, subsubtree, itemdict=itemdict)
+    return new # , itemdict
 
 class CheckDialog(gui.QDialog):
     """Dialoog om te melden dat de applicatie verborgen gaat worden
@@ -760,6 +760,10 @@ class MainWindow(gui.QMainWindow):
             self.viewmenu.addAction(action)
             if idx == self.opts["ActiveView"]:
                 action.setChecked(True)
+        ## log('Itemdict items:')
+        ## for x, y in self.itemdict.items():
+            ## log('  {} ({}): {} ({})'.format(x, type(x), y, type(y)))
+        self.tree.setFocus()
         item_to_activate = self.viewtotree()
         self.has_treedata = True
         self.root.setExpanded(True)
@@ -767,10 +771,6 @@ class MainWindow(gui.QMainWindow):
             self.tree.setCurrentItem(item_to_activate)
         self.set_title()
         self.project_dirty = False
-        log('Itemdict items:')
-        for x, y in self.itemdict.items():
-            log('  {}: {}'.format(x, y))
-        self.tree.setFocus()
 
     def reread(self, event = None):
         """afhandelen Menu > Reload (Ctrl-R)"""
@@ -1079,7 +1079,6 @@ class MainWindow(gui.QMainWindow):
 
     def copy_item(self, evt = None, cut = False, retain = True):
         "start copy/cut/delete action"
-        log('start copy, cut is {}, retain is {}'.format(cut, retain))
         current = self.tree.selectedItems()[0]
         if current == self.root:
             gui.QMessageBox.information(self, "DocTree", "Can't do this with root")
@@ -1092,34 +1091,26 @@ class MainWindow(gui.QMainWindow):
                 defaultButton = gui.QMessageBox.Yes)
             if retval != gui.QMessageBox.Yes:
                 go_on = False
-        log('continuing copy action: go_on is {}'.format(go_on))
         if not go_on:
             return
         self.cut_from_itemdict = []
-        log('continuing copy action: retain is {}'.format(retain))
         if retain:
             self.cut_item = getsubtree(current)
             ## self.add_node_on_paste = True
-        log('continuing copy action: cut is {}'.format(cut))
         if not cut:
             return
         ## self.add_node_on_paste = False
         parent = current.parent()
         pos = parent.indexOfChild(current)
-        log('continuing copy action: pos is {}'.format(pos))
         if pos - 1 >= 0:
             prev = parent.child(pos - 1)
         else:
             prev = parent
             if prev == self.root:
                 prev = parent.child(pos + 1)
-        log('continuing copy action: prev is {}'.format(prev))
         self.activeitem = None
-        log('taking child')
         parent.takeChild(pos)
-        log('popping items, current is {}'.format(current))
         self.popitems(current, self.cut_from_itemdict)
-        log('cut from itemdict: {}'.format(self.cut_from_itemdict))
         self.project_dirty = True
         self.tree.setCurrentItem(prev)
 
@@ -1158,31 +1149,22 @@ class MainWindow(gui.QMainWindow):
 
     def paste_item(self, evt = None, before = True, below = False):
         "start paste actie"
-        log('start paste, before is {}, below is {}'.format(before, below))
         current = self.tree.selectedItems()[0]
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
-        log('continue paste, cut_item is {}'.format(self.cut_item))
         if not self.cut_item:
             return
-        log('continuing paste, cut_from_itemdict is {}'.format(self.cut_from_itemdict))
         if below:
-            log('putting subtree under {}'.format(current))
             putsubtree(current, *self.cut_item, add_nodes=self.cut_from_itemdict,
                 itemdict=self.itemdict)
         else:
-            log('continue paste, current item is {}'.format(current.text(0)))
             ## add_to = self.tree.itemAbove(current)
             add_to = current.parent()
-            log('continue paste, parent item is {}'.format(add_to.text(0)))
             pos = add_to.indexOfChild(current) # levert alleen 0 of -1 op
-            log('continue paste, pos is {}'.format(pos))
             if before:
                 pos -= 1
-            log('putting subtree under {} at {}'.format(add_to, pos))
             putsubtree(add_to, *self.cut_item, pos=pos,
                 add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
-        log('continuing paste after putting')
         if not self.add_node_on_paste:
             self.add_node_on_paste = True
         self.project_dirty = True
