@@ -11,6 +11,8 @@ import cPickle as pck
 import shutil
 import pprint
 import logging
+logging.basicConfig(filename='doctree_qt.log', level=logging.DEBUG,
+    format='%(asctime)s %(message)s')
 import datetime as dt
 HERE = os.path.dirname(__file__)
 
@@ -27,21 +29,41 @@ def getsubtree(item):
     """recursieve functie om de strucuur onder de te verplaatsen data
     te onthouden"""
     titel = item.text(0)
-    text = item.text(1)
+    key = item.text(1)
+    log(' getsubtree item {}, {}'.format(titel, key))
     subtree = []
     for num in range(item.childCount()):
         kid = item.child(num)
         subtree.append(getsubtree(kid))
-    return titel, text, subtree
+    return titel, key, subtree
 
-def putsubtree(parent, titel, text, subtree=None):
+def putsubtree(parent, titel, key, subtree=None, pos=-1, add_nodes=None,
+        itemdict=None):
     """recursieve functie om de onthouden structuur terug te zetten"""
     if subtree is None:
         subtree = []
+    if add_nodes is None:
+        add_nodes = []
+    if itemdict is None:
+        itemdict = {}
+    log(' putsubtree item {}, {}, {}, {}, {}'.format(titel, key, subtree, pos,
+        add_nodes))
+    if add_nodes:
+        for key, data in add_nodes:
+            itemdict[int(key)] = data
+        add_nodes = []
+    else:
+        newkey = len(itemdict)
+        while newkey in itemdict:
+            newkey += 1
+        itemdict[newkey] = (titel, itemdict[int(key)][1])
     new = gui.QTreeWidgetItem()
-    new.setText(0, titel)
-    new.setText(1, text)
-    parent.addChild(new)
+    new.setText(0, str(titel))
+    new.setText(1, str(key))
+    if pos == -1:
+        parent.addChild(new)
+    else:
+        parent.insertChild(pos + 1, new)
     for sub in subtree:
         putsubtree(new, *sub)
     return new
@@ -101,10 +123,10 @@ class TreePanel(gui.QTreeWidget):
         self.setSelectionMode(self.SingleSelection)
         self.setDragDropMode(self.InternalMove)
         self.setDropIndicatorShown(True)
-        log("size hint for row: {}".format(self.sizeHintForRow(0)))
-        log('uniform row heights: {}'.format(self.uniformRowHeights()))
-        log('vertical offset {}'.format(self.verticalOffset()))
-        log('icon size {}'.format(str(self.iconSize())))
+        ## log("size hint for row: {}".format(self.sizeHintForRow(0)))
+        ## log('uniform row heights: {}'.format(self.uniformRowHeights()))
+        ## log('vertical offset {}'.format(self.verticalOffset()))
+        ## log('icon size {}'.format(str(self.iconSize())))
         ## self.setIconSize(core.QSize(32,32)) groter maken helpt niet
         self.setUniformRowHeights(True)
 
@@ -126,7 +148,7 @@ class TreePanel(gui.QTreeWidget):
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.check_active()
         h = self.currentItem()
-        print('size hint for item {}'.format(h.sizeHint(0)))
+        ## log('size hint for item {}'.format(h.sizeHint(0)))
         self.parent.activate_item(h)
 
     def dropEvent(self, event):
@@ -429,17 +451,17 @@ class MainWindow(gui.QMainWindow):
                 ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
                 (),
                 ), ), # label, handler, shortcut, icon, info
-            ## ('&Edit (Tree)', (
+            ('E&dit (Tree)', (
                 ## ('&Undo', self.tree.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ## ('&Redo', self.tree.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
                 ## (),
-                ## ('Cu&t', self.tree.cut, 'Ctrl+X', 'icons/edit-cut.png', 'Copy the selection and delete from text'),
-                ## ('&Copy', self.tree.copy, 'Ctrl+C', 'icons/edit-copy.png', 'Just copy the selection'),
-                ## ('&Paste', self.tree.paste, 'Ctrl+V', 'icons/edit-paste.png', 'Paste the copied selection'),
+                ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png', 'Copy the selection and delete from tree'),
+                ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png', 'Just copy the selection'),
+                ('&Paste', self.paste_item_after, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection'),
                 ## (),
                 ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
                 ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
-                ## ), ),
+                ), ),
             ('&Edit (Text)', (
                 ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
@@ -477,11 +499,11 @@ class MainWindow(gui.QMainWindow):
             ("&Help", (
                 ("&About", self.info_page, '', '', 'About this application'),
                 ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'),
-                ), ),
+                ), ), )
             )
-        )
         self.create_stylestoolbar()
         self.project_dirty = False
+        self.add_node_on_paste = False
 
     def change_pane(self, event=None):
         "wissel tussen tree en editor"
@@ -745,6 +767,9 @@ class MainWindow(gui.QMainWindow):
             self.tree.setCurrentItem(item_to_activate)
         self.set_title()
         self.project_dirty = False
+        log('Itemdict items:')
+        for x, y in self.itemdict.items():
+            log('  {}: {}'.format(x, y))
         self.tree.setFocus()
 
     def reread(self, event = None):
@@ -1044,8 +1069,64 @@ class MainWindow(gui.QMainWindow):
         """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
         self.add_item(event = event, under = False)
 
-    def delete_item(self, event = None):
-        """item verwijderen"""
+    def cut_item(self, evt = None):
+        "cut = copy with removing item from tree"
+        self.copy_item(cut = True)
+
+    def delete_item(self, evt = None):
+        "delete = copy with removing item from tree and memory"
+        self.copy_item(cut = True, retain = False)
+
+    def copy_item(self, evt = None, cut = False, retain = True):
+        "start copy/cut/delete action"
+        log('start copy, cut is {}, retain is {}'.format(cut, retain))
+        current = self.tree.selectedItems()[0]
+        if current == self.root:
+            gui.QMessageBox.information(self, "DocTree", "Can't do this with root")
+            return
+        go_on = True
+        if cut and not retain:
+            retval = gui.QMessageBox.question(self, "DocTree",
+                "Are you sure you want to remove this item?",
+                gui.QMessageBox.Yes | gui.QMessageBox.No,
+                defaultButton = gui.QMessageBox.Yes)
+            if retval != gui.QMessageBox.Yes:
+                go_on = False
+        log('continuing copy action: go_on is {}'.format(go_on))
+        if not go_on:
+            return
+        self.cut_from_itemdict = []
+        log('continuing copy action: retain is {}'.format(retain))
+        if retain:
+            self.cut_item = getsubtree(current)
+            ## self.add_node_on_paste = True
+        log('continuing copy action: cut is {}'.format(cut))
+        if not cut:
+            return
+        ## self.add_node_on_paste = False
+        parent = current.parent()
+        pos = parent.indexOfChild(current)
+        log('continuing copy action: pos is {}'.format(pos))
+        if pos - 1 >= 0:
+            prev = parent.child(pos - 1)
+        else:
+            prev = parent
+            if prev == self.root:
+                prev = parent.child(pos + 1)
+        log('continuing copy action: prev is {}'.format(prev))
+        self.activeitem = None
+        log('taking child')
+        parent.takeChild(pos)
+        log('popping items, current is {}'.format(current))
+        self.popitems(current, self.cut_from_itemdict)
+        log('cut from itemdict: {}'.format(self.cut_from_itemdict))
+        self.project_dirty = True
+        self.tree.setCurrentItem(prev)
+
+    def popitems(self, current, itemlist):
+        """recursieve routine om de structuur uit de itemdict en de
+        niet-actieve views te verwijderen
+        """
         def check_item(view, ref):
             klaar = False
             for item, subview in view:
@@ -1058,32 +1139,55 @@ class MainWindow(gui.QMainWindow):
                     if klaar:
                         break
             return klaar
-        item = self.tree.selectedItems()[0]
-        if item == self.root:
-            gui.QMessageBox.information(self, "DocTree", "Can't delete root")
+        ref = current.text(1)
+        data = self.itemdict.pop(int(ref))
+        itemlist.append((ref, data))
+        for ix, view in enumerate(self.views):
+            if ix != self.opts["ActiveView"]:
+                check_item(view, ref)
+        for num in range(current.childCount()):
+            self.popitems(current.child(num), itemlist)
+
+    def paste_item_after(self, evt = None):
+        "paste after instead of before"
+        self.paste_item(before=False)
+
+    def paste_item_below(self, evt = None):
+        "paste below instead of before"
+        self.paste_item(below=True)
+
+    def paste_item(self, evt = None, before = True, below = False):
+        "start paste actie"
+        log('start paste, before is {}, below is {}'.format(before, below))
+        current = self.tree.selectedItems()[0]
+        # als het geselecteerde item het top item is moet het automatisch below worden
+        # maar dan wel als eerste  - of het moet niet mogen
+        log('continue paste, cut_item is {}'.format(self.cut_item))
+        if not self.cut_item:
             return
-        retval = gui.QMessageBox.question(self, "DocTree",
-            "Are you sure you want to remove this item?",
-            gui.QMessageBox.Yes | gui.QMessageBox.No,
-            defaultButton = gui.QMessageBox.Yes)
-        if retval == gui.QMessageBox.Yes:
-            parent = item.parent()
-            pos = parent.indexOfChild(item)
-            if pos - 1 >= 0:
-                prev = parent.child(pos - 1)
-            else:
-                prev = parent
-                if prev == self.root:
-                    prev = parent.child(pos + 1)
-            self.activeitem = None
-            ref = item.text(1)
-            self.itemdict.pop(int(ref))
-            parent.takeChild(pos)
-            for ix, view in enumerate(self.views):
-                if ix != self.opts["ActiveView"]:
-                    check_item(view, ref)
-            self.project_dirty = True
-            self.tree.setCurrentItem(prev)
+        log('continuing paste, cut_from_itemdict is {}'.format(self.cut_from_itemdict))
+        if below:
+            log('putting subtree under {}'.format(current))
+            putsubtree(current, *self.cut_item, add_nodes=self.cut_from_itemdict,
+                itemdict=self.itemdict)
+        else:
+            log('continue paste, current item is {}'.format(current.text(0)))
+            ## add_to = self.tree.itemAbove(current)
+            add_to = current.parent()
+            log('continue paste, parent item is {}'.format(add_to.text(0)))
+            pos = add_to.indexOfChild(current) # levert alleen 0 of -1 op
+            log('continue paste, pos is {}'.format(pos))
+            if before:
+                pos -= 1
+            log('putting subtree under {} at {}'.format(add_to, pos))
+            putsubtree(add_to, *self.cut_item, pos=pos,
+                add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
+        log('continuing paste after putting')
+        if not self.add_node_on_paste:
+            self.add_node_on_paste = True
+        self.project_dirty = True
+        self.tree.setCurrentItem(current)
+        current.setExpanded(True)
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -1258,8 +1362,6 @@ class MainWindow(gui.QMainWindow):
         gui.QMessageBox.information(self, "DocTree", "\n".join(info),)
 
 def main(fnaam):
-    logging.basicConfig(filename='doctree_qt.log', level=logging.DEBUG,
-        format='%(asctime)s %(message)s')
     app = gui.QApplication(sys.argv)
     main = MainWindow(fnaam = fnaam)
     app.setWindowIcon(main.nt_icon)
