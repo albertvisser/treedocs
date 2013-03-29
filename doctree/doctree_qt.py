@@ -7,7 +7,10 @@ import os
 import sys
 import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
-import cPickle as pck
+if sys.version[0] < '3':
+    import cPickle as pck
+else:
+    import pickle as pck
 import shutil
 import pprint
 import logging

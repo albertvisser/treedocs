@@ -7,7 +7,10 @@ import os
 import sys
 import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
-import cPickle as pck
+if sys.version[0] < '3':
+    import cPickle as pck
+else:
+    import pickle as pck
 import shutil
 import pprint
 import logging
@@ -379,7 +382,7 @@ class EditorPanel(gui.QTextEdit):
 
 class MainWindow(gui.QMainWindow):
     """Hoofdscherm van de applicatie"""
-    def __init__(self, parent = None, fnaam = ""):
+    def __init__(self, parent=None, fnaam=""):
         self.opts = {
             "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
             "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
@@ -526,7 +529,8 @@ class MainWindow(gui.QMainWindow):
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if icon:
-                    action = gui.QAction(gui.QIcon(os.path.join(HERE, icon)), label, self)
+                    action = gui.QAction(gui.QIcon(os.path.join(HERE, icon)), label,
+                        self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
                         toolbar.setIconSize(core.QSize(16,16))
