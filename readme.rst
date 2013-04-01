@@ -10,7 +10,8 @@ and a text window on the left.
 Another addition to Apropos is that it supports text formatting.
 
 Some ideas are inspired by Lotus Notes, e.g. the possibility of
-creating a sublevel by inserting a backslash in an item's title.
+creating a sublevel by inserting a backslash surrounded by two spaces
+in an item's title.
 Another is visually organizing the same collection of notes in different ways.
 
 This application also supports saving and loading files under different names,

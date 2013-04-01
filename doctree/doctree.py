@@ -804,7 +804,7 @@ class MainWindow(gui.QMainWindow):
         except IOError:
             pass
         f_out = open(self.project_file,"wb")
-        pck.dump(nt_data, f_out)
+        pck.dump(nt_data, f_out, protocol=2)
         f_out.close()
         self.project_dirty = False
         if meld:
