@@ -1236,18 +1236,17 @@ class MainWindow(wx.Frame):
         dlg.ShowModal()
         dlg.Destroy()
 
-class App(wx.App):
-    def __init__(self, fname):
-        wx.App.__init__(self, redirect=True, filename="doctree.log")
-        print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
-            ("\n------------------","------------------\n"))
-        frame = MainWindow(None, -1, "DocTree - " + fname)
-        self.SetTopWindow(frame)
-        frame.project_file = fname
-        err = frame.read()
-        if err:
-            messagebox(frame, err, "Error")
+def main(fname):
+    app = wx.App(redirect=True, filename="doctree.log")
+    print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
+        ("\n------------------","------------------\n"))
+    frame = MainWindow(None, -1, "DocTree - " + fname)
+    self.SetTopWindow(frame)
+    frame.project_file = fname
+    err = frame.read()
+    if err:
+        messagebox(frame, err, "Error")
+    app.MainLoop()
 
 if __name__ == "__main__":
-    app = App('MyMan.ini')
-    app.MainLoop()
+    main('MyMan.ini')
