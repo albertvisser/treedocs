@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
 "DocTree PyQt versie"
@@ -53,7 +52,7 @@ def putsubtree(parent, titel, key, subtree=None, pos=-1, add_nodes=None,
         add_nodes))
     if add_nodes:
         for key, data in add_nodes:
-            itemdict[int(key)] = data
+            itemdict[int(key)] = str(data)
         add_nodes = []
     else:
         newkey = len(itemdict)
@@ -850,7 +849,7 @@ class MainWindow(gui.QMainWindow):
     def add_view(self, event = None):
         "handles Menu > View > New view"
         self.check_active()
-        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.activeitem.text(1)
+        self.opts["ActiveItem"][self.opts["ActiveView"]] = str(self.activeitem.text(1))
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.viewcount += 1
         new_view = "New View #{}".format(self.viewcount)
@@ -1295,7 +1294,7 @@ class MainWindow(gui.QMainWindow):
                 except (KeyError, ValueError):
                     if content:
                         self.root.setText(1, content)
-                        self.opts["RootData"] = content
+                        self.opts["RootData"] = str(content)
                 else:
                     self.itemdict[int(ref)] = (titel, content)
                 self.editor.document().setModified(False)
