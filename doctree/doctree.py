@@ -84,7 +84,7 @@ class CheckDialog(gui.QDialog):
                 )), self)
         self.check = gui.QCheckBox("Deze melding niet meer laten zien", self)
         ok_button = gui.QPushButton("&Ok", self)
-        self.connect(ok_button, core.SIGNAL('clicked()'), self.klaar)
+        ok_button.clicked.connect(self.klaar)
 
         vbox = gui.QVBoxLayout()
 
@@ -173,10 +173,8 @@ class EditorPanel(gui.QTextEdit):
         self.setAcceptRichText(True)
         ## self.setTabChangesFocus(True)
         self.setAutoFormatting(gui.QTextEdit.AutoAll)
-        self.connect(self, core.SIGNAL('currentCharFormatChanged(QTextCharFormat)'),
-             self.charformat_changed)
-        self.connect(self, core.SIGNAL('cursorPositionChanged()'),
-             self.cursorposition_changed)
+        self.currentCharFormatChanged.connect(self.charformat_changed)
+        self.cursorPositionChanged.connect(self.cursorposition_changed)
         font = self.currentFont()
         self.setTabStopWidth(tabsize(font.pointSize()))
 
@@ -391,10 +389,8 @@ class MainWindow(gui.QMainWindow):
         self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
         self.connect(self.tray_icon, core.SIGNAL('clicked'),
-            self.revive)
-        tray_signal = "activated(QSystemTrayIcon::ActivationReason)"
-        self.connect(self.tray_icon, core.SIGNAL(tray_signal),
-            self.revive)
+            self.revive) # werkt dit wel?
+        self.tray_icon.activated.connect(self.revive)
         self.tray_icon.hide()
 
         self.statusbar = self.statusBar()
@@ -555,6 +551,7 @@ class MainWindow(gui.QMainWindow):
                 if info:
                     action.setStatusTip(info)
                 self.connect(action, core.SIGNAL('triggered()'), handler)
+                # action.triggered.connect(handler) werkt hier niet
                 if label:
                     menu.addAction(action)
                     self.actiondict[label] = action
@@ -563,23 +560,21 @@ class MainWindow(gui.QMainWindow):
         toolbar = self.addToolBar('styles')
         self.combo_font = gui.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
-        self.connect(self.combo_font, core.SIGNAL('activated(QString)'),
-            self.editor.text_family)
+        self.combo_font.activated.connect(self.editor.text_family)
         self.combo_size = gui.QComboBox(toolbar)
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
         db = gui.QFontDatabase()
         for size in db.standardSizes():
             self.combo_size.addItem(str(size))
-        self.connect(self.combo_size, core.SIGNAL('activated(QString)'),
-            self.editor.text_size)
+        self.combo_size.activated.connect(self.editor.text_size)
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
         pix = gui.QPixmap(16, 16)
         pix.fill(core.Qt.black)
         action = gui.QAction(gui.QIcon(pix), "&Color...", self)
-        self.connect(action, core.SIGNAL('triggered()'), self.editor.text_color)
+        action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
 
@@ -628,7 +623,7 @@ class MainWindow(gui.QMainWindow):
         action = gui.QAction('&1 Default', self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
-        self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+        action.triggered.connect(self.select_view)
         self.viewmenu.addAction(action)
         action.setChecked(True)
         self.root = self.tree.takeTopLevelItem(0)
@@ -759,7 +754,7 @@ class MainWindow(gui.QMainWindow):
             action = gui.QAction('&{} {}'.format(idx + 1, name), self)
             action.setStatusTip("switch to this view")
             action.setCheckable(True)
-            self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+            action.triggered.connect(self.select_view)
             self.viewmenu.addAction(action)
             if idx == self.opts["ActiveView"]:
                 action.setChecked(True)
@@ -863,7 +858,7 @@ class MainWindow(gui.QMainWindow):
         action = gui.QAction('&{} {}'.format(self.viewcount, new_view), self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
-        self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+        action.triggered.connect(self.select_view)
         self.viewmenu.addAction(action)
         action.setChecked(True)
         self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
