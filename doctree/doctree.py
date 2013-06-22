@@ -320,10 +320,28 @@ class EditorPanel(gui.QTextEdit):
         self.mergeCurrentCharFormat(fmt)
         self.color_changed(col)
 
+    def background_color(self, event = None):
+        "achtergrondkleur instellen"
+        if not self.hasFocus():
+            return
+        col = gui.QColorDialog.getColor(self.textBackgroundColor(), self)
+        if not col.isValid():
+            return
+        fmt = gui.QTextCharFormat()
+        fmt.setBackground(col)
+        self.mergeCurrentCharFormat(fmt)
+        self.background_changed(col)
+
     def charformat_changed(self, format):
         "wordt aangeroepen als het tekstformat gewijzigd is"
         self.font_changed(format.font());
         self.color_changed(format.foreground().color())
+        backg = format.background()
+        if int(backg.style()) == 0: # nul betelkent transparant
+            bgcol = core.Qt.white # eigenlijk standaardkleur, niet per se wit
+        else:
+            bgcol = backg.color()
+        self.background_changed(bgcol)
 
     def cursorposition_changed(self):
         "wordt aangeroepen als de cursorpositie gewijzigd is"
@@ -350,6 +368,14 @@ class EditorPanel(gui.QTextEdit):
         pix = gui.QPixmap(16, 16)
         pix.fill(col)
         self.parent.actiondict["&Color..."].setIcon(gui.QIcon(pix))
+
+    def background_changed(self, col):
+        """kleur aanpassen
+
+        het icon in de toolbar krijgt een andere kleur"""
+        pix = gui.QPixmap(16, 16)
+        pix.fill(col)
+        self.parent.actiondict["&Background..."].setIcon(gui.QIcon(pix))
 
     def alignment_changed(self, align):
         """alignment aanpassen
@@ -493,6 +519,8 @@ class MainWindow(gui.QMainWindow):
                 ## (),
                 ("&Font...", self.editor.text_font, '', '', 'Set/change font'),
                 ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
+                ("&Background...", self.editor.background_color, '', '',
+                    'Set/change background colour'),
                 ), ),
             ("&Help", (
                 ("&About", self.info_page, '', '', 'About this application'),
@@ -577,6 +605,12 @@ class MainWindow(gui.QMainWindow):
         action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
+        pix = gui.QPixmap(16, 16)
+        pix.fill(core.Qt.white)
+        action = gui.QAction(gui.QIcon(pix), "&Background...", self)
+        action.triggered.connect(self.editor.background_color)
+        toolbar.addAction(action)
+        self.actiondict["&Background..."] = action
 
     def set_title(self):
         """standaard titel updaten"""
