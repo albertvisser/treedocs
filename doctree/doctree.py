@@ -921,7 +921,7 @@ class MainWindow(gui.QMainWindow):
             newname = str(data)
             if newname != oldname:
                 action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
-                action.setText('&{} {}'.format(action.text().split()[0], newname))
+                action.setText('{} {}'.format(str(action.text()).split()[0], newname))
                 self.opts["ViewNames"][self.opts["ActiveView"]] = newname
                 self.project_dirty = True
                 self.set_title()
