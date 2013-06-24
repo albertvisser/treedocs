@@ -1142,34 +1142,42 @@ class MainWindow(gui.QMainWindow):
                 prev = parent.child(pos + 1)
         self.activeitem = None
         parent.takeChild(pos)
-        self.popitems(current, self.cut_from_itemdict)
+        self._popitems(current, self.cut_from_itemdict)
+        self._removed = [x[0] for x in self.cut_from_itemdict]
+        for ix, view in enumerate(self.views):
+            print(view)
+            if ix != self.opts["ActiveView"]:
+                self._updateview(view)
+                print(view)
         self.project_dirty = True
         self.tree.setCurrentItem(prev)
 
-    def popitems(self, current, itemlist):
+    def _popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
         niet-actieve views te verwijderen
         """
-        def check_item(view, ref):
-            klaar = False
-            for item, subview in view:
-                if item == ref:
-                    view.remove((item, subview))
-                    klaar = True
-                    break
-                else:
-                    klaar = check_item(subview, item)
-                    if klaar:
-                        break
-            return klaar
-        ref = current.text(1)
-        data = self.itemdict.pop(int(ref))
+        ref = int(current.text(1))
+        data = self.itemdict.pop(ref)
         itemlist.append((ref, data))
-        for ix, view in enumerate(self.views):
-            if ix != self.opts["ActiveView"]:
-                check_item(view, ref)
         for num in range(current.childCount()):
-            self.popitems(current.child(num), itemlist)
+            self._popitems(current.child(num), itemlist)
+
+    def _updateview(self, view):
+        klaar = False
+        for idx, item in reversed(list(enumerate(view))):
+            itemref, subview = item
+            if itemref in self._removed:
+                self._updateview(subview)
+                if not subview:
+                    view.pop(idx)
+                else:
+                    view[idx] = subview[0]
+                klaar = True
+            else:
+                klaar = self._updateview(subview)
+            ## if klaar:
+                ## break
+        return klaar
 
     def paste_item_after(self, evt = None):
         "paste after instead of before"
