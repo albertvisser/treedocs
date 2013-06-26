@@ -62,6 +62,7 @@ def putsubtree(parent, titel, key, subtree=None, pos=-1, add_nodes=None,
     new = gui.QTreeWidgetItem()
     new.setText(0, str(titel))
     new.setText(1, str(key))
+    new.setToolTip(0, str(titel))
     if pos == -1:
         parent.addChild(new)
     else:
@@ -716,6 +717,7 @@ class MainWindow(gui.QMainWindow):
             tree_item.setText(0, titel.rstrip())
             ## tree_item.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
             tree_item.setText(1, str(item))
+            tree_item.setToolTip(0, titel.rstrip())
             parent.addChild(tree_item)
             if item == self.opts["ActiveItem"][self.opts['ActiveView']]:
                 item_to_activate = tree_item
@@ -874,6 +876,11 @@ class MainWindow(gui.QMainWindow):
             event.ignore()
         else:
             event.accept()
+
+    def viewportEvent(self, event):
+        if event.Type == gui.QEvent.ToolTip:
+            item = self.tree.currentItem()
+            gui.QToolTip.ShowText(event.pos, item.toolTip().text(), item)
 
     def add_view(self, event = None):
         "handles Menu > View > New view"
@@ -1068,6 +1075,7 @@ class MainWindow(gui.QMainWindow):
         item = gui.QTreeWidgetItem()
         item.setText(0, new_title)
         item.setText(1, str(newkey))
+        item.setToolTip(0, new_title)
         if under:
             root.addChild(item)
         else:
@@ -1079,6 +1087,7 @@ class MainWindow(gui.QMainWindow):
             sub_item = gui.QTreeWidgetItem() #[extra_title, subkey])
             sub_item.setText(0, extra_title)
             sub_item.setText(1, str(subkey))
+            sub_item.setToolTip(0, extra_title)
             item.addChild(sub_item)
             item = sub_item
         for idx, view in enumerate(self.views):
@@ -1233,6 +1242,7 @@ class MainWindow(gui.QMainWindow):
         self.project_dirty = True
         new_title, extra_title = new
         self.activeitem.setText(0, new_title)
+        self.activeitem.setToolTip(0, new_title)
         if item == self.root:
             self.opts['RootTitle'] = new_title
             return
@@ -1248,6 +1258,7 @@ class MainWindow(gui.QMainWindow):
                 subref += 1
             self.itemdict[subref] = (extra_title, data)
             sub_item.setText(1, str(subref))
+            sub_item.setToolTip(0, extra_title)
             self.activeitem.setExpanded(True)
             item = sub_item
             for idx, view in enumerate(self.views):
