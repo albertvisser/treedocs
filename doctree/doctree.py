@@ -589,14 +589,14 @@ class MainWindow(gui.QMainWindow):
         toolbar = self.addToolBar('styles')
         self.combo_font = gui.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
-        self.combo_font.activated.connect(self.editor.text_family)
+        self.combo_font.activated[str].connect(self.editor.text_family)
         self.combo_size = gui.QComboBox(toolbar)
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
         db = gui.QFontDatabase()
         for size in db.standardSizes():
             self.combo_size.addItem(str(size))
-        self.combo_size.activated.connect(self.editor.text_size)
+        self.combo_size.activated[str].connect(self.editor.text_size)
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
