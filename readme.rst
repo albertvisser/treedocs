@@ -3,10 +3,10 @@ DocTree
 
 This is an elaboration on my Apropos application,
 with a vertical rather than a horizontal organisation of notes,
-and the possibility of nesting notes under each other.
+and the possibility of nesting notes underneath each other.
 
-For that purpose it uses a tree view on the left hand side
-and a text window on the left.
+For that purpose it uses a tree view on the left-hand side
+and a text window on the right-hand side.
 Another addition to Apropos is that it supports text formatting.
 
 Some ideas are inspired by Lotus Notes, e.g. the possibility of
