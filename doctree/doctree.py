@@ -187,6 +187,8 @@ class EditorPanel(gui.QTextEdit):
         ## except TypeError:
             ## log('typeerror on data at: {}'.format(where))
         self.setHtml(data)
+        fmt = gui.QTextCharFormat()
+        self.charformat_changed(fmt)
 
     def get_contents(self):
         "return contents from editor"
