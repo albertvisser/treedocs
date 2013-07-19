@@ -318,10 +318,23 @@ class EditorPanel(gui.QTextEdit):
         col = gui.QColorDialog.getColor(self.textColor(), self)
         if not col.isValid():
             return
+        self.parent.setcoloraction_color = col
         fmt = gui.QTextCharFormat()
         fmt.setForeground(col)
         self.mergeCurrentCharFormat(fmt)
         self.color_changed(col)
+        pix = gui.QPixmap(14, 14)
+        pix.fill(col)
+        self.parent.setcolor_action.setIcon(gui.QIcon(pix))
+
+    def set_text_color(self, event = None):
+        "tekstkleur instellen"
+        if not self.hasFocus():
+            return
+        col = self.parent.setcoloraction_color
+        fmt = gui.QTextCharFormat()
+        fmt.setForeground(col)
+        self.mergeCurrentCharFormat(fmt)
 
     def background_color(self, event = None):
         "achtergrondkleur instellen"
@@ -330,10 +343,23 @@ class EditorPanel(gui.QTextEdit):
         col = gui.QColorDialog.getColor(self.textBackgroundColor(), self)
         if not col.isValid():
             return
+        self.parent.setbackgroundcoloraction_color = col
         fmt = gui.QTextCharFormat()
         fmt.setBackground(col)
         self.mergeCurrentCharFormat(fmt)
         self.background_changed(col)
+        pix = gui.QPixmap(18, 18)
+        pix.fill(col)
+        self.parent.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
+
+    def set_background_color(self, event = None):
+        "achtergrondkleur instellen"
+        if not self.hasFocus():
+            return
+        col = self.parent.setbackgroundcoloraction_color
+        fmt = gui.QTextCharFormat()
+        fmt.setBackground(col)
+        self.mergeCurrentCharFormat(fmt)
 
     def charformat_changed(self, format):
         "wordt aangeroepen als het tekstformat gewijzigd is"
@@ -368,7 +394,7 @@ class EditorPanel(gui.QTextEdit):
         """kleur aanpassen
 
         het icon in de toolbar krijgt een andere kleur"""
-        pix = gui.QPixmap(16, 16)
+        pix = gui.QPixmap(14, 14)
         pix.fill(col)
         self.parent.actiondict["&Color..."].setIcon(gui.QIcon(pix))
 
@@ -376,7 +402,7 @@ class EditorPanel(gui.QTextEdit):
         """kleur aanpassen
 
         het icon in de toolbar krijgt een andere kleur"""
-        pix = gui.QPixmap(16, 16)
+        pix = gui.QPixmap(18, 18)
         pix.fill(col)
         self.parent.actiondict["&Background..."].setIcon(gui.QIcon(pix))
 
@@ -438,6 +464,7 @@ class MainWindow(gui.QMainWindow):
         self.editor.setReadOnly(True)
         self.editor.new_content = True
         self.splitter.addWidget(self.editor)
+
         ## splitter.moveSplitter(180, 0)
         self.create_menu(menubar, (
             ("&Main", (
@@ -534,6 +561,13 @@ class MainWindow(gui.QMainWindow):
         self.project_dirty = False
         self.add_node_on_paste = False
 
+        pix = gui.QPixmap(14, 14)
+        pix.fill(self.setcoloraction_color)
+        self.setcolor_action.setIcon(gui.QIcon(pix))
+        pix = gui.QPixmap(18, 18)
+        pix.fill(self.setbackgroundcoloraction_color)
+        self.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
+
     def change_pane(self, event=None):
         "wissel tussen tree en editor"
         if self.tree.hasFocus():
@@ -602,18 +636,33 @@ class MainWindow(gui.QMainWindow):
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
-        pix = gui.QPixmap(16, 16)
+        pix = gui.QPixmap(14, 14)
         pix.fill(core.Qt.black)
         action = gui.QAction(gui.QIcon(pix), "&Color...", self)
         action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
-        pix = gui.QPixmap(16, 16)
+        pix = gui.QPixmap(14, 14)
+        self.setcoloraction_color = core.Qt.magenta
+        pix.fill(self.setcoloraction_color)
+        action = gui.QAction(gui.QIcon(pix), "Set text color...", self)
+        action.triggered.connect(self.editor.set_text_color)
+        toolbar.addAction(action)
+        self.setcolor_action = action
+
+        pix = gui.QPixmap(18, 18)
         pix.fill(core.Qt.white)
         action = gui.QAction(gui.QIcon(pix), "&Background...", self)
         action.triggered.connect(self.editor.background_color)
         toolbar.addAction(action)
         self.actiondict["&Background..."] = action
+        pix = gui.QPixmap(18, 18)
+        self.setbackgroundcoloraction_color = core.Qt.yellow
+        pix.fill(self.setbackgroundcoloraction_color)
+        action = gui.QAction(gui.QIcon(pix), "Set background color", self)
+        action.triggered.connect(self.editor.set_background_color)
+        toolbar.addAction(action)
+        self.setbackgroundcolor_action = action
 
     def set_title(self):
         """standaard titel updaten"""
