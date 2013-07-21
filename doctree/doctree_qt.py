@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
 "DocTree PyQt versie"
@@ -9,6 +8,7 @@ import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 if sys.version[0] < '3':
     import cPickle as pck
+    str = unicode
 else:
     import pickle as pck
 import shutil
@@ -53,7 +53,7 @@ def putsubtree(parent, titel, key, subtree=None, pos=-1, add_nodes=None,
         add_nodes))
     if add_nodes:
         for key, data in add_nodes:
-            itemdict[int(key)] = data
+            itemdict[int(key)] = str(data)
         add_nodes = []
     else:
         newkey = len(itemdict)
@@ -63,6 +63,7 @@ def putsubtree(parent, titel, key, subtree=None, pos=-1, add_nodes=None,
     new = gui.QTreeWidgetItem()
     new.setText(0, str(titel))
     new.setText(1, str(key))
+    new.setToolTip(0, str(titel))
     if pos == -1:
         parent.addChild(new)
     else:
@@ -85,7 +86,7 @@ class CheckDialog(gui.QDialog):
                 )), self)
         self.check = gui.QCheckBox("Deze melding niet meer laten zien", self)
         ok_button = gui.QPushButton("&Ok", self)
-        self.connect(ok_button, core.SIGNAL('clicked()'), self.klaar)
+        ok_button.clicked.connect(self.klaar)
 
         vbox = gui.QVBoxLayout()
 
@@ -174,10 +175,8 @@ class EditorPanel(gui.QTextEdit):
         self.setAcceptRichText(True)
         ## self.setTabChangesFocus(True)
         self.setAutoFormatting(gui.QTextEdit.AutoAll)
-        self.connect(self, core.SIGNAL('currentCharFormatChanged(QTextCharFormat)'),
-             self.charformat_changed)
-        self.connect(self, core.SIGNAL('cursorPositionChanged()'),
-             self.cursorposition_changed)
+        self.currentCharFormatChanged.connect(self.charformat_changed)
+        self.cursorPositionChanged.connect(self.cursorposition_changed)
         font = self.currentFont()
         self.setTabStopWidth(tabsize(font.pointSize()))
 
@@ -189,6 +188,8 @@ class EditorPanel(gui.QTextEdit):
         ## except TypeError:
             ## log('typeerror on data at: {}'.format(where))
         self.setHtml(data)
+        fmt = gui.QTextCharFormat()
+        self.charformat_changed(fmt)
 
     def get_contents(self):
         "return contents from editor"
@@ -318,15 +319,59 @@ class EditorPanel(gui.QTextEdit):
         col = gui.QColorDialog.getColor(self.textColor(), self)
         if not col.isValid():
             return
+        self.parent.setcoloraction_color = col
         fmt = gui.QTextCharFormat()
         fmt.setForeground(col)
         self.mergeCurrentCharFormat(fmt)
         self.color_changed(col)
+        pix = gui.QPixmap(14, 14)
+        pix.fill(col)
+        self.parent.setcolor_action.setIcon(gui.QIcon(pix))
+
+    def set_text_color(self, event = None):
+        "tekstkleur instellen"
+        if not self.hasFocus():
+            return
+        col = self.parent.setcoloraction_color
+        fmt = gui.QTextCharFormat()
+        fmt.setForeground(col)
+        self.mergeCurrentCharFormat(fmt)
+
+    def background_color(self, event = None):
+        "achtergrondkleur instellen"
+        if not self.hasFocus():
+            return
+        col = gui.QColorDialog.getColor(self.textBackgroundColor(), self)
+        if not col.isValid():
+            return
+        self.parent.setbackgroundcoloraction_color = col
+        fmt = gui.QTextCharFormat()
+        fmt.setBackground(col)
+        self.mergeCurrentCharFormat(fmt)
+        self.background_changed(col)
+        pix = gui.QPixmap(18, 18)
+        pix.fill(col)
+        self.parent.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
+
+    def set_background_color(self, event = None):
+        "achtergrondkleur instellen"
+        if not self.hasFocus():
+            return
+        col = self.parent.setbackgroundcoloraction_color
+        fmt = gui.QTextCharFormat()
+        fmt.setBackground(col)
+        self.mergeCurrentCharFormat(fmt)
 
     def charformat_changed(self, format):
         "wordt aangeroepen als het tekstformat gewijzigd is"
         self.font_changed(format.font());
         self.color_changed(format.foreground().color())
+        backg = format.background()
+        if int(backg.style()) == 0: # nul betelkent transparant
+            bgcol = core.Qt.white # eigenlijk standaardkleur, niet per se wit
+        else:
+            bgcol = backg.color()
+        self.background_changed(bgcol)
 
     def cursorposition_changed(self):
         "wordt aangeroepen als de cursorpositie gewijzigd is"
@@ -350,9 +395,17 @@ class EditorPanel(gui.QTextEdit):
         """kleur aanpassen
 
         het icon in de toolbar krijgt een andere kleur"""
-        pix = gui.QPixmap(16, 16)
+        pix = gui.QPixmap(14, 14)
         pix.fill(col)
         self.parent.actiondict["&Color..."].setIcon(gui.QIcon(pix))
+
+    def background_changed(self, col):
+        """kleur aanpassen
+
+        het icon in de toolbar krijgt een andere kleur"""
+        pix = gui.QPixmap(18, 18)
+        pix.fill(col)
+        self.parent.actiondict["&Background..."].setIcon(gui.QIcon(pix))
 
     def alignment_changed(self, align):
         """alignment aanpassen
@@ -392,10 +445,8 @@ class MainWindow(gui.QMainWindow):
         self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
         self.connect(self.tray_icon, core.SIGNAL('clicked'),
-            self.revive)
-        tray_signal = "activated(QSystemTrayIcon::ActivationReason)"
-        self.connect(self.tray_icon, core.SIGNAL(tray_signal),
-            self.revive)
+            self.revive) # werkt dit wel?
+        self.tray_icon.activated.connect(self.revive)
         self.tray_icon.hide()
 
         self.statusbar = self.statusBar()
@@ -414,6 +465,7 @@ class MainWindow(gui.QMainWindow):
         self.editor.setReadOnly(True)
         self.editor.new_content = True
         self.splitter.addWidget(self.editor)
+
         ## splitter.moveSplitter(180, 0)
         self.create_menu(menubar, (
             ("&Main", (
@@ -498,6 +550,8 @@ class MainWindow(gui.QMainWindow):
                 ## (),
                 ("&Font...", self.editor.text_font, '', '', 'Set/change font'),
                 ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
+                ("&Background...", self.editor.background_color, '', '',
+                    'Set/change background colour'),
                 ), ),
             ("&Help", (
                 ("&About", self.info_page, '', '', 'About this application'),
@@ -507,6 +561,13 @@ class MainWindow(gui.QMainWindow):
         self.create_stylestoolbar()
         self.project_dirty = False
         self.add_node_on_paste = False
+
+        pix = gui.QPixmap(14, 14)
+        pix.fill(self.setcoloraction_color)
+        self.setcolor_action.setIcon(gui.QIcon(pix))
+        pix = gui.QPixmap(18, 18)
+        pix.fill(self.setbackgroundcoloraction_color)
+        self.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
 
     def change_pane(self, event=None):
         "wissel tussen tree en editor"
@@ -556,6 +617,7 @@ class MainWindow(gui.QMainWindow):
                 if info:
                     action.setStatusTip(info)
                 self.connect(action, core.SIGNAL('triggered()'), handler)
+                # action.triggered.connect(handler) werkt hier niet
                 if label:
                     menu.addAction(action)
                     self.actiondict[label] = action
@@ -564,25 +626,44 @@ class MainWindow(gui.QMainWindow):
         toolbar = self.addToolBar('styles')
         self.combo_font = gui.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
-        self.connect(self.combo_font, core.SIGNAL('activated(QString)'),
-            self.editor.text_family)
+        self.combo_font.activated[str].connect(self.editor.text_family)
         self.combo_size = gui.QComboBox(toolbar)
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
         db = gui.QFontDatabase()
         for size in db.standardSizes():
             self.combo_size.addItem(str(size))
-        self.connect(self.combo_size, core.SIGNAL('activated(QString)'),
-            self.editor.text_size)
+        self.combo_size.activated[str].connect(self.editor.text_size)
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
-        pix = gui.QPixmap(16, 16)
+        pix = gui.QPixmap(14, 14)
         pix.fill(core.Qt.black)
         action = gui.QAction(gui.QIcon(pix), "&Color...", self)
-        self.connect(action, core.SIGNAL('triggered()'), self.editor.text_color)
+        action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
+        pix = gui.QPixmap(14, 14)
+        self.setcoloraction_color = core.Qt.magenta
+        pix.fill(self.setcoloraction_color)
+        action = gui.QAction(gui.QIcon(pix), "Set text color...", self)
+        action.triggered.connect(self.editor.set_text_color)
+        toolbar.addAction(action)
+        self.setcolor_action = action
+
+        pix = gui.QPixmap(18, 18)
+        pix.fill(core.Qt.white)
+        action = gui.QAction(gui.QIcon(pix), "&Background...", self)
+        action.triggered.connect(self.editor.background_color)
+        toolbar.addAction(action)
+        self.actiondict["&Background..."] = action
+        pix = gui.QPixmap(18, 18)
+        self.setbackgroundcoloraction_color = core.Qt.yellow
+        pix.fill(self.setbackgroundcoloraction_color)
+        action = gui.QAction(gui.QIcon(pix), "Set background color", self)
+        action.triggered.connect(self.editor.set_background_color)
+        toolbar.addAction(action)
+        self.setbackgroundcolor_action = action
 
     def set_title(self):
         """standaard titel updaten"""
@@ -629,7 +710,7 @@ class MainWindow(gui.QMainWindow):
         action = gui.QAction('&1 Default', self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
-        self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+        action.triggered.connect(self.select_view)
         self.viewmenu.addAction(action)
         action.setChecked(True)
         self.root = self.tree.takeTopLevelItem(0)
@@ -688,6 +769,7 @@ class MainWindow(gui.QMainWindow):
             tree_item.setText(0, titel.rstrip())
             ## tree_item.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
             tree_item.setText(1, str(item))
+            tree_item.setToolTip(0, titel.rstrip())
             parent.addChild(tree_item)
             if item == self.opts["ActiveItem"][self.opts['ActiveView']]:
                 item_to_activate = tree_item
@@ -760,7 +842,7 @@ class MainWindow(gui.QMainWindow):
             action = gui.QAction('&{} {}'.format(idx + 1, name), self)
             action.setStatusTip("switch to this view")
             action.setCheckable(True)
-            self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+            action.triggered.connect(self.select_view)
             self.viewmenu.addAction(action)
             if idx == self.opts["ActiveView"]:
                 action.setChecked(True)
@@ -804,7 +886,7 @@ class MainWindow(gui.QMainWindow):
         except IOError:
             pass
         f_out = open(self.project_file,"wb")
-        pck.dump(nt_data, f_out)
+        pck.dump(nt_data, f_out, protocol=2)
         f_out.close()
         self.project_dirty = False
         if meld:
@@ -847,10 +929,15 @@ class MainWindow(gui.QMainWindow):
         else:
             event.accept()
 
+    def viewportEvent(self, event):
+        if event.Type == gui.QEvent.ToolTip:
+            item = self.tree.currentItem()
+            gui.QToolTip.ShowText(event.pos, item.toolTip().text(), item)
+
     def add_view(self, event = None):
         "handles Menu > View > New view"
         self.check_active()
-        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.activeitem.text(1)
+        self.opts["ActiveItem"][self.opts["ActiveView"]] = str(self.activeitem.text(1))
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.viewcount += 1
         new_view = "New View #{}".format(self.viewcount)
@@ -864,7 +951,7 @@ class MainWindow(gui.QMainWindow):
         action = gui.QAction('&{} {}'.format(self.viewcount, new_view), self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
-        self.connect(action, core.SIGNAL('triggered()'), self.select_view)
+        action.triggered.connect(self.select_view)
         self.viewmenu.addAction(action)
         action.setChecked(True)
         self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
@@ -893,7 +980,7 @@ class MainWindow(gui.QMainWindow):
             newname = str(data)
             if newname != oldname:
                 action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
-                action.setText('&{} {}'.format(action.text().split()[0], newname))
+                action.setText('{} {}'.format(str(action.text()).split()[0], newname))
                 self.opts["ViewNames"][self.opts["ActiveView"]] = newname
                 self.project_dirty = True
                 self.set_title()
@@ -1040,6 +1127,7 @@ class MainWindow(gui.QMainWindow):
         item = gui.QTreeWidgetItem()
         item.setText(0, new_title)
         item.setText(1, str(newkey))
+        item.setToolTip(0, new_title)
         if under:
             root.addChild(item)
         else:
@@ -1051,6 +1139,7 @@ class MainWindow(gui.QMainWindow):
             sub_item = gui.QTreeWidgetItem() #[extra_title, subkey])
             sub_item.setText(0, extra_title)
             sub_item.setText(1, str(subkey))
+            sub_item.setToolTip(0, extra_title)
             item.addChild(sub_item)
             item = sub_item
         for idx, view in enumerate(self.views):
@@ -1114,34 +1203,42 @@ class MainWindow(gui.QMainWindow):
                 prev = parent.child(pos + 1)
         self.activeitem = None
         parent.takeChild(pos)
-        self.popitems(current, self.cut_from_itemdict)
+        self._popitems(current, self.cut_from_itemdict)
+        self._removed = [x[0] for x in self.cut_from_itemdict]
+        for ix, view in enumerate(self.views):
+            print(view)
+            if ix != self.opts["ActiveView"]:
+                self._updateview(view)
+                print(view)
         self.project_dirty = True
         self.tree.setCurrentItem(prev)
 
-    def popitems(self, current, itemlist):
+    def _popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
         niet-actieve views te verwijderen
         """
-        def check_item(view, ref):
-            klaar = False
-            for item, subview in view:
-                if item == ref:
-                    view.remove((item, subview))
-                    klaar = True
-                    break
-                else:
-                    klaar = check_item(subview, item)
-                    if klaar:
-                        break
-            return klaar
-        ref = current.text(1)
-        data = self.itemdict.pop(int(ref))
+        ref = int(current.text(1))
+        data = self.itemdict.pop(ref)
         itemlist.append((ref, data))
-        for ix, view in enumerate(self.views):
-            if ix != self.opts["ActiveView"]:
-                check_item(view, ref)
         for num in range(current.childCount()):
-            self.popitems(current.child(num), itemlist)
+            self._popitems(current.child(num), itemlist)
+
+    def _updateview(self, view):
+        klaar = False
+        for idx, item in reversed(list(enumerate(view))):
+            itemref, subview = item
+            if itemref in self._removed:
+                self._updateview(subview)
+                if not subview:
+                    view.pop(idx)
+                else:
+                    view[idx] = subview[0]
+                klaar = True
+            else:
+                klaar = self._updateview(subview)
+            ## if klaar:
+                ## break
+        return klaar
 
     def paste_item_after(self, evt = None):
         "paste after instead of before"
@@ -1197,6 +1294,7 @@ class MainWindow(gui.QMainWindow):
         self.project_dirty = True
         new_title, extra_title = new
         self.activeitem.setText(0, new_title)
+        self.activeitem.setToolTip(0, new_title)
         if item == self.root:
             self.opts['RootTitle'] = new_title
             return
@@ -1212,6 +1310,7 @@ class MainWindow(gui.QMainWindow):
                 subref += 1
             self.itemdict[subref] = (extra_title, data)
             sub_item.setText(1, str(subref))
+            sub_item.setToolTip(0, extra_title)
             self.activeitem.setExpanded(True)
             item = sub_item
             for idx, view in enumerate(self.views):
@@ -1295,7 +1394,7 @@ class MainWindow(gui.QMainWindow):
                 except (KeyError, ValueError):
                     if content:
                         self.root.setText(1, content)
-                        self.opts["RootData"] = content
+                        self.opts["RootData"] = str(content)
                 else:
                     self.itemdict[int(ref)] = (titel, content)
                 self.editor.document().setModified(False)
@@ -1357,7 +1456,3 @@ def main(fnaam):
     if err:
         gui.QMessageBox.information(main, "Error", err, gui.QMessageBox.Ok)
     sys.exit(app.exec_())
-
-if __name__ == "__main__":
-    main('MyMan.ini')
-

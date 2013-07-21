@@ -1241,12 +1241,9 @@ def main(fname):
     print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
         ("\n------------------","------------------\n"))
     frame = MainWindow(None, -1, "DocTree - " + fname)
-    self.SetTopWindow(frame)
+    app.SetTopWindow(frame)
     frame.project_file = fname
     err = frame.read()
     if err:
         messagebox(frame, err, "Error")
     app.MainLoop()
-
-if __name__ == "__main__":
-    main('MyMan.ini')

@@ -9,3 +9,4 @@ syntax: glob
 *ini
 *xml
 pylint*
+*orig
