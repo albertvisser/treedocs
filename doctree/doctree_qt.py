@@ -180,6 +180,28 @@ class EditorPanel(gui.QTextEdit):
         font = self.currentFont()
         self.setTabStopWidth(tabsize(font.pointSize()))
 
+    def canInsertFromMimeData(self, source):
+        if source.hasImage:
+            return True
+        else:
+            return gui.QTextEdit.canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source):
+        if source.hasImage:
+            image = source.imageData()
+            cursor = self.textCursor()
+            document = self.document()
+            num = self.parent.opts['ImageCount']
+            num += 1
+            self.parent.opts['ImageCount'] = num
+            urlname = '{}_{:05}.png'.format(self.parent.project_file,  num)
+            ok = image.save(urlname)
+            document.addResource(gui.QTextDocument.ImageResource,
+                core.QUrl(urlname), image)
+            cursor.insertImage(urlname)
+        else:
+            gui.QTextEdit.insertFromMimeData(source)
+
     def set_contents(self, data, where='root'):
         "load contents into editor"
         ## try:
@@ -439,7 +461,7 @@ class MainWindow(gui.QMainWindow):
         self.opts = {
             "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
             "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
-            "RootTitle": "MyNotes", "RootData": ""}
+            "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
         gui.QMainWindow.__init__(self)
         self.nt_icon = gui.QIcon(os.path.join(HERE, "doctree.xpm"))
         self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
@@ -792,7 +814,7 @@ class MainWindow(gui.QMainWindow):
         self.opts = {
             "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
             "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
-            "RootTitle": "MyNotes", "RootData": ""}
+            "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
         mld = ''
         try:
             f_in = open(self.project_file, "rb")
