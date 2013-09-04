@@ -221,7 +221,7 @@ class EditorPanel(gui.QTextEdit):
         ## data = self.codec.fromUnicode(self.toHtml())
         ## return unicode(data)
 
-    def text_bold(self, event = None):
+    def text_bold(self, event=None):
         "selectie vet maken"
         if not self.hasFocus():
             return
@@ -232,7 +232,7 @@ class EditorPanel(gui.QTextEdit):
             fmt.setFontWeight(gui.QFont.Normal)
         self.mergeCurrentCharFormat(fmt)
 
-    def text_italic(self, event = None):
+    def text_italic(self, event=None):
         "selectie schuin schrijven"
         if not self.hasFocus():
             return
@@ -240,7 +240,7 @@ class EditorPanel(gui.QTextEdit):
         fmt.setFontItalic(self.parent.actiondict['&Italic'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
-    def text_underline(self, event = None):
+    def text_underline(self, event=None):
         "selectie onderstrepen"
         if not self.hasFocus():
             return
@@ -248,7 +248,7 @@ class EditorPanel(gui.QTextEdit):
         fmt.setFontUnderline(self.parent.actiondict['&Underline'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
-    def align_left(self, event = None):
+    def align_left(self, event=None):
         "alinea links uitlijnen"
         if not self.hasFocus():
             return
@@ -257,7 +257,7 @@ class EditorPanel(gui.QTextEdit):
         self.parent.actiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignLeft | core.Qt.AlignAbsolute)
 
-    def align_center(self, event = None):
+    def align_center(self, event=None):
         "alinea centreren"
         if not self.hasFocus():
             return
@@ -266,7 +266,7 @@ class EditorPanel(gui.QTextEdit):
         self.parent.actiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignHCenter)
 
-    def align_right(self, event = None):
+    def align_right(self, event=None):
         "alinea rechts uitlijnen"
         if not self.hasFocus():
             return
@@ -275,7 +275,7 @@ class EditorPanel(gui.QTextEdit):
         self.parent.actiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignRight | core.Qt.AlignAbsolute)
 
-    def text_justify(self, event = None):
+    def text_justify(self, event=None):
         "alinea aan weerszijden uitlijnen"
         if not self.hasFocus():
             return
@@ -284,7 +284,7 @@ class EditorPanel(gui.QTextEdit):
         self.parent.actiondict["Align &Right"].setChecked(False)
         self.setAlignment(core.Qt.AlignJustify)
 
-    def indent_more(self, event = None):
+    def indent_more(self, event=None):
         "alinea verder laten inspringen"
         if not self.hasFocus():
             return
@@ -297,7 +297,7 @@ class EditorPanel(gui.QTextEdit):
         log('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
         # maar hier is geen merge methode voor, lijkt het...
 
-    def indent_less(self, event = None):
+    def indent_less(self, event=None):
         "alinea minder ver laten inspringen"
         if not self.hasFocus():
             return
@@ -307,7 +307,7 @@ class EditorPanel(gui.QTextEdit):
         if wid > 100:
             fmt.setIndent(wid - 100)
 
-    def text_font(self, event = None):
+    def text_font(self, event=None):
         "lettertype en/of -grootte instellen"
         if not self.hasFocus():
             return
@@ -325,6 +325,18 @@ class EditorPanel(gui.QTextEdit):
         fmt.setFontFamily(family);
         self.mergeCurrentCharFormat(fmt)
         self.setFocus()
+
+    def enlarge_text(self, event=None):
+        size = self.parent.combo_size.currentText()
+        indx = self.parent.fontsizes.index(size)
+        if indx < len(self.parent.fontsizes) - 1:
+            self.text_size(self.parent.fontsizes[indx + 1])
+
+    def shrink_text(self, event=None):
+        size = self.parent.combo_size.currentText()
+        indx = self.parent.fontsizes.index(size)
+        if indx > 0:
+            self.text_size(self.parent.fontsizes[indx - 1])
 
     def text_size(self, size):
         "lettergrootte instellen"
@@ -573,6 +585,9 @@ class MainWindow(gui.QMainWindow):
                 ## ("Double Line Spacing", self.editor.OnLineSpacingDouble, ''),
                 ## (),
                 ("&Font...", self.editor.text_font, '', '', 'Set/change font'),
+                ("&Enlarge text", self.editor.enlarge_text, 'Ctrl+Up', '', 'Use bigger letters'),
+                ("&Shrink text", self.editor.shrink_text, 'Ctrl+Down', '', 'Use smaller letters'),
+                (),
                 ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
                 ("&Background...", self.editor.background_color, '', '',
                     'Set/change background colour'),
@@ -655,8 +670,10 @@ class MainWindow(gui.QMainWindow):
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
         db = gui.QFontDatabase()
+        self.fontsizes = []
         for size in db.standardSizes():
             self.combo_size.addItem(str(size))
+            self.fontsizes.append(str(size))
         self.combo_size.activated[str].connect(self.editor.text_size)
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
