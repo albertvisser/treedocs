@@ -187,8 +187,10 @@ class EditorPanel(gui.QTextEdit):
             return gui.QTextEdit.canInsertFromMimeData(source)
 
     def insertFromMimeData(self, source):
-        if source.hasImage:
+        if source.hasImage():
             image = source.imageData()
+            if sys.version < '3':
+                image = gui.QImage(image)
             cursor = self.textCursor()
             document = self.document()
             num = self.parent.opts['ImageCount']
@@ -200,7 +202,7 @@ class EditorPanel(gui.QTextEdit):
                 core.QUrl(urlname), image)
             cursor.insertImage(urlname)
         else:
-            gui.QTextEdit.insertFromMimeData(source)
+            gui.QTextEdit.insertFromMimeData(self, source)
 
     def set_contents(self, data, where='root'):
         "load contents into editor"
