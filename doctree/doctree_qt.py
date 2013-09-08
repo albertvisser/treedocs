@@ -163,7 +163,7 @@ class TreePanel(gui.QTreeWidget):
         """
         dragitem = self.selectedItems()[0]
         gui.QTreeWidget.dropEvent(self, event)
-        self.parent.project_dirty = True
+        self.parent.set_project_dirty(True)
         dropitem = dragitem.parent()
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
@@ -214,6 +214,7 @@ class EditorPanel(gui.QTextEdit):
         self.setHtml(data)
         fmt = gui.QTextCharFormat()
         self.charformat_changed(fmt)
+        self.oldtext = data
 
     def get_contents(self):
         "return contents from editor"
@@ -598,7 +599,7 @@ class MainWindow(gui.QMainWindow):
                 ), ), )
             )
         self.create_stylestoolbar()
-        self.project_dirty = False
+        self.project_dirty = False # self.set_project_dirty(False)
         self.add_node_on_paste = False
 
         pix = gui.QPixmap(14, 14)
@@ -706,10 +707,15 @@ class MainWindow(gui.QMainWindow):
         toolbar.addAction(action)
         self.setbackgroundcolor_action = action
 
+    def set_project_dirty(self, value):
+        self.project_dirty = value
+        self.set_title()
+
     def set_title(self):
         """standaard titel updaten"""
-        self.setWindowTitle("DocTree - {} (view: {})".format(
+        self.setWindowTitle("DocTree - {}{} (view: {})".format(
             os.path.split(self.project_file)[1],
+            '*' if self.project_dirty else '',
             self.opts["ViewNames"][self.opts['ActiveView']]))
 
     def open(self, event = None):
@@ -763,7 +769,7 @@ class MainWindow(gui.QMainWindow):
         self.editor.set_contents(self.opts["RootData"])
         self.editor.setReadOnly(False)
         self.set_title()
-        self.project_dirty = False
+        self.set_project_dirty(False)
         self.tree.setFocus()
 
     def save_needed(self, meld=True):
@@ -897,7 +903,7 @@ class MainWindow(gui.QMainWindow):
         if item_to_activate != self.activeitem:
             self.tree.setCurrentItem(item_to_activate)
         self.set_title()
-        self.project_dirty = False
+        self.set_project_dirty(False)
 
     def reread(self, event = None):
         """afhandelen Menu > Reload (Ctrl-R)"""
@@ -929,7 +935,7 @@ class MainWindow(gui.QMainWindow):
         f_out = open(self.project_file,"wb")
         pck.dump(nt_data, f_out, protocol=2)
         f_out.close()
-        self.project_dirty = False
+        self.set_project_dirty(False)
         if meld:
             gui.QMessageBox.information(self, "DocTool",
                 self.project_file + " is opgeslagen", gui.QMessageBox.Ok)
@@ -1008,7 +1014,7 @@ class MainWindow(gui.QMainWindow):
         self.views.append(newtree)
         tree_item = self.viewtotree()
         self.set_title()
-        self.project_dirty = True
+        self.set_project_dirty(True)
         self.tree.setCurrentItem(tree_item)
 
     def rename_view(self, event = None):
@@ -1023,7 +1029,7 @@ class MainWindow(gui.QMainWindow):
                 action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
                 action.setText('{} {}'.format(str(action.text()).split()[0], newname))
                 self.opts["ViewNames"][self.opts["ActiveView"]] = newname
-                self.project_dirty = True
+                self.set_project_dirty(True)
                 self.set_title()
 
     def next_view(self, prev=False):
@@ -1132,7 +1138,7 @@ class MainWindow(gui.QMainWindow):
             self.tree.addTopLevelItem(self.root)
             self.activeitem = self.root
             self.tree.setCurrentItem(self.viewtotree())
-            self.project_dirty = True
+            self.set_project_dirty(True)
             self.set_title()
 
     def rename_root(self, event=None):
@@ -1143,7 +1149,7 @@ class MainWindow(gui.QMainWindow):
         if ok:
             data = str(data)
             if data:
-                self.project_dirty = True
+                self.set_project_dirty(True)
                 self.root.setText(0, data)
                 self.opts['RootTitle'] = data
 
@@ -1190,7 +1196,7 @@ class MainWindow(gui.QMainWindow):
                     subitem.append((subkey, []))
                 view.append((newkey, subitem))
         root.setExpanded(True)
-        self.project_dirty = True
+        self.set_project_dirty(True)
         self.tree.setCurrentItem(item)
         if item != self.root:
             self.editor.setFocus()
@@ -1251,7 +1257,7 @@ class MainWindow(gui.QMainWindow):
             if ix != self.opts["ActiveView"]:
                 self._updateview(view)
                 print(view)
-        self.project_dirty = True
+        self.set_project_dirty(True)
         self.tree.setCurrentItem(prev)
 
     def _popitems(self, current, itemlist):
@@ -1309,7 +1315,7 @@ class MainWindow(gui.QMainWindow):
                 add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         if not self.add_node_on_paste:
             self.add_node_on_paste = True
-        self.project_dirty = True
+        self.set_project_dirty(True)
         self.tree.setCurrentItem(current)
         current.setExpanded(True)
 
@@ -1332,7 +1338,7 @@ class MainWindow(gui.QMainWindow):
         new = self.ask_title('Nieuwe titel voor het huidige item:', item.text(0))
         if not new:
             return
-        self.project_dirty = True
+        self.set_project_dirty(True)
         new_title, extra_title = new
         self.activeitem.setText(0, new_title)
         self.activeitem.setToolTip(0, new_title)
@@ -1390,7 +1396,7 @@ class MainWindow(gui.QMainWindow):
             for num in range(root.childCount()):
                 tag = root.child(num)
                 self.reorder_items(tag, recursive)
-        self.project_dirty = True
+        self.set_project_dirty(True)
 
     def order_this(self, event = None):
         """order items directly under current level"""
@@ -1439,7 +1445,7 @@ class MainWindow(gui.QMainWindow):
                 else:
                     self.itemdict[int(ref)] = (titel, content)
                 self.editor.document().setModified(False)
-                self.project_dirty = True
+                self.set_project_dirty(True)
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
