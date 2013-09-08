@@ -6,7 +6,7 @@ syntax: glob
 *pyc
 *log
 *txt
-*ini
+*.ini*
 *xml
 pylint*
 *orig
