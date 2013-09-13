@@ -168,6 +168,51 @@ class TreePanel(gui.QTreeWidget):
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
 
+    def mouseReleaseEvent(self, event):
+        "for showing a context menu"
+        if event.button() == core.Qt.RightButton:
+            xc, yc = event.x(), event.y()
+            item = self.itemAt(xc, yc)
+            if item:
+                self.create_popupmenu(item)
+                return
+            ## else:
+                ## event.ignore()
+        ## else:
+            ## event.ignore()
+        event.ignore()
+
+    def keyReleaseEvent(self, event):
+        "also for showing a context menu"
+        if event.key() == core.Qt.Key_Menu:
+            item = self.currentItem()
+            self.create_popupmenu(item)
+            return
+        ## else:
+            ## gui.QMainWindow.keyReleaseEvent(self, event)
+        gui.QMainWindow.keyReleaseEvent(self, event)
+
+    def create_popupmenu(self, item):
+        menu = gui.QMenu()
+        for action in self.parent.notemenu.actions():
+            act = menu.addAction(action)
+            if item == self.parent.root and action.text() in ('&Add', '&Delete',
+                    '&Forward', '&Back'):
+                action.setEnabled(False)
+        menu.addSeparator()
+        for action in self.parent.treemenu.actions():
+            menu.addAction(action)
+            if item == self.parent.root:
+                action.setEnabled(False)
+        menu.exec_(self.mapToGlobal(self.visualItemRect(item).center()))
+        if item == self.parent.root:
+            for action in self.parent.notemenu.actions():
+                if item == self.parent.root and action.text() in ('&Add', '&Delete',
+                        '&Forward', '&Back'):
+                    action.setEnabled(True)
+            for action in self.parent.treemenu.actions():
+                action.setEnabled(True)
+
 class EditorPanel(gui.QTextEdit):
     def __init__(self, parent):
         self.parent = parent
@@ -622,8 +667,12 @@ class MainWindow(gui.QMainWindow):
         for item, data in menudata:
             menu = menubar.addMenu(item)
             toolbar_added = False
-            if item == "&View":
+            if item == menudata[2][0]: # "&View":
                 self.viewmenu = menu
+            elif item == menudata[1][0]:
+                self.notemenu = menu
+            elif item == menudata[3][0]:
+                self.treemenu = menu
             for menudef in data:
                 if not menudef:
                     menu.addSeparator()
