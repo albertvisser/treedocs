@@ -79,7 +79,7 @@ class CheckDialog(gui.QDialog):
         self.parent = parent
         gui.QDialog.__init__(self, parent)
         self.setWindowTitle('DocTree')
-        self.setWindowIcon(self.nt_icon)
+        self.setWindowIcon(self.parent.nt_icon)
         txt = gui.QLabel("\n".join((
             "DocTree gaat nu slapen in de System tray",
             "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"
@@ -190,7 +190,7 @@ class TreePanel(gui.QTreeWidget):
             return
         ## else:
             ## gui.QMainWindow.keyReleaseEvent(self, event)
-        gui.QMainWindow.keyReleaseEvent(self, event)
+        gui.QTreeWidget.keyReleaseEvent(self, event)
 
     def create_popupmenu(self, item):
         menu = gui.QMenu()
