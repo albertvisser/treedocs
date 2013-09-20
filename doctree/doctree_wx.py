@@ -14,6 +14,8 @@ import pprint
 import datetime as dt
 import StringIO as io
 HERE = os.path.dirname(__file__)
+FILTER = "Pickle files|*.pck"
+
 
 def getsubtree(tree, item):
     """recursieve functie om de strucuur onder de te verplaatsen data
@@ -38,13 +40,6 @@ def putsubtree(tree, parent, titel, text, subtree=None):
     for sub in subtree:
         putsubtree(tree, new, *sub)
     return new
-
-def messagebox(window, string, title="DocTree"):
-    """Toon een boodschap"""
-    ## print "messagebox aangeroepen:", string
-    dlg = wx.MessageDialog(window, string, title, wx.OK)
-    dlg.ShowModal()
-    dlg.Destroy()
 
 class CheckDialog(wx.Dialog):
     """Dialoog om te melden dat de applicatie verborgen gaat worden
@@ -74,10 +69,10 @@ class CheckDialog(wx.Dialog):
         sizer0.SetSizeHints(pnl)
         pnl.Layout()
 
-class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
+class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
     """TreeCtrl met drag&drop faciliteit"""
     def __init__(self, *args, **kwargs):
-        super(DnDTree, self).__init__(*args, **kwargs)
+        super(TreePanel, self).__init__(*args, **kwargs)
 
     def OnDrop(self, dropitem, dragitem):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
@@ -99,7 +94,7 @@ class DnDTree(treemix.DragAndDrop, wx.TreeCtrl):
         putsubtree(self, dropitem, *dragtree)
         self.Expand(dropitem)
 
-class RTCEditor(rt.RichTextCtrl):
+class EditorPanel(rt.RichTextCtrl):
     def __init__(self, parent, _id):
         rt.RichTextCtrl.__init__(self, parent, _id,
             style=wx.VSCROLL|wx.HSCROLL|wx.NO_BORDER)
@@ -340,14 +335,14 @@ class MainWindow(wx.Frame):
         self.SetIcon(self.nt_icon)
         self.statbar = self.CreateStatusBar()
 
-        ## tbar = wx.ToolBar(self, -1)
+        tbar = wx.ToolBar(self, -1)
         menuBar = wx.MenuBar()
         self.SetMenuBar(menuBar)
 
         self.splitter = wx.SplitterWindow (self, -1, style = wx.NO_3D) # |wx.SP_3D
         self.splitter.SetMinimumPaneSize (1)
 
-        self.tree = DnDTree(self.splitter, -1,
+        self.tree = TreePanel(self.splitter, -1,
             style=wx.TR_HAS_BUTTONS | wx.TR_EDIT_LABELS | wx.TR_HAS_VARIABLE_ROW_HEIGHT
             )
         self.root = self.tree.AddRoot("MyNotes")
@@ -355,19 +350,18 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, self.tree)
         self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
-        self.editor = RTCEditor(self.splitter, -1)
+        self.editor = EditorPanel(self.splitter, -1)
         self.editor.Enable(0)
         self.editor.new_content = True
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
-        ## self.create_toolbar(tbar) # frm)
         self.create_menu(menuBar, (
             ("&Main", (
-                ("Re&Load (Ctrl-R)", self.reread, 'Reread .ini file'),
-                ("&Open (Ctrl-O)", self.open, "Choose and open .ini file"),
-                ("&Init (Ctrl-I)", self.new, 'Start a new .ini file'),
-                ("&Save (Ctrl-S)", self.save, 'Save .ini file'),
-                ("Save as (Shift-Ctrl-S)", self.saveas, 'Name and save .ini file'),
+                ("Re&Load (Ctrl-R)", self.reread, 'Reread notes file'),
+                ("&Open (Ctrl-O)", self.open, "Choose and open notes file"),
+                ("&Init (Ctrl-I)", self.new, 'Start a new notes file'),
+                ("&Save (Ctrl-S)", self.save, 'Save notes file'),
+                ("Save as (Shift-Ctrl-S)", self.saveas, 'Name and save notes file'),
                 ("", None, None),
                 ("&Root title (Shift-F2)", self.rename_root, 'Rename root'),
                 ("Items sorteren", self.order_top, 'Bovenste niveau sorteren op titel'),
@@ -433,6 +427,7 @@ class MainWindow(wx.Frame):
                 ), ),
             )
         )
+        ## self.create_toolbar(tbar) # frm)
 
         self.splitter.SplitVertically(self.tree, self.editor)
         self.splitter.SetSashPosition(self.opts['SashPosition'], True)
@@ -622,13 +617,13 @@ class MainWindow(wx.Frame):
         self.save_needed()
         dirname = os.path.dirname(self.project_file)
         dlg = wx.FileDialog(self, "DocTree - choose file to open",
-            dirname, "", "INI files|*.ini", wx.OPEN)
+            dirname, "", FILTER, wx.OPEN)
         if dlg.ShowModal() == wx.ID_OK:
             filename, dirname = dlg.GetFilename(), dlg.GetDirectory()
             self.project_file = os.path.join(dirname, filename)
             err = self.read()
             if err:
-                messagebox(self, err, "Error")
+                wx.MessageBox(err, "Error")
         dlg.Destroy()
 
     def new(self, event=None):
@@ -636,7 +631,7 @@ class MainWindow(wx.Frame):
         self.save_needed()
         dirname = os.path.dirname(self.project_file)
         dlg = wx.FileDialog(self, "DocTree - enter name for new file",
-            dirname, "", "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
+            dirname, "", FILTER, wx.SAVE | wx.OVERWRITE_PROMPT)
         if dlg.ShowModal() == wx.ID_OK:
             filename, dirname = dlg.GetFilename(), dlg.GetDirectory()
             self.project_file = os.path.join(dirname, filename)
@@ -655,7 +650,7 @@ class MainWindow(wx.Frame):
                 "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
                 "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
                 "RootTitle": "MyNotes", "RootData": ""}
-            menuitem_list = self.viewmenu.GetMenuItems()
+            menuitem_list = list(self.viewmenu.GetMenuItems())
             for menuitem in menuitem_list[4:]:
                 self.viewmenu.DeleteItem(menuitem)
             _id = wx.NewId()
@@ -829,13 +824,13 @@ class MainWindow(wx.Frame):
         pck.dump(nt_data, f_out)
         f_out.close()
         if meld:
-            messagebox(self, self.project_file + " is opgeslagen","DocTool")
+            wx.MessageBox(self.project_file + " is opgeslagen","DocTool")
 
     def saveas(self, event = None):
         """afhandelen Menu > Save As"""
         dirname = os.path.dirname(self.project_file)
         dlg = wx.FileDialog(self, "DocTree - Save File as:", dirname, "",
-            "INI files|*.ini", wx.SAVE | wx.OVERWRITE_PROMPT)
+            FILTER, wx.SAVE | wx.OVERWRITE_PROMPT)
         if dlg.ShowModal() == wx.ID_OK:
             filename, dirname = dlg.GetFilename(), dlg.GetDirectory()
             self.project_file = os.path.join(dirname, filename)
@@ -1063,7 +1058,7 @@ class MainWindow(wx.Frame):
                     check_item(view, ref)
             self.tree.SelectItem(prev)
         else:
-            messagebox(self, "Can't delete root", "Error")
+            wx.MessageBox("Can't delete root", "Error")
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -1171,7 +1166,7 @@ class MainWindow(wx.Frame):
             self.tree.SetItemBold(self.activeitem, False)
             if self.editor.IsModified():
                 if message:
-                    print(message) # moet dit niet messagebox zijn?
+                    wx.MessageBox(message, 'DocTree')
                 ref = self.tree.GetItemPyData(self.activeitem)
                 try:
                     titel, tekst = self.itemdict[ref]
@@ -1236,14 +1231,16 @@ class MainWindow(wx.Frame):
         dlg.ShowModal()
         dlg.Destroy()
 
-def main(fname):
+def main(fname=''):
     app = wx.App(redirect=True, filename="doctree.log")
     print dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(
         ("\n------------------","------------------\n"))
     frame = MainWindow(None, -1, "DocTree - " + fname)
     app.SetTopWindow(frame)
-    frame.project_file = fname
-    err = frame.read()
-    if err:
-        messagebox(frame, err, "Error")
+    if fname:
+        frame.project_file = fname
+        err = frame.read()
+        if err:
+            wx.MessageBox(err, "Error")
     app.MainLoop()
+

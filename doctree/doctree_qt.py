@@ -18,6 +18,7 @@ logging.basicConfig(filename='doctree_qt.log', level=logging.DEBUG,
     format='%(asctime)s %(message)s')
 import datetime as dt
 HERE = os.path.dirname(__file__)
+FILTER = "Pickle files (*.pck)"
 
 def log(message):
     "write message to logfile"
@@ -551,74 +552,108 @@ class MainWindow(gui.QMainWindow):
         ## splitter.moveSplitter(180, 0)
         self.create_menu(menubar, (
             ("&Main", (
-                ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png', 'Reread .ini file'),
-                ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png', "Choose and open .ini file"),
-                ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png', 'Start a new .ini file'),
-                ("&Save", self.save, 'Ctrl+S', 'icons/filesave.png', 'Save .ini file'),
-                ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png', 'Name and save .ini file'),
+                ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png',
+                    'Reread notes file'),
+                ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png',
+                    "Choose and open .ini file"),
+                ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png',
+                    'Start a new notes file'),
+                ("&Save", self.save, 'Ctrl+S', 'icons/filesave.png',
+                    'Save notes file'),
+                ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png',
+                    'Name and save notes file'),
                 (),
                 ("&Root title", self.rename_root, 'Shift+F2', '', 'Rename root'),
-                ("Items sorteren", self.order_top, '', '', 'Bovenste niveau sorteren op titel'),
-                ("Items recursief sorteren", self.order_all, '', '', 'Alle niveaus sorteren op titel'),
+                ("Items sorteren", self.order_top, '', '',
+                    'Bovenste niveau sorteren op titel'),
+                ("Items recursief sorteren", self.order_all, '', '',
+                    'Alle niveaus sorteren op titel'),
                 (),
                 ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
-                ("Switch pane", self.change_pane, 'Ctrl+Tab', '', 'switch tussen tree en editor'),
+                ("Switch pane", self.change_pane, 'Ctrl+Tab', '',
+                    'switch tussen tree en editor'),
                 (),
-                ("e&Xit", core.SLOT('close()'), 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'),
+                ("e&Xit", core.SLOT('close()'), 'Ctrl+Q,Escape', 'icons/exit.png',
+                    'Exit program'),
                 ), ),
             ("&Note", (
-                ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
+                ("&New", self.add_item, 'Ctrl+N', '',
+                    'Add note (below current level)'),
                 ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
-                ("New under &Root", self.root_item, 'Shift+Ctrl+N', '', 'Add note (below root)'),
+                ("New under &Root", self.root_item, 'Shift+Ctrl+N', '',
+                    'Add note (below root)'),
                 ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
                 (),
                 ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
-                ("Subitems sorteren", self.order_this, '', '', 'Onderliggend niveau sorteren op titel'),
-                ("Subitems recursief sorteren", self.order_lower, '', '', 'Alle onderliggende niveaus sorteren op titel'),
+                ("Subitems sorteren", self.order_this, '', '',
+                    'Onderliggend niveau sorteren op titel'),
+                ("Subitems recursief sorteren", self.order_lower, '', '',
+                    'Alle onderliggende niveaus sorteren op titel'),
                 (),
                 ("&Forward", self.next_note, 'Ctrl+PgDown', '', 'View next note'),
                 ("&Back", self.prev_note, 'Ctrl+PgUp', '', 'View previous note'),
                 ),),
             ("&View", (
                 ('&New View', self.add_view, '', '', 'Add an alternative view (tree) to this data'),
-                ('&Rename Current View', self.rename_view, '', '', 'Rename the current tree view'),
-                ('&Delete Current View', self.remove_view, '', '', 'Remove the current tree view'),
+                ('&Rename Current View', self.rename_view, '', '',
+                    'Rename the current tree view'),
+                ('&Delete Current View', self.remove_view, '', '',
+                    'Remove the current tree view'),
                 (),
-                ('Next View', self.next_view, 'Ctrl++', '', 'Switch to the next view in the list'),
-                ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
+                ('Next View', self.next_view, 'Ctrl++', '',
+                    'Switch to the next view in the list'),
+                ('Prior View', self.prev_view, 'Ctrl+-', '',
+                    'Switch to the previous view in the list'),
                 (),
                 ), ), # label, handler, shortcut, icon, info
             ('E&dit (Tree)', (
                 ## ('&Undo', self.tree.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ## ('&Redo', self.tree.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
                 ## (),
-                ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png', 'Copy the selection and delete from tree'),
-                ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png', 'Just copy the selection'),
-                ('&Paste', self.paste_item_after, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection'),
+                ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png',
+                    'Copy the selection and delete from tree'),
+                ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png',
+                    'Just copy the selection'),
+                ('&Paste', self.paste_item_after, 'Ctrl+Alt+V', 'icons/treeitem-paste.png',
+                    'Paste the copied selection'),
                 ## (),
                 ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
                 ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
                 ), ),
             ('&Edit (Text)', (
-                ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
-                ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
+                ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png',
+                    'Undo last operation'),
+                ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png',
+                    'Redo last undone operation'),
                 (),
-                ('Cu&t', self.editor.cut, 'Ctrl+X', 'icons/edit-cut.png', 'Copy the selection and delete from text'),
-                ('&Copy', self.editor.copy, 'Ctrl+C', 'icons/edit-copy.png', 'Just copy the selection'),
-                ('&Paste', self.editor.paste, 'Ctrl+V', 'icons/edit-paste.png', 'Paste the copied selection'),
+                ('Cu&t', self.editor.cut, 'Ctrl+X', 'icons/edit-cut.png',
+                    'Copy the selection and delete from text'),
+                ('&Copy', self.editor.copy, 'Ctrl+C', 'icons/edit-copy.png',
+                    'Just copy the selection'),
+                ('&Paste', self.editor.paste, 'Ctrl+V', 'icons/edit-paste.png',
+                    'Paste the copied selection'),
                 (),
-                ('Select A&ll', self.editor.selectAll, 'Ctrl+A', "", 'Select the entire text'),
-                ("&Clear All (can't undo)", self.editor.clear, '', '', 'Delete the entire text'),
+                ('Select A&ll', self.editor.selectAll, 'Ctrl+A', "",
+                    'Select the entire text'),
+                ("&Clear All (can't undo)", self.editor.clear, '', '',
+                    'Delete the entire text'),
                 ), ),
             ('&Format', (
-                ('&Bold', self.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png', 'CheckB'),
-                ('&Italic', self.editor.text_italic, 'Ctrl+I', 'icons/format-text-italic.png', 'CheckI'),
-                ('&Underline', self.editor.text_underline, 'Ctrl+U', 'icons/format-text-underline.png', 'CheckU'),
+                ('&Bold', self.editor.text_bold, 'Ctrl+B',
+                    'icons/format-text-bold.png', 'CheckB'),
+                ('&Italic', self.editor.text_italic, 'Ctrl+I',
+                    'icons/format-text-italic.png', 'CheckI'),
+                ('&Underline', self.editor.text_underline, 'Ctrl+U',
+                    'icons/format-text-underline.png', 'CheckU'),
                 (),
-                ('Align &Left', self.editor.align_left, 'Shift+Ctrl+L', 'icons/format-justify-left.png', 'Check'),
-                ('C&enter', self.editor.align_center, 'Shift+Ctrl+C', 'icons/format-justify-center.png', 'Check'),
-                ('Align &Right', self.editor.align_right, 'Shift+Ctrl+R', 'icons/format-justify-right.png', 'Check'),
-                ('&Justify', self.editor.text_justify, 'Shift+Ctrl+J', 'icons/format-justify-fill.png', 'Check'),
+                ('Align &Left', self.editor.align_left, 'Shift+Ctrl+L',
+                    'icons/format-justify-left.png', 'Check'),
+                ('C&enter', self.editor.align_center, 'Shift+Ctrl+C',
+                    'icons/format-justify-center.png', 'Check'),
+                ('Align &Right', self.editor.align_right, 'Shift+Ctrl+R',
+                    'icons/format-justify-right.png', 'Check'),
+                ('&Justify', self.editor.text_justify, 'Shift+Ctrl+J',
+                    'icons/format-justify-fill.png', 'Check'),
                 (),
                 ## ("Indent &More", self.editor.indent_more, 'Ctrl+]', '', 'Increase indentation'),
                 ## ("Indent &Less", self.editor.indent_less, 'Ctrl+[', '', 'Decrease indentation'),
@@ -631,8 +666,10 @@ class MainWindow(gui.QMainWindow):
                 ## ("Double Line Spacing", self.editor.OnLineSpacingDouble, ''),
                 ## (),
                 ("&Font...", self.editor.text_font, '', '', 'Set/change font'),
-                ("&Enlarge text", self.editor.enlarge_text, 'Ctrl+Up', '', 'Use bigger letters'),
-                ("&Shrink text", self.editor.shrink_text, 'Ctrl+Down', '', 'Use smaller letters'),
+                ("&Enlarge text", self.editor.enlarge_text, 'Ctrl+Up', '',
+                    'Use bigger letters'),
+                ("&Shrink text", self.editor.shrink_text, 'Ctrl+Down', '',
+                    'Use smaller letters'),
                 (),
                 ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
                 ("&Background...", self.editor.background_color, '', '',
@@ -772,7 +809,7 @@ class MainWindow(gui.QMainWindow):
         self.save_needed()
         dirname = os.path.dirname(self.project_file)
         filename = gui.QFileDialog.getOpenFileName(self, "DocTree - choose file to open",
-                    dirname, "INI files (*.ini)")
+                    dirname, FILTER)
         if filename:
             self.project_file = str(filename)
             err = self.read()
@@ -787,7 +824,7 @@ class MainWindow(gui.QMainWindow):
             return
         dirname = os.path.dirname(self.project_file)
         filename = gui.QFileDialog.getSaveFileName(self, "DocTree - enter name for new file",
-            dirname, "INI files (*.ini)")
+            dirname, FILTER)
         if not filename:
             return
         self.project_file = str(filename)
@@ -993,7 +1030,7 @@ class MainWindow(gui.QMainWindow):
         """afhandelen Menu > Save As"""
         dirname = os.path.dirname(self.project_file)
         filename = gui.QFileDialog.getSaveFileName(self, "DocTree - save file as:",
-            dirname, "INI files (*.ini)")
+            dirname, FILTER)
         if filename:
             self.project_file = str(filename)
             self.write()
