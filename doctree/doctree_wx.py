@@ -435,6 +435,17 @@ class MainWindow(wx.Frame):
         ## self.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.Bind(wx.EVT_CLOSE, self.afsl)
 
+        sizer0 = wx.BoxSizer(wx.VERTICAL)
+        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer1.Add(self.splitter, 1, wx.EXPAND)
+        sizer0.Add(sizer1, 1, wx.EXPAND)
+
+        self.SetSizer(sizer0)
+        self.SetAutoLayout(True)
+        sizer0.Fit(self)
+        sizer0.SetSizeHints(self)
+        self.Layout()
+
         self.tree.SetFocus()
         self.Show(True)
 
@@ -773,7 +784,9 @@ class MainWindow(wx.Frame):
         except KeyError:
             self.itemdict = {}
         self.SetSize(self.opts["ScreenSize"])
-        self.splitter.SetSashPosition(self.opts["SashPosition"], True)
+        pos = self.opts["SashPosition"]
+        print('load sash position', pos)
+        self.splitter.SetSashPosition(int(pos), True)
         self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
         self.tree.SetItemPyData(self.root, self.opts["RootData"])
         self.editor.set_contents(self.opts["RootData"])
@@ -813,7 +826,9 @@ class MainWindow(wx.Frame):
         """settings en tree data in een structuur omzetten en opslaan"""
         self.check_active()
         self.opts["ScreenSize"] = tuple(self.GetSize())
-        self.opts["SashPosition"] = self.splitter.GetSashPosition()
+        pos = self.splitter.GetSashPosition()
+        print('write sash position:', pos)
+        self.opts["SashPosition"] = pos
         self.views[self.opts["ActiveView"]] = self.treetoview()
         nt_data = {0: self.opts, 1: self.views, 2: self.itemdict}
         try:
@@ -1243,4 +1258,7 @@ def main(fname=''):
         if err:
             wx.MessageBox(err, "Error")
     app.MainLoop()
+
+if __name__ == '__main__':
+    main('wx_tree.pck')
 
