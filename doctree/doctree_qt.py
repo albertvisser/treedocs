@@ -936,6 +936,30 @@ class MainWindow(gui.QMainWindow, Mixin):
         ## Mixin.rename_root(self, event)
         ## self.root.setText(0, self.opts['RootTitle'])
 
+    def _expand(self, recursive=False):
+        "expandeer tree vanaf huidige item"
+        def expand_all(item):
+            for ix in range(item.childCount()):
+                sub = item.child(ix)
+                sub.setExpanded(True)
+                expand_all(sub)
+        item = self.tree.currentItem()
+        self.tree.expandItem(item)
+        if recursive:
+            expand_all(item)
+
+    def _collapse(self, recursive=False):
+        "collapse huidige item en daaronder"
+        def collapse_all(item):
+            for ix in range(item.childCount()):
+                sub = item.child(ix)
+                collapse_all(sub)
+                sub.setExpanded(False)
+        item = self.tree.currentItem()
+        if recursive:
+            collapse_all(item)
+        self.tree.collapseItem(item)
+
     def _reorder_items(self, root, recursive = False):
         "(re)order_items"
         root.sortChildren(0, core.Qt.AscendingOrder)
@@ -974,3 +998,4 @@ def main(fnaam):
     sys.exit(app.exec_())
 
 main('MyMan.pck')
+456

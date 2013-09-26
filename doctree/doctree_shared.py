@@ -125,6 +125,11 @@ class Mixin(object):
                 ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png', 'Copy the selection and delete from tree'),
                 ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png', 'Just copy the selection'),
                 ('&Paste', self.paste_item_after, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection'),
+                (),
+                ('Expand', self.expand_item, 'Ctrl+<', '', 'Expand tree item'),
+                ('Collapse', self.collapse_item, 'Ctrl+>', '', 'Collapse tree item'),
+                ('Expand all', self.expand_all, 'Ctrl+Alt+<', '', 'Expand all subitems'),
+                ('Collapse all', self.collapse_all, 'Ctrl+Alt+>', '', 'Collapse all subitems'),
                 ## (),
                 ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
                 ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
@@ -665,6 +670,24 @@ class Mixin(object):
                 if idx != self.opts["ActiveView"]:
                     check_item(view, ref, subref)
         self._finish_rename(item, root)
+
+    def _expand(self, recursive=False):
+        raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
+
+    def _collapse(self, recursive=False):
+        raise NotImplementedError('collapse {}'.format('all' if recursive else 'item'))
+
+    def expand_item(self):
+        self._expand()
+
+    def collapse_item(self):
+        self._collapse()
+
+    def expand_all(self):
+        self._expand(recursive=True)
+
+    def collapse_all(self):
+        self._collapse(recursive=True)
 
     def ask_title(self, _title, _text):
         """vraag titel voor item"""
