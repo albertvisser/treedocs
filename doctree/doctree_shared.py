@@ -16,6 +16,12 @@ logging.basicConfig(filename='doctree.log', level=logging.DEBUG,
     format='%(asctime)s %(message)s')
 import datetime as dt
 
+def init_opts():
+    return {
+        "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
+        "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
+        "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
+
 def log(message):
     "write message to logfile"
     logging.info(message)
@@ -71,12 +77,6 @@ class Mixin(object):
         self.project_dirty = False # self.set_project_dirty(False)
         self.add_node_on_paste = False
         self.has_treedata = False
-
-    def init_opts(self):
-        self.opts = {
-            "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
-            "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
-            "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
 
     def _get_menu_data(self):
         return (
@@ -230,7 +230,7 @@ class Mixin(object):
         self.views = [[],]
         self.viewcount = 1
         self.itemdict = {}
-        self.init_opts()
+        self.opts = init_opts()
         self.has_treedata = True
         self.set_title()
         self.set_project_dirty(False)
@@ -321,6 +321,9 @@ class Mixin(object):
         self.set_title()
         self.set_project_dirty(False)
         self._finish_read(item_to_activate)
+
+    def _read(self):
+        raise NotImplementedError
 
     def reread(self, event=None):
         """afhandelen Menu > Reload (Ctrl-R)"""
@@ -558,7 +561,7 @@ class Mixin(object):
 
         self.cut_from_itemdict = []
         if retain:
-            self.cut_item = getsubtree(self.tree, current)
+            self.copied_item = getsubtree(self.tree, current)
             self.add_node_on_paste = True
         if not cut:
             return
@@ -616,19 +619,19 @@ class Mixin(object):
         if current == self.root and not below:
             self.show_message('Kan alleen *onder* de root kopiëren', 'DocTree')
             return
-        if not self.cut_item:
+        if not self.copied_item:
             return
         if below:
-            putsubtree(self.tree, current, *self.cut_item,
+            putsubtree(self.tree, current, *self.copied_item,
                 add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
             if before:
                 pos -= 1
-            putsubtree(self.tree, add_to, *self.cut_item, pos=pos,
+            putsubtree(self.tree, add_to, *self.copied_item, pos=pos,
                 add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         if self.add_node_on_paste:
-            # het cut_item in eventuele andere views ook toevoegen
+            # het copied_item in eventuele andere views ook toevoegen
             # misschien beter om dat in putsubtree te doen, waar ik de verwijzingen
             # naar itemdict items ook heb?
             pass
@@ -796,12 +799,14 @@ class Mixin(object):
             "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
             "Ctrl-R\t\t- alle notities opnieuw laden",
             "Ctrl-O\t\t- ander bestand met notities laden",
-            "Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
+            "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
             "Ctrl-Q, Esc\t\t- opslaan en sluiten",
             "Ctrl-H\t\t- verbergen in system tray",
             "",
             "F1\t\t- deze (help)informatie",
             "F2\t\t- wijzig notitie titel",
             "Shift-F2\t\t- wijzig root titel",
+            "",
+            "See menu for editing keys",
             ]
         self.show_message("\n".join(info), "DocTree")

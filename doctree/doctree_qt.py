@@ -9,7 +9,7 @@ import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 
 HERE = os.path.dirname(__file__)
-from .doctree_shared import Mixin
+from .doctree_shared import Mixin, init_opts
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -529,7 +529,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.statusbar = self.statusBar()
         self.statusbar.showMessage('Ready')
 
-        self.init_opts()
+        self.opts = init_opts()
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1]) # 800, 500)
         self.setWindowTitle('DocTree')
 
@@ -1000,4 +1000,3 @@ def main(fnaam):
     sys.exit(app.exec_())
 
 main('MyMan.pck')
-456
