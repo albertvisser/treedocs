@@ -118,13 +118,15 @@ class Mixin(object):
                 ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
                 (),
                 ), ), # label, handler, shortcut, icon, info
-            ('E&dit (Tree)', (
+            ('&Tree', (
                 ## ('&Undo', self.tree.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ## ('&Redo', self.tree.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
                 ## (),
                 ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png', 'Copy the selection and delete from tree'),
                 ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png', 'Just copy the selection'),
-                ('&Paste', self.paste_item_after, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection'),
+                ('&Paste Under', self.paste_item_below, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection under the selected item'),
+                ('&Paste After', self.paste_item_after, 'Shift+Ctrl+Alt+V', '', 'Paste the copied selection after the selected item (same parent)'),
+                ('&Paste Before', self.paste_item, '', '', 'Paste the copied selection before the selected item (same parent)'),
                 (),
                 ('Expand', self.expand_item, 'Ctrl+<', '', 'Expand tree item'),
                 ('Collapse', self.collapse_item, 'Ctrl+>', '', 'Collapse tree item'),
@@ -134,7 +136,7 @@ class Mixin(object):
                 ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
                 ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
                 ), ),
-            ('&Edit (Text)', (
+            ('T&ext', (
                 ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
                 ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
                 (),
@@ -611,6 +613,9 @@ class Mixin(object):
         current = self.tree._getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
+        if current == self.root and not below:
+            self.show_message('Kan alleen *onder* de root kopiëren', 'DocTree')
+            return
         if not self.cut_item:
             return
         if below:
