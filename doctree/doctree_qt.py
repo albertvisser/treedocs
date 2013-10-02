@@ -92,10 +92,15 @@ class TreePanel(gui.QTreeWidget):
         deze methode breidt de Treewidget methode uit met wat visuele zaken
         """
         dragitem = self.selectedItems()[0]
-        dropitem = dragitem.parent()
-        if not dropitem or dropitem == self.tree:
-            event.ignore()
+        dragparent = dragitem.parent()
+        dropitem = self.itemAt(event.pos())
+        if not dropitem:
+            ## event.ignore()
+            return
         gui.QTreeWidget.dropEvent(self, event)
+        if not dragitem.parent():
+            print('get it off!') # hier moet nog wat gebeuren: item terugzetten
+            return
         self.parent.set_project_dirty(True)
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
