@@ -73,7 +73,7 @@ class EditorPanel(object):
 
 class Mixin(object):
     """Hoofdscherm van de applicatie"""
-    def __init__(self, parent=None, fnaam=""):
+    def __init__(self): #, parent=None, fnaam=""):
         self.project_dirty = False # self.set_project_dirty(False)
         self.add_node_on_paste = False
         self.has_treedata = False
@@ -581,7 +581,11 @@ class Mixin(object):
         niet-actieve views te verwijderen
         """
         ref = self.tree._getitemtext(current)
+        ## try:
         data = self.itemdict.pop(ref)
+        ## except KeyError:
+            ## pass
+        ## else:
         itemlist.append((ref, data))
         for kid in self.tree._getitemkids(current):
             self._popitems(kid, itemlist)
@@ -632,8 +636,6 @@ class Mixin(object):
                 add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         if self.add_node_on_paste:
             # het copied_item in eventuele andere views ook toevoegen
-            # misschien beter om dat in putsubtree te doen, waar ik de verwijzingen
-            # naar itemdict items ook heb?
             pass
         self.set_project_dirty(True)
         self._finish_paste(current)

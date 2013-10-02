@@ -94,7 +94,7 @@ class TreePanel(gui.QTreeWidget):
         dragitem = self.selectedItems()[0]
         dropitem = dragitem.parent()
         if not dropitem or dropitem == self.tree:
-            event.Cancel()
+            event.ignore()
         gui.QTreeWidget.dropEvent(self, event)
         self.parent.set_project_dirty(True)
         self.setCurrentItem(dragitem)
@@ -112,7 +112,7 @@ class TreePanel(gui.QTreeWidget):
                 ## event.ignore()
         ## else:
             ## event.ignore()
-        event.ignore()
+        gui.QTreeWidget.mouseReleaseEvent(self, event)
 
     def keyReleaseEvent(self, event):
         "also for showing a context menu"
@@ -199,7 +199,7 @@ class TreePanel(gui.QTreeWidget):
             prev = parent
             if prev == self.parent.root:
                 prev = parent.child(pos + 1)
-        self._popitems(item, self.cut_from_itemdict)
+        self.parent._popitems(item, self.parent.cut_from_itemdict)
         parent.takeChild(pos)
         return prev
 
@@ -383,6 +383,7 @@ class EditorPanel(gui.QTextEdit):
     def text_color(self, event = None):
         "tekstkleur instellen"
         if not self.hasFocus():
+            self.parent.show_message("Can't do this outside text field", 'Doctree')
             return
         col = gui.QColorDialog.getColor(self.textColor(), self)
         if not col.isValid():
@@ -399,6 +400,7 @@ class EditorPanel(gui.QTextEdit):
     def set_text_color(self, event = None):
         "tekstkleur instellen"
         if not self.hasFocus():
+            self.parent.show_message("Can't do this outside text field", 'Doctree')
             return
         col = self.parent.setcoloraction_color
         fmt = gui.QTextCharFormat()
@@ -408,6 +410,7 @@ class EditorPanel(gui.QTextEdit):
     def background_color(self, event = None):
         "achtergrondkleur instellen"
         if not self.hasFocus():
+            self.parent.show_message("Can't do this outside text field", 'Doctree')
             return
         col = gui.QColorDialog.getColor(self.textBackgroundColor(), self)
         if not col.isValid():
@@ -424,6 +427,7 @@ class EditorPanel(gui.QTextEdit):
     def set_background_color(self, event = None):
         "achtergrondkleur instellen"
         if not self.hasFocus():
+            self.parent.show_message("Can't do this outside text field", 'Doctree')
             return
         col = self.parent.setbackgroundcoloraction_color
         fmt = gui.QTextCharFormat()
@@ -630,21 +634,21 @@ class MainWindow(gui.QMainWindow, Mixin):
 
         pix = gui.QPixmap(14, 14)
         pix.fill(core.Qt.black)
-        action = gui.QAction(gui.QIcon(pix), "&Color...", self)
+        action = gui.QAction(gui.QIcon(pix), "Change text color", self)
         action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
         pix = gui.QPixmap(14, 14)
         self.setcoloraction_color = core.Qt.magenta
         pix.fill(self.setcoloraction_color)
-        action = gui.QAction(gui.QIcon(pix), "Set text color...", self)
+        action = gui.QAction(gui.QIcon(pix), "Set text color", self)
         action.triggered.connect(self.editor.set_text_color)
         toolbar.addAction(action)
         self.setcolor_action = action
 
         pix = gui.QPixmap(18, 18)
         pix.fill(core.Qt.white)
-        action = gui.QAction(gui.QIcon(pix), "&Background...", self)
+        action = gui.QAction(gui.QIcon(pix), "Change background color", self)
         action.triggered.connect(self.editor.background_color)
         toolbar.addAction(action)
         self.actiondict["&Background..."] = action
@@ -910,7 +914,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.tree.setCurrentItem(tree_item)
 
     def _confirm(self, title, text):
-        retval = gui.QMessageBox.question(self, title, question,
+        retval = gui.QMessageBox.question(self, title, text,
             gui.QMessageBox.Yes | gui.QMessageBox.No,
             defaultButton = gui.QMessageBox.Yes)
         return True if retval == gui.QMessageBox.Yes else False

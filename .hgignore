@@ -11,3 +11,6 @@ syntax: glob
 pylint*
 *orig
 *.pck
+*data/*
+*oud/*
+*out
