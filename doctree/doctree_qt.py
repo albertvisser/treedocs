@@ -98,12 +98,29 @@ class TreePanel(gui.QTreeWidget):
             ## event.ignore()
             return
         gui.QTreeWidget.dropEvent(self, event)
-        if not dragitem.parent():
+        count = self.topLevelItemCount()
+        if count > 1:
+        ## if not dragitem.parent():
             print('get it off!') # hier moet nog wat gebeuren: item terugzetten
+            for ix in range(count):
+                if self.topLevelItem(ix) == dragitem:
+                    self.takeTopLevelItem(ix)
+                    self.oldparent.insertChild(self.oldpos, dragitem)
+                    self.setCurrentItem(dragitem)
+                    break
             return
         self.parent.set_project_dirty(True)
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
+
+    def mousePressEvent(self, event):
+        """remember the current parent in preparation for "canceling" a dragmove
+        """
+        xc, yc = event.x(), event.y()
+        item = self.itemAt(xc, yc)
+        if item:
+            self.oldparent, self.oldpos = self._getitemparentpos(item)
+        gui.QTreeWidget.mousePressEvent(self, event)
 
     def mouseReleaseEvent(self, event):
         "for showing a context menu"
