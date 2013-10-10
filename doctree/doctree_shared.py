@@ -26,39 +26,27 @@ def log(message):
     "write message to logfile"
     logging.info(message)
 
-def getsubtree(tree, item):
-    """recursieve functie om de strucuur onder de te verplaatsen data
+def getsubtree(tree, item, itemlist=None):
+    """recursieve functie om de structuur onder de te verplaatsen data
     te onthouden"""
+    if itemlist is None:
+        itemlist = []
     titel, key = tree._getitemdata(item)
+    itemlist.append(key)
     log(' getsubtree item {}, {}'.format(titel, key))
     subtree = []
     for kid in tree._getitemkids(item):
-        subtree.append(getsubtree(tree, kid))
-    return titel, key, subtree
+        data, itemlist = getsubtree(tree, kid, itemlist)
+        subtree.append(data)
+    return (titel, key, subtree), itemlist
 
-def putsubtree(tree, parent, titel, key, subtree=None, pos=-1, add_nodes=None,
-        itemdict=None):
+def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
     """recursieve functie om de onthouden structuur terug te zetten"""
     if subtree is None:
         subtree = []
-    if add_nodes is None:
-        add_nodes = []
-    if itemdict is None:
-        itemdict = {}
-    log(' putsubtree item {}, {}, {}, {}, {}'.format(titel, key, subtree, pos,
-        add_nodes))
-    if add_nodes:
-        for key, data in add_nodes:
-            itemdict[int(key)] = str(data)
-        add_nodes = []
-    else:
-        newkey = len(itemdict)
-        while newkey in itemdict:
-            newkey += 1
-        itemdict[newkey] = (titel, itemdict[int(key)][1])
     new = tree.add_to_parent(str(key), str(titel), parent, pos)
     for subtitel, subkey, subsubtree in subtree:
-        putsubtree(tree, new, subtitel, subkey, subsubtree, itemdict=itemdict)
+        putsubtree(tree, new, subtitel, subkey, subsubtree)
     return new # , itemdict
 
 class TreePanel(object):
@@ -368,6 +356,7 @@ class Mixin(object):
             test = os.path.splitext(filename)
             if len(test) == 1 or test[1] != '.pck':
                 filename += '.pck'
+            self.project_file = filename
             self.write()
             self.set_title()
 
@@ -450,6 +439,7 @@ class Mixin(object):
         self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
         self._rebuild_root()
         tree_item = self.viewtotree()
+        print('view_to_tree returns', tree_item)
         self.set_title()
         self._finish_select_view(tree_item)
 
@@ -561,18 +551,28 @@ class Mixin(object):
 
         self.cut_from_itemdict = []
         if retain:
-            self.copied_item = getsubtree(self.tree, current)
+            self.copied_item, itemlist = getsubtree(self.tree, current)
+            self.cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
             self.add_node_on_paste = True
+        print('cut_from_itemdict bij copy:', self.cut_from_itemdict)
         if not cut:
             return
 
         self.add_node_on_paste = False
         prev = self.tree._removeitem(current)
+        print('cut_from_itemdict bij cut:', self.cut_from_itemdict)
         self.activeitem = None
         self._removed = [x[0] for x in self.cut_from_itemdict]
+        for ix, item in enumerate(self.opts["ActiveItem"]):
+            if item in self._removed:
+                self.opts["ActiveItem"][ix] = self.tree._getitemtext(prev)
         for ix, view in enumerate(self.views):
+            print('before updating view ',ix)
+            print(view)
             if ix != self.opts["ActiveView"]:
                 self._updateview(view)
+                print('after updating view')
+                print(view)
         self.set_project_dirty(True)
         self._finish_copy(prev)
 
@@ -593,6 +593,7 @@ class Mixin(object):
     def _updateview(self, view):
         klaar = False
         for idx, item in reversed(list(enumerate(view))):
+            print(idx, item)
             itemref, subview = item
             if itemref in self._removed:
                 self._updateview(subview)
@@ -617,6 +618,12 @@ class Mixin(object):
 
     def paste_item(self, evt = None, before = True, below = False):
         "start paste actie"
+        def add_to_view(item, struct):
+            titel, key, children = item
+            kids = []
+            struct.append((int(key), kids))
+            for child in children:
+                add_to_view(child, kids)
         current = self.tree._getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
@@ -625,18 +632,53 @@ class Mixin(object):
             return
         if not self.copied_item:
             return
+        copied_item = self.copied_item
+        if self.add_node_on_paste:
+            # met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
+                # - voor elk item nieuwe key opvoeren met dezelfde data value
+                # - bij elke bestaande key de nieuwe key onthouden
+            keymap = {}
+            newkey = max(self.itemdict.keys()) + 1
+            for key, item in self.cut_from_itemdict:
+                title, text = item
+                self.itemdict[newkey] = (title, text)
+                keymap[key] = newkey
+                newkey += 1
+            print(keymap)
+            # kopie van copied_item maken met vervangen van oude key door nieuwe key
+            # geen add_nodes en itemdict nodig: itemdict hoeft niet tijdens verloop te worden aangevuld
+            def replace_keys(item, keymap):
+                item = list(item)
+                oldkey = int(item[1])
+                item[1] = keymap[oldkey]
+                hlp = []
+                for subitem in item[2]:
+                    subitem = replace_keys(subitem, keymap)
+                    hlp.append(subitem)
+                item[2] = hlp
+                return tuple(item)
+            copied_item = replace_keys(copied_item, keymap)
+
         if below:
-            putsubtree(self.tree, current, *self.copied_item,
-                add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
+            putsubtree(self.tree, current, *copied_item)
+                ## add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
             if before:
                 pos -= 1
-            putsubtree(self.tree, add_to, *self.copied_item, pos=pos,
-                add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
+            putsubtree(self.tree, add_to, *copied_item, pos=pos)
+                ## add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         if self.add_node_on_paste:
             # het copied_item in eventuele andere views ook toevoegen
-            pass
+            for ix, view in enumerate(self.views):
+                if ix != self.opts["ActiveView"]:
+                    titel, key, children = copied_item
+                    struct = []
+                    for child in children:
+                        add_to_view(child, struct)
+                    view.append((int(key), struct))
+        else:
+            self.add_node_on_paste = True
         self.set_project_dirty(True)
         self._finish_paste(current)
 

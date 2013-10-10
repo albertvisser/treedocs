@@ -100,8 +100,6 @@ class TreePanel(gui.QTreeWidget):
         gui.QTreeWidget.dropEvent(self, event)
         count = self.topLevelItemCount()
         if count > 1:
-        ## if not dragitem.parent():
-            print('get it off!') # hier moet nog wat gebeuren: item terugzetten
             for ix in range(count):
                 if self.topLevelItem(ix) == dragitem:
                     self.takeTopLevelItem(ix)
@@ -205,7 +203,10 @@ class TreePanel(gui.QTreeWidget):
 
     def _getitemparentpos(self, item):
         root = item.parent()
-        pos = root.indexOfChild(item)
+        if root:
+            pos = root.indexOfChild(item)
+        else:
+            pos = -1
         return root, pos
 
     def _getselecteditem(self):
@@ -808,14 +809,14 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.opts["SashPosition"] = self.splitter.saveState()
         Mixin.write(self, meld)
 
-    def hide_me(self, event = None):
+    def hide_me(self, event=None):
         """applicatie verbergen"""
         if self.opts["AskBeforeHide"]:
             dlg = CheckDialog(self)
         self.tray_icon.show()
         self.hide()
 
-    def revive(self, event = None):
+    def revive(self, event=None):
         """applicatie weer zichtbaar maken"""
         if event == gui.QSystemTrayIcon.Unknown:
             self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
@@ -825,7 +826,7 @@ class MainWindow(gui.QMainWindow, Mixin):
             self.show()
             self.tray_icon.hide()
 
-    def afsl(self, event = None):
+    def afsl(self, event=None):
         """applicatie afsluiten"""
         self.close()
 
@@ -988,7 +989,7 @@ class MainWindow(gui.QMainWindow, Mixin):
             collapse_all(item)
         self.tree.collapseItem(item)
 
-    def _reorder_items(self, root, recursive = False):
+    def _reorder_items(self, root, recursive=False):
         "(re)order_items"
         root.sortChildren(0, core.Qt.AscendingOrder)
         if recursive:
