@@ -439,7 +439,6 @@ class Mixin(object):
         self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
         self._rebuild_root()
         tree_item = self.viewtotree()
-        print('view_to_tree returns', tree_item)
         self.set_title()
         self._finish_select_view(tree_item)
 
@@ -554,25 +553,19 @@ class Mixin(object):
             self.copied_item, itemlist = getsubtree(self.tree, current)
             self.cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
             self.add_node_on_paste = True
-        print('cut_from_itemdict bij copy:', self.cut_from_itemdict)
         if not cut:
             return
 
         self.add_node_on_paste = False
         prev = self.tree._removeitem(current)
-        print('cut_from_itemdict bij cut:', self.cut_from_itemdict)
         self.activeitem = None
         self._removed = [x[0] for x in self.cut_from_itemdict]
         for ix, item in enumerate(self.opts["ActiveItem"]):
             if item in self._removed:
                 self.opts["ActiveItem"][ix] = self.tree._getitemtext(prev)
         for ix, view in enumerate(self.views):
-            print('before updating view ',ix)
-            print(view)
             if ix != self.opts["ActiveView"]:
                 self._updateview(view)
-                print('after updating view')
-                print(view)
         self.set_project_dirty(True)
         self._finish_copy(prev)
 
@@ -593,7 +586,6 @@ class Mixin(object):
     def _updateview(self, view):
         klaar = False
         for idx, item in reversed(list(enumerate(view))):
-            print(idx, item)
             itemref, subview = item
             if itemref in self._removed:
                 self._updateview(subview)
@@ -644,7 +636,6 @@ class Mixin(object):
                 self.itemdict[newkey] = (title, text)
                 keymap[key] = newkey
                 newkey += 1
-            print(keymap)
             # kopie van copied_item maken met vervangen van oude key door nieuwe key
             # geen add_nodes en itemdict nodig: itemdict hoeft niet tijdens verloop te worden aangevuld
             def replace_keys(item, keymap):
@@ -661,13 +652,11 @@ class Mixin(object):
 
         if below:
             putsubtree(self.tree, current, *copied_item)
-                ## add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
             if before:
                 pos -= 1
             putsubtree(self.tree, add_to, *copied_item, pos=pos)
-                ## add_nodes=self.cut_from_itemdict, itemdict=self.itemdict)
         if self.add_node_on_paste:
             # het copied_item in eventuele andere views ook toevoegen
             for ix, view in enumerate(self.views):
