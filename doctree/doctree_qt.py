@@ -1025,5 +1025,3 @@ def main(fnaam):
     if err:
         gui.QMessageBox.information(main, "Error", err, gui.QMessageBox.Ok)
     sys.exit(app.exec_())
-
-main('MyMan.pck')

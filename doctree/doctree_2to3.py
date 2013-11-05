@@ -60,7 +60,7 @@ def main(args):
         if key == "SashPosition":
             data[0][key] = 180
         elif key == "RootData":
-            data[0][key] = str(value)
+            data[0][key] = unicode(value)
     for key, value in data[2].items():
         titel, text = value
         data[2][key] = (unicode(titel), unicode(text))
