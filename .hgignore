@@ -10,7 +10,7 @@ syntax: glob
 *xml
 pylint*
 *orig
-*.pck
+*.pck*
 *data/*
 *oud/*
 *out
