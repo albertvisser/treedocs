@@ -7,7 +7,8 @@ and the possibility of nesting notes underneath each other.
 
 For that purpose it uses a tree view on the left-hand side
 and a text window on the right-hand side.
-Another addition to Apropos is that it supports text formatting.
+Another addition to Apropos is that it supports
+`text formatting </avisser/doctree/wiki/formatting>`_.
 
 Some ideas are inspired by Lotus Notes, e.g. the possibility of
 `creating a sublevel by inserting a backslash surrounded by two spaces
@@ -17,6 +18,18 @@ ways </avisser/doctree/wiki/reorder_tree>`_.
 
 This application also supports saving and loading files under different names,
 and reordering items by sorting or using drag 'n drop.
+
+Another little extra is that you can copy pictures into the texts.
+
+Usage
+-----
+
+cd to the top directory, and run ``python(3) dt_start.pyw``.
+If you know which file you are working with, you can add its name as an extra
+parameter.
+
+The GUI toolkit used is controlled in doctree.py in the subdirectory;
+note that the import for the wx version only works with Python 2.
 
 Requirements
 ------------
