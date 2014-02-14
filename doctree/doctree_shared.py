@@ -62,7 +62,7 @@ class EditorPanel(object):
 class Mixin(object):
     """Hoofdscherm van de applicatie"""
     def __init__(self): #, parent=None, fnaam=""):
-        self.project_dirty = False # self.set_project_dirty(False)
+        self.project_dirty = False # set it directly because self.set_project_dirty doesn't exist yet
         self.add_node_on_paste = False
         self.has_treedata = False
 
@@ -201,7 +201,7 @@ class Mixin(object):
                 self.show_message(title="Error", text=err)
             self.show_statusmessage('{} gelezen'.format(self.project_file))
 
-    def new(self, event = None):
+    def new(self, event=None):
         "Afhandelen Menu - Init / Ctrl-I"
         if not self.save_needed():
             return False
@@ -224,10 +224,8 @@ class Mixin(object):
         self.set_project_dirty(False)
         return True
 
-    def save_needed(self, meld=True):
-        """vraag of het bestand opgeslagen moet worden als er iets aan de
-        verzameling notities is gewijzigd"""
-        # meld is only to keep signatures aligned
+    def save_needed(self):
+        """check if anything has changed"""
         return self.has_treedata and self.project_dirty
 
     def treetoview(self):
@@ -371,7 +369,7 @@ class Mixin(object):
     def afsl(self, event=None):
         raise NotImplementedError
 
-    def add_view(self, event = None):
+    def add_view(self, event=None):
         "handles Menu > View > New view"
         self.check_active()
         self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree._getitemdata(
@@ -406,7 +404,7 @@ class Mixin(object):
         "tree leegmaken en root opnieuw neerzetten"
         raise NotImplementedError
 
-    def rename_view(self, event = None):
+    def rename_view(self, event=None):
         "handles Menu > View > Rename current view"
         oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
         ok, newname = self._get_name('Geef een nieuwe naam voor de huidige view',
@@ -446,7 +444,7 @@ class Mixin(object):
         "view menu bijwerken n.a.v. wijzigen view naam"
         raise NotImplementedError
 
-    def remove_view(self, event = None):
+    def remove_view(self, event=None):
         "handles Menu > View > Delete current view"
         if self.viewcount == 1:
             self.show_message('Doctree', "Can't delete the last (only) view")
@@ -485,7 +483,7 @@ class Mixin(object):
             self.opts['RootTitle'] = data
             self.tree._setitemtitle(self.root, data)
 
-    def add_item(self, event = None, root = None, under = True):
+    def add_item(self, event=None, root=None, under=True):
         """nieuw item toevoegen (default: onder het geselecteerde)"""
         if under:
             if root is None:
@@ -519,7 +517,7 @@ class Mixin(object):
         self.set_project_dirty(True)
         self._finish_add(root, item)
 
-    def root_item(self, event = None):
+    def root_item(self, event=None):
         """nieuw item toevoegen onder root"""
         self.add_item(root = self.root)
 
@@ -527,15 +525,15 @@ class Mixin(object):
         """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
         self.add_item(event = event, under = False)
 
-    def cut_item(self, evt = None):
+    def cut_item(self, evt= None):
         "cut = copy with removing item from tree"
         self.copy_item(cut = True)
 
-    def delete_item(self, evt = None):
+    def delete_item(self, evt=None):
         "delete = copy with removing item from tree and memory"
         self.copy_item(cut = True, retain = False)
 
-    def copy_item(self, evt = None, cut = False, retain = True):
+    def copy_item(self, evt=None, cut=False, retain=True):
         "start copy/cut/delete action"
         current = self.tree._getselecteditem() # self.activeitem kan niet?
         if current == self.root:
@@ -600,15 +598,15 @@ class Mixin(object):
                 ## break
         return klaar
 
-    def paste_item_after(self, evt = None):
+    def paste_item_after(self, evt=None):
         "paste after instead of before"
         self.paste_item(before=False)
 
-    def paste_item_below(self, evt = None):
+    def paste_item_below(self, evt=None):
         "paste below instead of before"
         self.paste_item(below=True)
 
-    def paste_item(self, evt = None, before = True, below = False):
+    def paste_item(self, evt=None, before=True, below=False):
         "start paste actie"
         def add_to_view(item, struct):
             titel, key, children = item
@@ -742,42 +740,42 @@ class Mixin(object):
                 return new_title, extra_title
         return
 
-    def order_top(self, event = None):
+    def order_top(self, event=None):
         """order items directly under the top level"""
         self.reorder_items(self.root)
 
-    def order_all(self, event = None):
+    def order_all(self, event=None):
         """order items under top level and below"""
         self.reorder_items(self.root, recursive = True)
 
-    def reorder_items(self, root, recursive = False):
+    def reorder_items(self, root, recursive=False):
         "(re)order_items"
         self._reorder_items(root, recursive)
         self.set_project_dirty(True)
 
-    def _reorder_items(self, root, recursive = False):
+    def _reorder_items(self, root, recursive=False):
         "(re)order_items"
         raise NotImplementedError
 
-    def order_this(self, event = None):
+    def order_this(self, event=None):
         """order items directly under current level"""
         self.reorder_items(self.activeitem)
 
-    def order_lower(self, event = None):
+    def order_lower(self, event=None):
         """order items under current level and below"""
         self.reorder_items(self.activeitem, recursive = True)
 
-    def next_note(self, event = None):
+    def next_note(self, event=None):
         """move to next item"""
         if not self._set_next_item():
             self.show_message("Geen volgend item op dit niveau", "DocTree")
 
-    def prev_note(self, event = None):
+    def prev_note(self, event=None):
         """move to previous item"""
         if not self._set_prev_item():
             self.show_message("Geen vorig item op dit niveau", "DocTree")
 
-    def check_active(self, message = None):
+    def check_active(self, message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         if self.activeitem:
             if self.editor._check_dirty():
@@ -808,7 +806,7 @@ class Mixin(object):
             self.editor.set_contents(tekst) # , titel)
         self.editor._openup(True)
 
-    def info_page(self, event = None):
+    def info_page(self, event=None):
         """help -> about"""
         info = [
             "DocTree door Albert Visser",
@@ -817,7 +815,7 @@ class Mixin(object):
             ]
         self.show_message("\n".join(info), "DocTree")
 
-    def help_page(self, event = None):
+    def help_page(self, event=None):
         """help -> keys"""
         info = [
             "Ctrl-N\t\t- nieuwe notitie onder huidige",

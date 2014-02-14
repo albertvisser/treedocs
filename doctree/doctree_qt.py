@@ -403,7 +403,7 @@ class EditorPanel(gui.QTextEdit):
             self.mergeCurrentCharFormat(fmt)
             self.setFocus()
 
-    def text_color(self, event = None):
+    def text_color(self, event=None):
         "tekstkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -420,7 +420,7 @@ class EditorPanel(gui.QTextEdit):
         pix.fill(col)
         self.parent.setcolor_action.setIcon(gui.QIcon(pix))
 
-    def set_text_color(self, event = None):
+    def set_text_color(self, event=None):
         "tekstkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -430,7 +430,7 @@ class EditorPanel(gui.QTextEdit):
         fmt.setForeground(col)
         self.mergeCurrentCharFormat(fmt)
 
-    def background_color(self, event = None):
+    def background_color(self, event=None):
         "achtergrondkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -447,7 +447,7 @@ class EditorPanel(gui.QTextEdit):
         pix.fill(col)
         self.parent.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
 
-    def set_background_color(self, event = None):
+    def set_background_color(self, event=None):
         "achtergrondkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -527,16 +527,17 @@ class EditorPanel(gui.QTextEdit):
             cursor.select(gui.QTextCursor.WordUnderCursor)
         cursor.mergeCharFormat(format)
         gui.QTextEdit.mergeCurrentCharFormat(self, format)
+
     def _check_dirty(self):
-        "mixin exit to check for modifications"
+        "check for modifications"
         return self.document().isModified()
 
     def _mark_dirty(self, value):
-        "mixin exit to manually turn modified flag on/off (mainly intended for off)"
-        self.document().setModified(value) # gui
+        "manually turn modified flag on/off (mainly intended for off)"
+        self.document().setModified(value)
 
     def _openup(self, value):
-        "mixin exit to make text accessible (or not)"
+        "make text accessible (or not)"
         self.setReadOnly(not value)
 
 class MainWindow(gui.QMainWindow, Mixin):
@@ -728,20 +729,22 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.editor.setReadOnly(False)
         self.tree.setFocus()
 
-    def save_needed(self, meld=True):
+    def save_needed(self, meld=True, always_check=False):
         """vraag of het bestand opgeslagen moet worden als er iets aan de
         verzameling notities is gewijzigd"""
-        if not Mixin.save_needed(self):
-            return True
-        if self.editor.hasFocus():
-            self.check_active()
-        retval = gui.QMessageBox.question(self, "DocTree",
-            "Data changed - save current file before continuing?",
-            gui.QMessageBox.Yes | gui.QMessageBox.No | gui.QMessageBox.Cancel,
-            defaultButton = gui.QMessageBox.Yes)
-        if retval == gui.QMessageBox.Yes:
-            self.save(meld=meld)
-        return False if retval == gui.QMessageBox.Cancel else True
+        retval = Mixin.save_needed(self)
+        if not retval or always_check:
+            if self.editor.hasFocus():
+                self.check_active()
+            retval = gui.QMessageBox.question(self, "DocTree",
+                "Data changed - save current file before continuing?",
+                gui.QMessageBox.Yes | gui.QMessageBox.No | gui.QMessageBox.Cancel,
+                defaultButton = gui.QMessageBox.Yes)
+            if retval == gui.QMessageBox.Yes:
+                self.save(meld=meld)
+            if retval == gui.QMessageBox.Cancel:
+                return False
+        return True
 
     def _read(self):
         "GUI-specifieke zaken binnen Mixin.read()"
@@ -832,7 +835,7 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def closeEvent(self, event):
         """applicatie afsluiten"""
-        if not self.save_needed(meld=False):
+        if not self.save_needed(meld=False, always_check=True):
             event.ignore()
         else:
             event.accept()
@@ -1017,7 +1020,7 @@ class MainWindow(gui.QMainWindow, Mixin):
 
 def main(fnaam):
     app = gui.QApplication(sys.argv)
-    main = MainWindow(fnaam = fnaam)
+    main = MainWindow(fnaam=fnaam)
     app.setWindowIcon(main.nt_icon)
     main.show()
     main.project_file = fnaam
