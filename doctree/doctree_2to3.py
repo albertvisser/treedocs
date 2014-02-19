@@ -8,9 +8,10 @@ to be run under Python 2
 import sys
 import os
 import shutil
-import cPickle as pck
-## import PyQt4.QtGui as gui
-## import PyQt4.QtCore as core
+if sys.version < '3':
+    import cPickle as pck
+else:
+    import pickle as pck
 
 usage = """\
 usage: [python] doctree_2to3.py <filename>
@@ -45,6 +46,9 @@ def save(fname, data):
     f_out.close()
 
 def main(args):
+    if sys.version >= '3':
+        print('This script is not meant to be run using Python 3 or higher')
+        return False
     if len(args) != 2:
         print("wrong number of arguments")
         return False
