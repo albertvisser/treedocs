@@ -41,9 +41,8 @@ def save(fname, data):
         shutil.copyfile(fname, fname + ".py2")
     except IOError:
         pass
-    f_out = open(fname,"wb")
-    pck.dump(data, f_out, protocol=2)
-    f_out.close()
+    with open(fname,"wb") as f_out:
+        pck.dump(data, f_out, protocol=2)
 
 def main(args):
     if sys.version >= '3':

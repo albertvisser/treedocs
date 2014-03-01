@@ -38,7 +38,7 @@ def main(fname, donot_filter_html=False):
         try:
             test = nt_data[0]["AskBeforeHide"]
         except (ValueError, KeyError):
-            return "{} is not a valid Doctree data file".format(self.project_file)
+            return "{} is not a valid Doctree data file".format(fname)
 
         # pprint the first element; a dictionary with settings
         print('options:', file=_out)
