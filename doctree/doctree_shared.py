@@ -10,6 +10,8 @@ if sys.version[0] < '3':
 else:
     import pickle as pck
 import shutil
+import zipfile as zip
+import bs4 as bs
 import pprint
 import logging
 logging.basicConfig(filename='doctree.log', level=logging.DEBUG,
@@ -301,6 +303,17 @@ class Mixin(object):
             self.itemdict = nt_data[2]
         except KeyError:
             self.itemdict = {}
+
+        path = os.path.dirname((self.project_file))
+        if path:
+            os.chdir(path)
+        fname = os.path.basename(self.project_file)
+
+        try:
+            with zip.ZipFile(fname + '.zip', "r") as _in:
+                _in.extractall()
+        except FileNotFoundError:
+            pass
         self._read()
         item_to_activate = self.viewtotree()
         self.has_treedata = True
@@ -333,13 +346,29 @@ class Mixin(object):
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
         nt_data = {0: self.opts, 1: self.views, 2: self.itemdict}
+        zipfile = os.path.splitext(self.project_file)[0] + '.zip'
         try:
             shutil.copyfile(self.project_file, self.project_file + ".bak")
+            shutil.copyfile(zipfile, zipfile + ".bak")
         except IOError:
             pass
-        f_out = open(self.project_file,"wb")
-        pck.dump(nt_data, f_out, protocol=2)
-        f_out.close()
+        with open(self.project_file,"wb") as f_out:
+            pck.dump(nt_data, f_out, protocol=2)
+        # scan de itemdict af op image files en zet ze in een list
+        filenames = []
+        soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
+        for _, data in nt_data[2].values():
+            names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
+            filenames.extend(names)
+        # zip de image files en verwijder ze
+        path = os.path.dirname((self.project_file)) # eventueel eerst absoluut maken
+        if path:
+            os.chdir(path)
+        fname = os.path.basename(self.project_file)
+        with zip.ZipFile(fname + '.zip', "w") as _out:
+            for name in filenames:
+                _out.write(name)
+                os.remove(name)
         self.set_project_dirty(False)
         if meld:
             self.show_message(self.project_file + " is opgeslagen", "DocTool")

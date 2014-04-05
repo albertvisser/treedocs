@@ -259,6 +259,7 @@ class EditorPanel(gui.QTextEdit):
             self.parent.opts['ImageCount'] = num
             urlname = '{}_{:05}.png'.format(self.parent.project_file,  num)
             ok = image.save(urlname)
+            urlname = os.path.basename(urlname) # make name "relative"
             document.addResource(gui.QTextDocument.ImageResource,
                 core.QUrl(urlname), image)
             cursor.insertImage(urlname)
