@@ -220,6 +220,7 @@ class Mixin(object):
         self.views = [[],]
         self.viewcount = 1
         self.itemdict = {}
+        self._filenames = []
         self.opts = init_opts()
         self.has_treedata = True
         self.set_title()
@@ -309,9 +310,11 @@ class Mixin(object):
             os.chdir(path)
         fname = os.path.basename(self.project_file)
 
+        self._filenames = []
         try:
             with zip.ZipFile(fname + '.zip', "r") as _in:
                 _in.extractall()
+                self._filenames = _in.namelist()
         except FileNotFoundError:
             pass
         self._read()
@@ -355,20 +358,19 @@ class Mixin(object):
         with open(self.project_file,"wb") as f_out:
             pck.dump(nt_data, f_out, protocol=2)
         # scan de itemdict af op image files en zet ze in een list
-        filenames = []
+        self._filenames = []
         soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
         for _, data in nt_data[2].values():
             names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
-            filenames.extend(names)
+            self._filenames.extend(names)
         # zip de image files en verwijder ze
         path = os.path.dirname((self.project_file)) # eventueel eerst absoluut maken
         if path:
             os.chdir(path)
         fname = os.path.basename(self.project_file)
         with zip.ZipFile(fname + '.zip', "w") as _out:
-            for name in filenames:
+            for name in self._filenames:
                 _out.write(name)
-                os.remove(name)
         self.set_project_dirty(False)
         if meld:
             self.show_message(self.project_file + " is opgeslagen", "DocTool")
@@ -396,7 +398,8 @@ class Mixin(object):
         raise NotImplementedError
 
     def afsl(self, event=None):
-        raise NotImplementedError
+        for name in self._filenames:
+            os.remove(name)
 
     def add_view(self, event=None):
         "handles Menu > View > New view"

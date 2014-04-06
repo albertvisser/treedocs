@@ -839,6 +839,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         if not self.save_needed(meld=False, always_check=True):
             event.ignore()
         else:
+            Mixin.afsl(self)
             event.accept()
 
     def viewportEvent(self, event):
