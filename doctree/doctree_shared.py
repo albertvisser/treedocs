@@ -196,12 +196,13 @@ class Mixin(object):
             return
         dirname = os.path.dirname(self.project_file)
         ok, filename = self.getfilename("DocTree - choose file to open", dirname)
-        if ok:
-            self.project_file = str(filename)
-            err = self.read()
-            if err:
-                self.show_message(title="Error", text=err)
-            self.show_statusmessage('{} gelezen'.format(self.project_file))
+        if not ok:
+            return
+        self.project_file = str(filename)
+        err = self.read()
+        if err:
+            self.show_message(title="Error", text=err)
+        self.show_statusmessage('{} gelezen'.format(self.project_file))
 
     def new(self, event=None):
         "Afhandelen Menu - Init / Ctrl-I"
@@ -589,13 +590,13 @@ class Mixin(object):
         self.add_node_on_paste = False
         prev = self.tree._removeitem(current)
         self.activeitem = None
-        self._removed = [x[0] for x in self.cut_from_itemdict]
+        removed = [x[0] for x in self.cut_from_itemdict]
         for ix, item in enumerate(self.opts["ActiveItem"]):
-            if item in self._removed:
+            if item in removed:
                 self.opts["ActiveItem"][ix] = self.tree._getitemtext(prev)
         for ix, view in enumerate(self.views):
             if ix != self.opts["ActiveView"]:
-                self._updateview(view)
+                self._updateview(view, removed)
         self.set_project_dirty(True)
         self._finish_copy(prev)
 
@@ -613,19 +614,19 @@ class Mixin(object):
         for kid in self.tree._getitemkids(current):
             self._popitems(kid, itemlist)
 
-    def _updateview(self, view):
+    def _updateview(self, view, removed):
         klaar = False
         for idx, item in reversed(list(enumerate(view))):
             itemref, subview = item
-            if itemref in self._removed:
-                self._updateview(subview)
+            if itemref in removed:
+                self._updateview(subview, removed)
                 if not subview:
                     view.pop(idx)
                 else:
                     view[idx] = subview[0]
                 klaar = True
             else:
-                klaar = self._updateview(subview)
+                klaar = self._updateview(subview, removed)
             ## if klaar:
                 ## break
         return klaar
