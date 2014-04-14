@@ -732,9 +732,20 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def save_needed(self, meld=True, always_check=False):
         """vraag of het bestand opgeslagen moet worden als er iets aan de
-        verzameling notities is gewijzigd"""
-        retval = Mixin.save_needed(self)
-        if not retval or always_check:
+        verzameling notities is gewijzigd
+
+        NB de return value hiervan betekent iets anders dan die van de Mixin methode
+        Die betekent nl. wat de naam zegt.
+        Hier is de vraag gesteld en de gewenste actie ondernomen
+        en wil ik alleen nog weten of er gecanceld is (False) of niet (True)
+        """
+        save_is_needed = Mixin.save_needed(self)
+        if always_check:
+            # bij wisselen van pagina wordt de inhoud indien nodig opgeslagen en weten we
+            # of er wat veranderd is. Bij afsluiten hoeft dat nog niet gebeurd te zijn
+            # maar willen we toch weten of er iets gewijzigd is
+            need_to_save = self.editor._check_dirty()
+        if save_is_needed or need_to_save:
             if self.editor.hasFocus():
                 self.check_active()
             retval = gui.QMessageBox.question(self, "DocTree",
