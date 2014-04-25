@@ -547,6 +547,8 @@ class MainWindow(gui.QMainWindow, Mixin):
     def __init__(self, parent=None, fnaam=""):
         gui.QMainWindow.__init__(self)
         Mixin.__init__(self)
+        offset = 40 if os.name != 'posix' else 10
+        self.move(offset, offset)
         self.nt_icon = gui.QIcon(os.path.join(HERE, "doctree.xpm"))
         self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
