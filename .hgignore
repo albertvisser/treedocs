@@ -13,4 +13,6 @@ pylint*
 *.pck*
 *data/*
 *oud/*
+build/*
+dist/*
 *out
