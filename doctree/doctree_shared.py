@@ -51,7 +51,7 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
         putsubtree(tree, new, subtitel, subkey, subsubtree)
     return new # , itemdict
 
-def _write(filename, opts, views, itemdict, extra_images = None):
+def _write(filename, opts, views, itemdict, extra_images=None):
     """settings en tree data in een structuur omzetten en opslaan
 
     images contained are saved in a separate zipfile"""
@@ -65,10 +65,10 @@ def _write(filename, opts, views, itemdict, extra_images = None):
     with open(filename,"wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
 
+    _filenames = []
     # in het geval van een "normale" save (extra_images is None):
-    if not extra_images:
+    if extra_images is None:
         # scan de itemdict af op image files en zet ze in een list
-        _filenames = []
         soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
         for _, data in nt_data[2].values():
             names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
@@ -105,6 +105,7 @@ class Mixin(object):
         self.project_dirty = False # set it directly because self.set_project_dirty doesn't exist yet
         self.add_node_on_paste = False
         self.has_treedata = False
+        self._filenames = []
 
     def _get_menu_data(self):
         return (
@@ -310,15 +311,14 @@ class Mixin(object):
     def read(self, other_file=''):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         self.has_treedata = False
-        self.opts = {
-            "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
-            "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
-            "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
+        self.opts = init_opts()
         mld = ''
 
         # determine the name of the file to read and read + unpickle it if possible,
         # otherwise cancel
         fname = other_file or self.project_file
+        if not fname:
+            return
         try:
             f_in = open(fname, "rb")
         except IOError:
@@ -365,11 +365,12 @@ class Mixin(object):
         # if possible, build a list of referred-to image files
         path = os.path.dirname((self.project_file))
         self._filenames = []
+        err = FileNotFoundError if sys.version >= '3' else OSError
         try:
             with zip.ZipFile(self.project_file + '.zip', "r") as _in:
                 _in.extractall(path=path)
                 self._filenames = _in.namelist()
-        except FileNotFoundError:
+        except err:
             pass
 
         # finish up (set up necessary attributes etc)
@@ -799,12 +800,12 @@ class Mixin(object):
 
     # 2. read the file
 
-        ## other_file = str(filename)
-        ## err = self.read()
-        ## if err:
-            ## self.show_message(title="Error", text=err)
+        other_file = str(filename)
+        err = self.read()
+        if err:
+            self.show_message(title="Error", text=err)
 
-        ## opts, views, viewcount, itemdict = self.read(other_file=other_file)
+        opts, views, viewcount, itemdict = self.read(other_file=other_file)
 
     # 3. cut action on the item
 
@@ -826,8 +827,7 @@ class Mixin(object):
 
     # 5. write back the updated structure
 
-        ## self._write(filename, opts, views, viewcount, itemdict,
-            ## extra_images=[])
+        _write(filename, opts, views, itemdict, extra_images=[])
 
     def _expand(self, recursive=False):
         raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
