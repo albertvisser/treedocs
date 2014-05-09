@@ -51,6 +51,44 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
         putsubtree(tree, new, subtitel, subkey, subsubtree)
     return new # , itemdict
 
+def _write(filename, opts, views, itemdict, extra_images = None):
+    """settings en tree data in een structuur omzetten en opslaan
+
+    images contained are saved in a separate zipfile"""
+    nt_data = {0: opts, 1: views, 2: itemdict}
+    zipfile = os.path.splitext(filename)[0] + '.zip'
+    try:
+        shutil.copyfile(filename, filename + ".bak")
+        shutil.copyfile(zipfile, zipfile + ".bak")
+    except IOError:
+        pass
+    with open(filename,"wb") as f_out:
+        pck.dump(nt_data, f_out, protocol=2)
+
+    # in het geval van een "normale" save (extra_images is None):
+    if not extra_images:
+        # scan de itemdict af op image files en zet ze in een list
+        _filenames = []
+        soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
+        for _, data in nt_data[2].values():
+            names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
+            _filenames.extend(names)
+        # zip de image files en verwijder ze
+        path = os.path.dirname((filename)) # eventueel eerst absoluut maken
+        ## if path:
+            ## os.chdir(path)
+        fname = os.path.basename(filename)
+        with zip.ZipFile(filename + '.zip', "w") as _out:
+            for name in _filenames:
+                _out.write(os.path.join(path, name), arcname=os.path.basename(name))
+    else:
+        # add extra images to the zipfile
+        with zip.ZipFile(filename + '.zip', "w") as _out:
+            for name in extra_images:
+                _out.write(os.path.join(name), arcname=os.path.basename(name))
+
+    return _filenames
+
 class TreePanel(object):
     "geen mixin, maar een placeholder om te tonen dat deze gebouwd moet worden"
     def __init__(self, parent):
@@ -91,6 +129,7 @@ class Mixin(object):
                 ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
                 ("New under &Root", self.root_item, 'Shift+Ctrl+N', '', 'Add note (below root)'),
                 ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
+                ("&Move", self.move_to_file, 'Ctrl+M', '', 'Copy note to other file and remove'),
                 (),
                 ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
                 ("Subitems sorteren", self.order_this, '', '', 'Onderliggend niveau sorteren op titel'),
@@ -268,7 +307,7 @@ class Mixin(object):
                 item_to_activate = y
         return item_to_activate
 
-    def read(self):
+    def read(self, other_file=''):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         self.has_treedata = False
         self.opts = {
@@ -276,49 +315,65 @@ class Mixin(object):
             "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
             "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
         mld = ''
+
+        # determine the name of the file to read and read + unpickle it if possible,
+        # otherwise cancel
+        fname = other_file or self.project_file
         try:
-            f_in = open(self.project_file, "rb")
+            f_in = open(fname, "rb")
         except IOError:
-            return "couldn't open {}".format(self.project_file)
+            return "couldn't open {}".format(fname)
         try:
             nt_data = pck.load(f_in)
         except EOFError:
-            mld = "couldn't load data from {}".format(self.project_file)
+            mld = "couldn't load data from {}".format(fname)
         finally:
             f_in.close()
         if mld:
             return mld
+
+        # read/init settings if possible, otherwise cancel
         try:
             test = nt_data[0]["AskBeforeHide"]
         except (ValueError, KeyError):
-            return "{} is not a valid Doctree data file".format(self.project_file)
+            return "{} is not a valid Doctree data file".format(fname)
+
+        # read views
+        try:
+            views = list(nt_data[1])
+        except KeyError:
+            views = [[],]
+        viewcount = len(views)
+
+        # read itemdict
+        try:
+            itemdict = nt_data[2]
+        except KeyError:
+            itemdict = {}
+
+        # exit if meant for file to copy stuff to
+        if other_file:
+            return nt_data[0], views, viewcount, itemdict
+
+        # make settings, views and itemdict into attributes
         for key, value in nt_data[0].items():
             if key == 'RootData' and value is None:
                 value = ""
             self.opts[key] = value
-        try:
-            self.views = list(nt_data[1])
-        except KeyError:
-            self.views = [[],]
-        self.viewcount = len(self.views)
-        try:
-            self.itemdict = nt_data[2]
-        except KeyError:
-            self.itemdict = {}
+        self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
 
+        # if possible, build a list of referred-to image files
         path = os.path.dirname((self.project_file))
-        if path:
-            os.chdir(path)
-        fname = os.path.basename(self.project_file)
-
         self._filenames = []
         try:
-            with zip.ZipFile(fname + '.zip', "r") as _in:
-                _in.extractall()
+            with zip.ZipFile(self.project_file + '.zip', "r") as _in:
+                _in.extractall(path=path)
                 self._filenames = _in.namelist()
         except FileNotFoundError:
             pass
-        self._read()
+
+        # finish up (set up necessary attributes etc)
+        self._read() # do gui-specific stuff
         item_to_activate = self.viewtotree()
         self.has_treedata = True
         self.set_title()
@@ -349,29 +404,8 @@ class Mixin(object):
         """settings en tree data in een structuur omzetten en opslaan"""
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
-        nt_data = {0: self.opts, 1: self.views, 2: self.itemdict}
-        zipfile = os.path.splitext(self.project_file)[0] + '.zip'
-        try:
-            shutil.copyfile(self.project_file, self.project_file + ".bak")
-            shutil.copyfile(zipfile, zipfile + ".bak")
-        except IOError:
-            pass
-        with open(self.project_file,"wb") as f_out:
-            pck.dump(nt_data, f_out, protocol=2)
-        # scan de itemdict af op image files en zet ze in een list
-        self._filenames = []
-        soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
-        for _, data in nt_data[2].values():
-            names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
-            self._filenames.extend(names)
-        # zip de image files en verwijder ze
-        path = os.path.dirname((self.project_file)) # eventueel eerst absoluut maken
-        if path:
-            os.chdir(path)
-        fname = os.path.basename(self.project_file)
-        with zip.ZipFile(fname + '.zip', "w") as _out:
-            for name in self._filenames:
-                _out.write(name)
+        self._filenames = _write(self.project_file, self.opts, self.views,
+            self.itemdict)
         self.set_project_dirty(False)
         if meld:
             self.show_message(self.project_file + " is opgeslagen", "DocTool")
@@ -742,6 +776,58 @@ class Mixin(object):
                 if idx != self.opts["ActiveView"]:
                     check_item(view, ref, subref)
         self._finish_rename(item, root)
+
+    def move_to_file(self, event=None):
+        "afhandelen Menu > Move / Ctrl-M"
+
+    # 0. check the selected item (copied from the copy routine)
+
+        current = self.tree._getselecteditem() # self.activeitem kan niet?
+        if current == self.root:
+            self.show_message("Can't do this with root", "DocTree")
+            return
+
+    # 1. ask which file to move to (from here you can still cancel the action)
+
+        if not self.save_needed():
+            return
+        dirname = os.path.dirname(self.project_file)
+        ok, filename = self.getfilename("DocTree - choose file to move the item to",
+            dirname)
+        if not ok:
+            return
+
+    # 2. read the file
+
+        ## other_file = str(filename)
+        ## err = self.read()
+        ## if err:
+            ## self.show_message(title="Error", text=err)
+
+        ## opts, views, viewcount, itemdict = self.read(other_file=other_file)
+
+    # 3. cut action on the item
+
+        ## self.copy_item(cut=True, other_file=True)
+        ## # this makes changes to/uses: self.cut_from_itemdict,
+        ## #                  self.copied_item en
+        ## #                  self.add_node_on_paste
+
+    #3a. Need to find out the images contained in self.copied_item
+    #      put their filenames in the list passed to self._write (extra_images)
+    #      so they can be copied over to the other zipfile
+
+    # 4. paste action on the item in the other file
+
+        ## onthou = self.views, self.viewcount, self.itemdict
+        ## self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
+        ## self.pasteitem(before=False)
+        ## self.views, self.viewcount, self.itemdict = onthou
+
+    # 5. write back the updated structure
+
+        ## self._write(filename, opts, views, viewcount, itemdict,
+            ## extra_images=[])
 
     def _expand(self, recursive=False):
         raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
