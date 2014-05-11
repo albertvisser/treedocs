@@ -56,7 +56,10 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         # - voor elk item nieuwe key opvoeren met dezelfde data value
         # - bij elke bestaande key de nieuwe key onthouden
     keymap = {}
-    newkey = max(itemdict.keys()) + 1
+    try:
+        newkey = max(itemdict.keys()) + 1
+    except ValueError:
+        newkey = 0
     for key, item in cut_from_itemdict:
         title, text = item
         itemdict[newkey] = (title, text)
@@ -105,7 +108,8 @@ def _write(filename, opts, views, itemdict, extra_images=None):
     try:
         shutil.copyfile(filename, filename + ".bak")
         shutil.copyfile(zipfile, zipfile + ".bak")
-    except IOError:
+    except IOError as err:
+        print(err)
         pass
     with open(filename,"wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
@@ -123,12 +127,12 @@ def _write(filename, opts, views, itemdict, extra_images=None):
         ## if path:
             ## os.chdir(path)
         fname = os.path.basename(filename)
-        with zip.ZipFile(filename + '.zip', "w") as _out:
+        with zip.ZipFile(zipfile, "w") as _out:
             for name in _filenames:
                 _out.write(os.path.join(path, name), arcname=os.path.basename(name))
     else:
         # add extra images to the zipfile
-        with zip.ZipFile(filename + '.zip', "w") as _out:
+        with zip.ZipFile(zipfile, "a") as _out:
             for name in extra_images:
                 _out.write(os.path.join(name), arcname=os.path.basename(name))
 
@@ -355,7 +359,8 @@ class Mixin(object):
 
     def read(self, other_file=''):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
-        self.has_treedata = False
+        if not other_file:
+            self.has_treedata = False
         self.opts = init_opts()
         mld = ''
 
@@ -412,7 +417,8 @@ class Mixin(object):
         self._filenames = []
         err = FileNotFoundError if sys.version >= '3' else OSError
         try:
-            with zip.ZipFile(self.project_file + '.zip', "r") as _in:
+            with zip.ZipFile(os.path.splitext(self.project_file)[0] + '.zip',
+                    "r") as _in:
                 _in.extractall(path=path)
                 self._filenames = _in.namelist()
         except err:
@@ -479,8 +485,12 @@ class Mixin(object):
         raise NotImplementedError
 
     def afsl(self, event=None):
+        err = FileNotFoundError if sys.version >= '3' else OSError
         for name in self._filenames:
-            os.remove(name)
+            try:
+                os.remove(name)
+            except err:
+                pass
 
     def add_view(self, event=None):
         "handles Menu > View > New view"
@@ -660,7 +670,6 @@ class Mixin(object):
             if current == self.root:
                 self.show_message("Can't do this with root", "DocTree")
                 return
-
         # are-you-sure message + cancel this action if applicable
         go_on = True
         if cut and not retain and not to_other_file:
@@ -819,57 +828,50 @@ class Mixin(object):
     def move_to_file(self, event=None):
         "afhandelen Menu > Move / Ctrl-M"
 
-    # 0. check the selected item (copied from the copy routine)
+        # 0. check the selected item (copied from the copy routine)
 
         current = self.tree._getselecteditem() # self.activeitem kan niet?
         if current == self.root:
             self.show_message("Can't do this with root", "DocTree")
             return
 
-    # 1. ask which file to move to (from here you can still cancel the action)
+        # 1. ask which file to move to (from here you can still cancel the action)
 
-        if not self.save_needed():
-            return
         dirname = os.path.dirname(self.project_file)
         ok, filename = self.getfilename("DocTree - choose file to move the item to",
             dirname)
         if not ok:
             return
 
-    # 2. read the file
+        # 2. read the file
 
         other_file = str(filename)
-        err = self.read()
-        if err:
-            self.show_message(title="Error", text=err)
+        if not os.path.exists(other_file):
+            opts, views, viewcount, itemdict = init_opts(), [[],], 1, {}
+        else:
+            opts, views, viewcount, itemdict = self.read(other_file=other_file)
 
-        opts, views, viewcount, itemdict = self.read(other_file=other_file)
-
-    # 3. cut action on the item
+        # 3. cut action on the item
 
         self.copy_item(cut=True, to_other_file=current)
-        ##  self.cut_from_itemdict, -> list van verwijderde itemdict items
-        ## self.copied_item  -> de subtree die verwijderd is uit de view
-        ## self.add_node_on_paste -> False omdat het item verwijderd is
 
-    #3a. Need to find out the images contained in self.copied_item /  self.cut_from_itemdict
-    #      put their filenames in the list passed to self._write (extra_images)
-    #      so they can be copied over to the other zipfile
+        #3a. Make a list of the images contained in self.cut_from_itemdict
+        #      so they can be copied over to the other zipfile
+
         extra_images = []
         for _, data in [x[1] for x in self.cut_from_itemdict]:
-        ## for _, data in nt_data[2].values():
             names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
             extra_images.extend(names)
 
-    # 4. paste action on the other file
-    #   note that these functions mutate their arguments...
+        # 4. paste action on the other file
+        #     note that these functions mutate their arguments...
 
         self.copied_item, itemdict = add_newitems(self.copied_item,
             self.cut_from_itemdict, itemdict)
         for view in views:
             add_item_to_view(self.copied_item, view)
 
-    # 5. write back the updated structure
+        # 5. write back the updated structure
 
         _write(filename, opts, views, itemdict, extra_images)
 
