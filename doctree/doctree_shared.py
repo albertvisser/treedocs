@@ -51,6 +51,51 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
         putsubtree(tree, new, subtitel, subkey, subsubtree)
     return new # , itemdict
 
+def add_newitems(copied_item, cut_from_itemdict, itemdict):
+    # met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
+        # - voor elk item nieuwe key opvoeren met dezelfde data value
+        # - bij elke bestaande key de nieuwe key onthouden
+    keymap = {}
+    newkey = max(itemdict.keys()) + 1
+    for key, item in cut_from_itemdict:
+        title, text = item
+        itemdict[newkey] = (title, text)
+        keymap[key] = newkey
+        newkey += 1
+    # kopie van copied_item maken met vervangen van oude key door nieuwe key
+    # geen add_nodes en itemdict nodig: itemdict hoeft niet tijdens verloop te worden aangevuld
+    copied_item = replace_keys(copied_item, keymap)
+    return copied_item, itemdict
+
+def replace_keys(item, keymap):
+    """kopie van toe te voegen deelstructuur maken met vervangen van oude key
+    door nieuwe key volgens keymap
+    """
+    item = list(item)   # mutable maken
+    oldkey = int(item[1])
+    item[1] = keymap[oldkey]
+    hlp = []
+    for subitem in item[2]:
+        subitem = replace_keys(subitem, keymap)
+        hlp.append(subitem)
+    item[2] = hlp
+    return tuple(item)
+
+def add_item_to_view(item, view):
+    """nieuwe deelstructuur achteraan toevoegen aan tree view
+    """
+    def add_to_view(item, struct):
+        titel, key, children = item
+        kids = []
+        struct.append((int(key), kids))
+        for child in children:
+            add_to_view(child, kids)
+    titel, key, children = item
+    struct = []
+    for child in children:
+        add_to_view(child, struct)
+    view.append((int(key), struct))
+
 def _write(filename, opts, views, itemdict, extra_images=None):
     """settings en tree data in een structuur omzetten en opslaan
 
@@ -69,7 +114,7 @@ def _write(filename, opts, views, itemdict, extra_images=None):
     # in het geval van een "normale" save (extra_images is None):
     if extra_images is None:
         # scan de itemdict af op image files en zet ze in een list
-        soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
+        ## soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
         for _, data in nt_data[2].values():
             names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
             _filenames.extend(names)
@@ -595,25 +640,36 @@ class Mixin(object):
 
     def cut_item(self, evt= None):
         "cut = copy with removing item from tree"
-        self.copy_item(cut = True)
+        self.copy_item(cut=True)
 
     def delete_item(self, evt=None):
         "delete = copy with removing item from tree and memory"
-        self.copy_item(cut = True, retain = False)
+        self.copy_item(cut=True, retain=False)
 
-    def copy_item(self, evt=None, cut=False, retain=True):
-        "start copy/cut/delete action"
-        current = self.tree._getselecteditem() # self.activeitem kan niet?
-        if current == self.root:
-            self.show_message("Can't do this with root", "DocTree")
-            return
+    def copy_item(self, evt=None, cut=False, retain=True, to_other_file=None):
+        """start copy/cut/delete action
+
+        parameters: cut: remove item from tree (True for cut, delete and move)
+                    retain: remember item for pasting (True for cut and copy)
+                    other_file:
+        """
+        if to_other_file:
+            current = to_other_file
+        else:
+            current = self.tree._getselecteditem()
+            if current == self.root:
+                self.show_message("Can't do this with root", "DocTree")
+                return
+
+        # are-you-sure message + cancel this action if applicable
         go_on = True
-        if cut and not retain:
+        if cut and not retain and not to_other_file:
             go_on = self._confirm("DocTree",
                 "Are you sure you want to remove this item?")
         if not go_on:
             return
 
+        # create a copy buffer
         self.cut_from_itemdict = []
         if retain:
             self.copied_item, itemlist = getsubtree(self.tree, current)
@@ -622,9 +678,13 @@ class Mixin(object):
         if not cut:
             return
 
+        # remove item (and subitems) from tree and itemdict
+        # they're buffered in self.cut_from_itemdict because we still need them
         self.add_node_on_paste = False
         prev = self.tree._removeitem(current)
         self.activeitem = None
+
+        # remove item(s) from view(s)
         removed = [x[0] for x in self.cut_from_itemdict]
         for ix, item in enumerate(self.opts["ActiveItem"]):
             if item in removed:
@@ -632,8 +692,10 @@ class Mixin(object):
         for ix, view in enumerate(self.views):
             if ix != self.opts["ActiveView"]:
                 self._updateview(view, removed)
+
+        # finish up
         self.set_project_dirty(True)
-        self._finish_copy(prev)
+        self._finish_copy(prev) # do gui-specific stuff
 
     def _popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
@@ -645,7 +707,6 @@ class Mixin(object):
         ## except KeyError:
             ## pass
         ## else:
-        itemlist.append((ref, data))
         for kid in self.tree._getitemkids(current):
             self._popitems(kid, itemlist)
 
@@ -676,12 +737,6 @@ class Mixin(object):
 
     def paste_item(self, evt=None, before=True, below=False):
         "start paste actie"
-        def add_to_view(item, struct):
-            titel, key, children = item
-            kids = []
-            struct.append((int(key), kids))
-            for child in children:
-                add_to_view(child, kids)
         current = self.tree._getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
@@ -690,52 +745,35 @@ class Mixin(object):
             return
         if not self.copied_item:
             return
-        copied_item = self.copied_item
-        if self.add_node_on_paste:
-            # met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
-                # - voor elk item nieuwe key opvoeren met dezelfde data value
-                # - bij elke bestaande key de nieuwe key onthouden
-            keymap = {}
-            newkey = max(self.itemdict.keys()) + 1
-            for key, item in self.cut_from_itemdict:
-                title, text = item
-                self.itemdict[newkey] = (title, text)
-                keymap[key] = newkey
-                newkey += 1
-            # kopie van copied_item maken met vervangen van oude key door nieuwe key
-            # geen add_nodes en itemdict nodig: itemdict hoeft niet tijdens verloop te worden aangevuld
-            def replace_keys(item, keymap):
-                item = list(item)
-                oldkey = int(item[1])
-                item[1] = keymap[oldkey]
-                hlp = []
-                for subitem in item[2]:
-                    subitem = replace_keys(subitem, keymap)
-                    hlp.append(subitem)
-                item[2] = hlp
-                return tuple(item)
-            copied_item = replace_keys(copied_item, keymap)
-
+        if not self.add_node_on_paste:
+            self.add_items_back()
+        else:
+            self.copied_item, self.itemdict = add_newitems(self.copied_item,
+                self.cut_from_itemdict, self.itemdict)
         if below:
-            putsubtree(self.tree, current, *copied_item)
+            putsubtree(self.tree, current, *self.copied_item)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
             if before:
                 pos -= 1
-            putsubtree(self.tree, add_to, *copied_item, pos=pos)
+            putsubtree(self.tree, add_to, *self.copied_item, pos=pos)
         if self.add_node_on_paste:
             # het copied_item in eventuele andere views ook toevoegen
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
-                    titel, key, children = copied_item
-                    struct = []
-                    for child in children:
-                        add_to_view(child, struct)
-                    view.append((int(key), struct))
+                    add_item_to_view(self.copied_item, view)
         else:
-            self.add_node_on_paste = True
+            self.add_node_on_paste = True   # for the next time
+
         self.set_project_dirty(True)
         self._finish_paste(current)
+
+    def add_items_back(self):
+        """ de/het verwijderde itemdict item(s) weer onder dezelfde key opvoeren
+        """
+        for key, item in self.cut_from_itemdict:
+            title, text = item
+            self.itemdict[key] = (title, text)
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -809,25 +847,31 @@ class Mixin(object):
 
     # 3. cut action on the item
 
-        ## self.copy_item(cut=True, other_file=True)
-        ## # this makes changes to/uses: self.cut_from_itemdict,
-        ## #                  self.copied_item en
-        ## #                  self.add_node_on_paste
+        self.copy_item(cut=True, to_other_file=current)
+        ##  self.cut_from_itemdict, -> list van verwijderde itemdict items
+        ## self.copied_item  -> de subtree die verwijderd is uit de view
+        ## self.add_node_on_paste -> False omdat het item verwijderd is
 
-    #3a. Need to find out the images contained in self.copied_item
+    #3a. Need to find out the images contained in self.copied_item /  self.cut_from_itemdict
     #      put their filenames in the list passed to self._write (extra_images)
     #      so they can be copied over to the other zipfile
+        extra_images = []
+        for _, data in [x[1] for x in self.cut_from_itemdict]:
+        ## for _, data in nt_data[2].values():
+            names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
+            extra_images.extend(names)
 
-    # 4. paste action on the item in the other file
+    # 4. paste action on the other file
+    #   note that these functions mutate their arguments...
 
-        ## onthou = self.views, self.viewcount, self.itemdict
-        ## self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
-        ## self.pasteitem(before=False)
-        ## self.views, self.viewcount, self.itemdict = onthou
+        self.copied_item, itemdict = add_newitems(self.copied_item,
+            self.cut_from_itemdict, itemdict)
+        for view in views:
+            add_item_to_view(self.copied_item, view)
 
     # 5. write back the updated structure
 
-        _write(filename, opts, views, itemdict, extra_images=[])
+        _write(filename, opts, views, itemdict, extra_images)
 
     def _expand(self, recursive=False):
         raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
