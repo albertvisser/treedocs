@@ -268,6 +268,8 @@ class EditorPanel(gui.QTextEdit):
 
     def set_contents(self, data):
         "load contents into editor"
+        data = data.replace('img src="',
+            'img src="{}/'.format(os.path.dirname(self.parent.project_file)))
         self.setHtml(data)
         fmt = gui.QTextCharFormat()
         self.charformat_changed(fmt)
@@ -275,7 +277,8 @@ class EditorPanel(gui.QTextEdit):
 
     def get_contents(self):
         "return contents from editor"
-        return self.toHtml()
+        return self.toHtml().replace('img src="{}/'.format(os.path.dirname(
+            self.parent.project_file)), 'img src="')
 
     def text_bold(self, event=None):
         "selectie vet maken"

@@ -415,7 +415,7 @@ class Mixin(object):
         # if possible, build a list of referred-to image files
         path = os.path.dirname((self.project_file))
         self._filenames = []
-        err = FileNotFoundError if sys.version >= '3' else OSError
+        err = FileNotFoundError if sys.version >= '3.3' else OSError
         try:
             with zip.ZipFile(os.path.splitext(self.project_file)[0] + '.zip',
                     "r") as _in:
@@ -485,7 +485,7 @@ class Mixin(object):
         raise NotImplementedError
 
     def afsl(self, event=None):
-        err = FileNotFoundError if sys.version >= '3' else OSError
+        err = FileNotFoundError if sys.version >= '3.3' else OSError
         for name in self._filenames:
             try:
                 os.remove(name)
@@ -839,7 +839,7 @@ class Mixin(object):
 
         dirname = os.path.dirname(self.project_file)
         ok, filename = self.getfilename("DocTree - choose file to move the item to",
-            dirname)
+            dirname, save=True)
         if not ok:
             return
 
