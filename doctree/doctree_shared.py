@@ -114,27 +114,22 @@ def _write(filename, opts, views, itemdict, extra_images=None):
     with open(filename,"wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
 
-    _filenames = []
-    # in het geval van een "normale" save (extra_images is None):
     if extra_images is None:
         # scan de itemdict af op image files en zet ze in een list
-        ## soups = [bs.BeautifulSoup(data) for _, data in nt_data[2].values()]
+        _filenames = []
         for _, data in nt_data[2].values():
             names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
             _filenames.extend(names)
-        # zip de image files en verwijder ze
-        path = os.path.dirname((filename)) # eventueel eerst absoluut maken
-        ## if path:
-            ## os.chdir(path)
         fname = os.path.basename(filename)
-        with zip.ZipFile(zipfile, "w") as _out:
-            for name in _filenames:
-                _out.write(os.path.join(path, name), arcname=os.path.basename(name))
+        mode = "w"
     else:
-        # add extra images to the zipfile
-        with zip.ZipFile(zipfile, "a") as _out:
-            for name in extra_images:
-                _out.write(os.path.join(name), arcname=os.path.basename(name))
+        _filenames = extra_images
+        mode = "a"
+    # add extra images to the zipfile
+    path = os.path.dirname((filename)) # eventueel eerst absoluut maken
+    with zip.ZipFile(zipfile, mode) as _out:
+        for name in _filenames:
+            _out.write(os.path.join(path, name), arcname=os.path.basename(name))
 
     return _filenames
 
@@ -839,7 +834,7 @@ class Mixin(object):
 
         dirname = os.path.dirname(self.project_file)
         ok, filename = self.getfilename("DocTree - choose file to move the item to",
-            dirname, save=True)
+            dirname)
         if not ok:
             return
 
