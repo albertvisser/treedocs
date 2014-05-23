@@ -17,8 +17,14 @@ def filter_html(data):
     else:
         return ''
 
+def write_html_file(title, data):
+    """
+    schrijf `data` weg als "`title`.html"
+    """
+    with open('_'.join(title.split()) + '.html', 'w') as _out:
+        _out.write(data)
 
-def main(fname, donot_filter_html=False):
+def main(fname, donot_filter_html=False, to_files=False):
     """
     Als het opgegeven bestand een doctree structuur bevat, geef deze dan weer
     in een leesbare vorm
@@ -44,7 +50,10 @@ def main(fname, donot_filter_html=False):
         print('options:', file=_out)
         options = nt_data[0]
         if donot_filter_html:
-            pass
+            if to_files:
+                for opt in options:
+                    if opt == 'RootData':
+                        write_html_file(opt, options[opt])
         else:
             for opt in options:
                 if opt == 'RootData': # deze bevat HTML; dus eerst filteren
@@ -59,6 +68,9 @@ def main(fname, donot_filter_html=False):
         print('itemdict', file=_out)
         if donot_filter_html:
             itemdict = nt_data[2]
+            if to_files:
+                for key, value in itemdict.items():
+                    write_html_file(" ".join((str(key), value[0])), value[1])
         else:
             itemdict = {x: (y[0], filter_html(y[1])) for x, y in nt_data[2].items()}
         pprint.pprint(itemdict, stream=_out)
