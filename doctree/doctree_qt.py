@@ -715,6 +715,7 @@ class MainWindow(gui.QMainWindow, Mixin):
     def new(self, evt=None):
         if not Mixin.new(self, evt):
             return
+        self.opts["Version"] = "Qt"
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         menuitem_list = [x for x in self.viewmenu.actions()]
         for menuitem in menuitem_list[7:]:
@@ -764,6 +765,7 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def _read(self):
         "GUI-specifieke zaken binnen Mixin.read()"
+        self.opts["Version"] = "Qt"
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         try:
             self.splitter.restoreState(self.opts['SashPosition'])

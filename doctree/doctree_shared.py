@@ -10,6 +10,7 @@ if sys.version[0] < '3':
 else:
     import pickle as pck
 import shutil
+from datetime import datetime
 import zipfile as zip
 import bs4 as bs
 import pprint
@@ -20,6 +21,7 @@ import datetime as dt
 
 def init_opts():
     return {
+        "Application": "DocTree",
         "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
         "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
         "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
@@ -377,10 +379,10 @@ class Mixin(object):
         if mld:
             return mld
 
-        # read/init settings if possible, otherwise cancel
-        try:
-            test = nt_data[0]["AskBeforeHide"]
-        except (ValueError, KeyError):
+        # read/init/check settings if possible, otherwise cancel
+        print(nt_data[0])
+        test = nt_data[0].get("Application", None)
+        if test and test != 'DocTree':
             return "{} is not a valid Doctree data file".format(fname)
 
         # read views
@@ -609,7 +611,7 @@ class Mixin(object):
         else:
             root, pos = self.tree._getitemparentpos(self.activeitem)
         title = "Geef een titel op voor het nieuwe item"
-        text = ""
+        text = datetime.today().strftime("%d-%m-%Y %H:%M:%S")
         new = self.ask_title(title, text)
         if not new:
             return
@@ -842,7 +844,9 @@ class Mixin(object):
 
         other_file = str(filename)
         if not os.path.exists(other_file):
-            opts, views, viewcount, itemdict = init_opts(), [[],], 1, {}
+            opts = init_opts()
+            opts['Version'] = self.opts.get('Version', None)
+            views, viewcount, itemdict = [[],], 1, {}
         else:
             opts, views, viewcount, itemdict = self.read(other_file=other_file)
 
