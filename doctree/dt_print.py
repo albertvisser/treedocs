@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+usage:
+ dt_print.py [-hv] <filename>
+
+options:
+ -h --html      leave contents as stored instead of parsed into plain text
+ -v --verbose   echo output instead of sent to file
+"""
+from __future__ import print_function
 import sys
 import pprint
 import pickle as pck
 import bs4 as bs
-
 
 def filter_html(data):
     """
@@ -77,5 +85,12 @@ def main(fname, donot_filter_html=False, to_files=False):
 
 
 if __name__ == '__main__':
-    # plac is used to parse the command line arguments
-    import plac; plac.call(main)
+    ## # plac is used to parse the command line arguments
+    ## import plac; plac.call(main)
+    from docopt import docopt
+    arguments = docopt(__doc__)
+    fname = arguments.pop('<filename>')
+    donot_filter_html = arguments.pop('--html')
+    to_files = arguments.pop('--verbose')
+    main(fname, donot_filter_html, to_files)
+
