@@ -21,7 +21,7 @@ import datetime as dt
 
 def init_opts():
     return {
-        "Application": "DocTree",
+        "Application": "DocTree", "NotifyOnSave": True,
         "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
         "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
         "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
@@ -54,9 +54,11 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
     return new # , itemdict
 
 def add_newitems(copied_item, cut_from_itemdict, itemdict):
-    # met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
-        # - voor elk item nieuwe key opvoeren met dezelfde data value
-        # - bij elke bestaande key de nieuwe key onthouden
+    """met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
+        - voor elk item nieuwe key opvoeren met dezelfde data value
+        - bij elke bestaande key de nieuwe key onthouden
+    kopie van copied_item maken met vervangen van oude key door nieuwe key
+    """
     keymap = {}
     try:
         newkey = max(itemdict.keys()) + 1
@@ -67,8 +69,6 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         itemdict[newkey] = (title, text)
         keymap[key] = newkey
         newkey += 1
-    # kopie van copied_item maken met vervangen van oude key door nieuwe key
-    # geen add_nodes en itemdict nodig: itemdict hoeft niet tijdens verloop te worden aangevuld
     copied_item = replace_keys(copied_item, keymap)
     return copied_item, itemdict
 
@@ -457,7 +457,10 @@ class Mixin(object):
             self.itemdict)
         self.set_project_dirty(False)
         if meld:
-            self.show_message(self.project_file + " is opgeslagen", "DocTool")
+            ## self.show_message(self.project_file + " is opgeslagen", "DocTool")
+            save_text = self.project_file + " is opgeslagen"
+            self.confirm(setting="NotifyOnSave", textitem=save_text)
+
 
     def saveas(self, event=None):
         """afhandelen Menu > Save As"""
@@ -1005,3 +1008,6 @@ class Mixin(object):
             "See menu for editing keys",
             ]
         self.show_message("\n".join(info), "DocTree")
+    def confirm(self, setting='', textitem=''):
+        if self.opts[setting]:
+            print(textitem)

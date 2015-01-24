@@ -9,7 +9,7 @@ import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 
 HERE = os.path.dirname(__file__)
-from .doctree_shared import Mixin, init_opts
+from .doctree_shared import Mixin, init_opts, _write
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -17,18 +17,20 @@ def tabsize(pointsize):
      return x * 4 if y < 5 else (x + 1) * 4
 
 class CheckDialog(gui.QDialog):
-    """Dialoog om te melden dat de applicatie verborgen gaat worden
-    AskBeforeHide bepaalt of deze getoond wordt of niet"""
-    def __init__(self, parent):
+    """Dialog die kan worden ingesteld om niet nogmaals te tonen
+
+    wordt aangestuurd met de boodschap die in de dialoog moet worden getoond
+    """
+    def __init__(self, parent, title, message="", option=""):
         self.parent = parent
+        self.option = option
         gui.QDialog.__init__(self, parent)
-        self.setWindowTitle('DocTree')
+        self.setWindowTitle(title)
         self.setWindowIcon(self.parent.nt_icon)
-        txt = gui.QLabel("\n".join((
-            "DocTree gaat nu slapen in de System tray",
-            "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"
-                )), self)
-        self.check = gui.QCheckBox("Deze melding niet meer laten zien", self)
+        txt = gui.QLabel(message, self)
+        ## show_text = languages[self.parent.opts["language"]]["show_text"]
+        show_text = "Deze melding niet meer laten zien"
+        self.check = gui.QCheckBox(show_text, self)
         ok_button = gui.QPushButton("&Ok", self)
         ok_button.clicked.connect(self.klaar)
 
@@ -39,23 +41,22 @@ class CheckDialog(gui.QDialog):
         vbox.addLayout(hbox)
 
         hbox = gui.QHBoxLayout()
-        hbox.addWidget(self.check)
-        vbox.addLayout(hbox)
-
-        hbox = gui.QHBoxLayout()
         hbox.addWidget(ok_button)
         hbox.insertStretch(0, 1)
         hbox.addStretch(1)
         vbox.addLayout(hbox)
 
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(self.check)
+        vbox.addLayout(hbox)
+
         self.setLayout(vbox)
         ## self.resize(574 + breedte, 480)
-        self.exec_()
 
     def klaar(self):
         "dialoog afsluiten"
         if self.check.isChecked():
-            self.parent.opts["AskBeforeHide"] = False
+            self.parent.opts[self.option] = False
         gui.QDialog.done(self, 0)
 
 
@@ -832,8 +833,12 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def hide_me(self, event=None):
         """applicatie verbergen"""
-        if self.opts["AskBeforeHide"]:
-            dlg = CheckDialog(self)
+        ## self.confirm(setting="AskBeforeHide", textitem="hide_text")
+        hide_text = "\n".join((
+            "DocTree gaat nu slapen in de System tray",
+            "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"
+                ))
+        self.confirm(setting="AskBeforeHide", textitem=hide_text)
         self.tray_icon.show()
         self.hide()
 
@@ -1036,6 +1041,17 @@ class MainWindow(gui.QMainWindow, Mixin):
                 item = parent.child(pos - 1)
                 self.tree.setCurrentItem(item)
                 return True
+
+    def confirm(self, setting='', textitem=''):
+        if self.opts[setting]:
+            dlg = CheckDialog(self, 'Apropos',
+                ## message=languages[self.opts["language"]][textitem],
+                message=textitem,
+                option=setting)
+            dlg.exec_()
+            # opslaan zonder vragen (en zonder backuppen?)
+            _write(self.project_file, self.opts, self.views, self.itemdict)
+
 
 def main(fnaam):
     app = gui.QApplication(sys.argv)
