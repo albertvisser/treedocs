@@ -37,3 +37,6 @@ Requirements
 - Python
 - PyQT4 for the current GUI version
 - wxPython for the older GUI version
+
+Note that the current implementation uses *pickle* for storing the data, I'm in the
+process of changing that to something safer.
