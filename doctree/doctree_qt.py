@@ -798,8 +798,11 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def _finish_read(self, item_to_activate):
         self.root.setExpanded(True)
-        if item_to_activate != self.activeitem:
-            self.tree.setCurrentItem(item_to_activate)
+        try:
+            if item_to_activate != self.activeitem:
+                self.tree.setCurrentItem(item_to_activate)
+        except TypeError:
+            pass
 
     def _finish_add(self, parent, item):
         parent.setExpanded(True)
