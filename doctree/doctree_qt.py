@@ -699,7 +699,7 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def set_title(self):
         """standaard titel updaten"""
-        self.setWindowTitle("DocTree - {}{} (view: {})".format(
+        self.setWindowTitle("{}{} (view: {}) - DocTree".format(
             os.path.split(self.project_file)[1],
             '*' if self.project_dirty else '',
             self.opts["ViewNames"][self.opts['ActiveView']]))
