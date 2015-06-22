@@ -11,7 +11,7 @@ import wx.lib.mixins.treemixin as treemix
 import wx.richtext as rt
 
 HERE = os.path.dirname(__file__)
-from doctree_shared import Mixin
+import doctree_shared as dts
 
 class CheckDialog(wx.Dialog):
     """Dialoog om te melden dat de applicatie verborgen gaat worden
@@ -366,13 +366,13 @@ class EditorPanel(rt.RichTextCtrl):
         "mixin exit to make text accessible (or not)"
         self.Enable(value)
 
-class MainWindow(wx.Frame, Mixin):
+class MainWindow(wx.Frame, dts.Mixin):
     """Hoofdscherm van de applicatie"""
     def __init__(self, parent, _id, title):
-        self.init_opts()
+        self.opts = dts.init_opts()
         wx.Frame.__init__(self, parent, _id, title, size=self.opts['ScreenSize'],
                          style=wx.DEFAULT_FRAME_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
-        Mixin.__init__(self)
+        dts.Mixin.__init__(self)
         self.nt_icon = wx.Icon(os.path.join(HERE, "doctree.ico"),wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.nt_icon)
         self.statbar = self.CreateStatusBar()
@@ -694,7 +694,7 @@ class MainWindow(wx.Frame, Mixin):
 
     def new(self, event=None):
         "Afhandelen Menu - Init / Ctrl-I"
-        if not Mixin.new(self, event):
+        if not dts.Mixin.new(self, event):
             return
         self.tree.DeleteAllItems()
         root = self.tree.AddRoot("hidden_root")
@@ -723,7 +723,7 @@ class MainWindow(wx.Frame, Mixin):
     def save_needed(self, meld=True):
         """eigenlijk bedoeld om te reageren op een indicatie dat er iets aan de
         verzameling notities is gewijzigd (de oorspronkelijke self.project_dirty)"""
-        ## if not Mixin.save_needed(self): # too restrictive
+        ## if not dts.Mixin.save_needed(self): # too restrictive
         if not self.has_treedata:
             return True
         dlg = wx.MessageDialog(self, "Save current file before continuing?",
@@ -793,7 +793,7 @@ class MainWindow(wx.Frame, Mixin):
     def write(self, meld=True):
         self.opts["ScreenSize"] = tuple(self.GetSize())
         self.opts["SashPosition"] = self.splitter.GetSashPosition()
-        Mixin.write(self, meld=meld)
+        dts.Mixin.write(self, meld=meld)
 
     def hide_me(self, event = None):
         """applicatie verbergen"""
