@@ -1058,6 +1058,8 @@ class MainWindow(gui.QMainWindow, Mixin):
 
 def main(fnaam):
     app = gui.QApplication(sys.argv)
+    if fnaam == '':
+        fnaam = 'data/wx_tree.pck'
     main = MainWindow(fnaam=fnaam)
     app.setWindowIcon(main.nt_icon)
     main.show()
