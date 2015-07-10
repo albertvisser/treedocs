@@ -380,7 +380,6 @@ class Mixin(object):
             return mld
 
         # read/init/check settings if possible, otherwise cancel
-        print(nt_data[0])
         test = nt_data[0].get("Application", None)
         if test and test != 'DocTree':
             return "{} is not a valid Doctree data file".format(fname)
@@ -644,7 +643,7 @@ class Mixin(object):
         # voeg de items ook toe aan de niet zichtbare views
         subitem = []
         for subkey in reversed(extra_keys):
-            subitem = [subkey, subitem]
+            subitem = [(subkey, subitem)]
         for idx, view in enumerate(self.views):
             if idx != self.opts["ActiveView"]:
                 view.append((newkey, subitem))
@@ -844,10 +843,10 @@ class Mixin(object):
             # voeg de items ook toe aan de niet zichtbare views
             subitem = []
             for subkey in reversed(extra_keys):
-                subitem = [subkey, subitem]
+                subitem = [(subkey, subitem)]
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
-                    check_item(view, ref, subitem)
+                    check_item(view, ref, subitem[0])
         self._finish_rename(item, root)
 
     def move_to_file(self, event=None):
