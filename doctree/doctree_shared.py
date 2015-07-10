@@ -322,7 +322,7 @@ class Mixin(object):
         """zet de visuele tree om in een tree om op te slaan"""
         def lees_item(item):
             """recursieve functie om de data in een pickle-bare structuur om te zetten"""
-            textref = self.tree._getitemtext(item)
+            textref = self.tree._getitemkey(item)
             if item == self.activeitem:
                 self.opts["ActiveItem"][self.opts["ActiveView"]] = textref
             kids = [lees_item(x) for x in self.tree._getitemkids(item)]
@@ -608,35 +608,47 @@ class Mixin(object):
 
     def add_item(self, event=None, root=None, under=True):
         """nieuw item toevoegen (default: onder het geselecteerde)"""
+        # bepaal de parent voor het nieuwe item
         if under:
             if root is None:
                 root = self.activeitem or self.root
         else:
             root, pos = self.tree._getitemparentpos(self.activeitem)
+        # bepaal een titel voor het nieuwe (en eventueel onderliggende) item
         title = "Geef een titel op voor het nieuwe item"
         text = datetime.today().strftime("%d-%m-%Y %H:%M:%S")
         new = self.ask_title(title, text)
         if not new:
             return
-        new_title, extra_title = new
+        new_title, extra_titles = new
         self.check_active()
+        # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
         while newkey in self.itemdict:
             newkey += 1
+        # voeg nieuw item toe aan itemdict
         self.itemdict[newkey] = (new_title, "")
+        # voeg nieuw item toe aan visual tree
         if under:
             pos = -1
         item = self.tree.add_to_parent(newkey, new_title, root, pos)
-        if extra_title:
-            subkey = newkey + 1
-            self.itemdict[subkey] = (extra_title, "")
-            item = self.add_to_parent(subkey, extra_title, item)
+        # doe hetzelfde met eventueel via \ toegevoegde item(s)
+        extra_keys = []
+        subkey = newkey
+        while extra_titles:
+            subkey += 1
+            self.itemdict[subkey] = (extra_titles[0], "")
+            item = self.tree.add_to_parent(subkey, extra_titles[0], item)
+            extra_keys.append(subkey)
+            extra_titles = extra_titles[1:]
+        # voeg de items ook toe aan de niet zichtbare views
+        subitem = []
+        for subkey in reversed(extra_keys):
+            subitem = [subkey, subitem]
         for idx, view in enumerate(self.views):
             if idx != self.opts["ActiveView"]:
-                subitem = []
-                if extra_title:
-                    subitem.append((subkey, []))
                 view.append((newkey, subitem))
+        # afsluiten
         self.set_project_dirty(True)
         self._finish_add(root, item)
 
@@ -697,7 +709,7 @@ class Mixin(object):
         removed = [x[0] for x in self.cut_from_itemdict]
         for ix, item in enumerate(self.opts["ActiveItem"]):
             if item in removed:
-                self.opts["ActiveItem"][ix] = self.tree._getitemtext(prev)
+                self.opts["ActiveItem"][ix] = self.tree._getitemkey(prev)
         for ix, view in enumerate(self.views):
             if ix != self.opts["ActiveView"]:
                 self._updateview(view, removed)
@@ -710,7 +722,7 @@ class Mixin(object):
         """recursieve routine om de structuur uit de itemdict en de
         niet-actieve views te verwijderen
         """
-        ref = self.tree._getitemtext(current)
+        ref = self.tree._getitemkey(current)
         ## try:
         data = self.itemdict.pop(ref)
         ## except KeyError:
@@ -754,11 +766,13 @@ class Mixin(object):
             return
         if not self.copied_item:
             return
+        # items toevoegen aan itemdict
         if not self.add_node_on_paste:
             self.add_items_back()
         else:
             self.copied_item, self.itemdict = add_newitems(self.copied_item,
                 self.cut_from_itemdict, self.itemdict)
+        # items toevoegen aan visual tree
         if below:
             putsubtree(self.tree, current, *self.copied_item)
         else:
@@ -766,8 +780,8 @@ class Mixin(object):
             if before:
                 pos -= 1
             putsubtree(self.tree, add_to, *self.copied_item, pos=pos)
+        # indien nodig het copied_item in eventuele andere views ook toevoegen
         if self.add_node_on_paste:
-            # het copied_item in eventuele andere views ook toevoegen
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
                     add_item_to_view(self.copied_item, view)
@@ -786,15 +800,15 @@ class Mixin(object):
 
     def rename_item(self):
         """titel van item wijzigen"""
-        def check_item(view, ref, subref):
+        def check_item(view, ref, newitem):
             """zoeken waar het subitem moet worden toegevoegd"""
             retval = ""
             for itemref, subview in view:
                 if itemref == ref:
-                    subview.append((subref, []))
+                    subview.append(newitem)
                     retval = 'Stop'
                 else:
-                    retval = check_item(subview, ref, subref)
+                    retval = check_item(subview, ref, newitem)
                 if retval == 'Stop':
                     break
             return retval
@@ -802,27 +816,38 @@ class Mixin(object):
         self.check_active()
         new = self.ask_title('Nieuwe titel voor het huidige item:',
             self.tree._getitemtitle(item))
-        if not new: # titel leegmaken - moet ik dan niet als een fout melden?
+        if not new:
             return
         self.set_project_dirty(True)
-        new_title, extra_title = new
+        new_title, extra_titles = new
         self.tree._setitemtitle(self.activeitem, new_title)
         if item == self.root:
             self.opts['RootTitle'] = new_title
             return
-        ref = self.tree._getitemtext(self.activeitem)
+        ref = self.tree._getitemkey(self.activeitem)
         old_title, data = self.itemdict[ref]
         self.itemdict[ref] = (new_title, data)
-        if extra_title:
+        # toevoegen nieuwe onderliggende items
+        if extra_titles:
             subref = int(ref) + 1
             while subref in self.itemdict:
                 subref += 1
-            self.itemdict[subref] = (extra_title, data)
-            sub_item = self.tree.add_to_parent(subref, extra_title, self.activeitem)
-            item = sub_item
+            extra_keys = []
+            item = self.activeitem
+            while extra_titles:
+                subkey = subref
+                self.itemdict[subkey] = (extra_titles[0], data)
+                item = self.tree.add_to_parent(subkey, extra_titles[0], item)
+                extra_keys.append(subkey)
+                subref += 1
+                extra_titles = extra_titles[1:]
+            # voeg de items ook toe aan de niet zichtbare views
+            subitem = []
+            for subkey in reversed(extra_keys):
+                subitem = [subkey, subitem]
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
-                    check_item(view, ref, subref)
+                    check_item(view, ref, subitem)
         self._finish_rename(item, root)
 
     def move_to_file(self, event=None):
@@ -896,17 +921,17 @@ class Mixin(object):
         self._collapse(recursive=True)
 
     def ask_title(self, _title, _text):
-        """vraag titel voor item"""
+        """vraag titel voor item (ingesloten backslashes gelden als
+        scheidingstekens voor titels van onderliggende items)
+        """
         ok, data = self._get_name(_title, 'DocTree', _text)
         if ok:
             if data:
-                try:
-                    new_title, extra_title = data.split(" \\ ")
-                except ValueError:
-                    new_title, extra_title = data, ""
-                return new_title, extra_title
+                test = data.split(" \\ ")
+                new_title, extra_title = test[0], test[1:]
             else:
-                return '(untitled)', ''
+                new_title, extra_title = '(untitled)', []
+            return new_title, extra_title
         return
 
     def order_top(self, event=None):
@@ -950,13 +975,13 @@ class Mixin(object):
             if self.editor._check_dirty():
                 if message:
                     self.show_message(message, 'Doctree')
-                ref = self.tree._getitemtext(self.activeitem)
-                content = self.editor.get_contents()
+                ref = self.tree._getitemkey(self.activeitem)
+                content = str(self.editor.get_contents())
                 try:
                     titel, tekst = self.itemdict[int(ref)]
                 except (KeyError, ValueError):
                     if content:
-                        self.tree._setitemtext(self.root, content) # gui
+                        self.tree._setitemtext(self.root, content)
                         self.opts["RootData"] = str(content)
                 else:
                     self.itemdict[int(ref)] = (titel, content)
@@ -966,7 +991,7 @@ class Mixin(object):
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
         self.activeitem = item
-        ref = self.tree._getitemtext(item)
+        ref = self.tree._getitemkey(item)
         try:
             titel, tekst = self.itemdict[ref]
         except (KeyError, ValueError):

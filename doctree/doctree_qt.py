@@ -60,6 +60,9 @@ class CheckDialog(gui.QDialog):
         gui.QDialog.done(self, 0)
 
 
+#
+# main window components
+#
 class TreePanel(gui.QTreeWidget):
     "Tree structure depicting the notes organization"
     def __init__(self, parent):
@@ -182,9 +185,11 @@ class TreePanel(gui.QTreeWidget):
         return item.text(0), str(item.text(1)) # kan integer zijn
 
     def _getitemtitle(self, item):
+        "titel in de visual tree ophalen"
         return item.text(0)
 
-    def _getitemtext(self, item):
+    def _getitemkey(self, item):
+        "sleutel voor de itemdict ophalen"
         value = item.text(1)
         try:
             value = int(value)
@@ -197,6 +202,9 @@ class TreePanel(gui.QTreeWidget):
         item.setToolTip(0, title)
 
     def _setitemtext(self, item, text):
+        """Meant to set the text for the root item (goes in same place as the keys
+        for the other items)
+        """
         item.setText(1, text)
 
     def _getitemkids(self, item):
@@ -773,11 +781,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         except TypeError:
             pass
         self.activeitem = item_to_activate = None
-        self.root = self.tree.takeTopLevelItem(0)
-        self.root = gui.QTreeWidgetItem()
-        self.root.setText(0, self.opts["RootTitle"])
-        self.root.setText(1, self.opts["RootData"])
-        self.tree.addTopLevelItem(self.root)
+        self._rebuild_root()
         self.activeitem = item_to_activate = self.root
         self.editor.set_contents(self.opts["RootData"])
         menuitem_list = [x for x in self.viewmenu.actions()]
@@ -1059,7 +1063,7 @@ class MainWindow(gui.QMainWindow, Mixin):
 def main(fnaam):
     app = gui.QApplication(sys.argv)
     if fnaam == '':
-        fnaam = 'data/wx_tree.pck'
+        fnaam = 'data/qt_tree.pck'
     main = MainWindow(fnaam=fnaam)
     app.setWindowIcon(main.nt_icon)
     main.show()
