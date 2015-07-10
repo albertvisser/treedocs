@@ -905,6 +905,8 @@ class Mixin(object):
                 except ValueError:
                     new_title, extra_title = data, ""
                 return new_title, extra_title
+            else:
+                return '(untitled)', ''
         return
 
     def order_top(self, event=None):
