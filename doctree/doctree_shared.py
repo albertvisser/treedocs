@@ -647,6 +647,8 @@ class Mixin(object):
         for idx, view in enumerate(self.views):
             if idx != self.opts["ActiveView"]:
                 view.append((newkey, subitem))
+                ## with open('newview_{}_n'.format(idx), 'w') as f:
+                    ## pprint.pprint(view, stream=f)
         # afsluiten
         self.set_project_dirty(True)
         self._finish_add(root, item)
@@ -776,8 +778,10 @@ class Mixin(object):
             putsubtree(self.tree, current, *self.copied_item)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
-            if before:
-                pos -= 1
+            ## if before:
+                ## pos -= 1
+            if not before:
+                pos += 1
             putsubtree(self.tree, add_to, *self.copied_item, pos=pos)
         # indien nodig het copied_item in eventuele andere views ook toevoegen
         if self.add_node_on_paste:
@@ -847,6 +851,8 @@ class Mixin(object):
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
                     check_item(view, ref, subitem[0])
+                ## with open('newview_{}_r'.format(idx), 'w') as f:
+                    ## pprint.pprint(view, stream=f)
         self._finish_rename(item, root)
 
     def move_to_file(self, event=None):

@@ -178,7 +178,8 @@ class TreePanel(gui.QTreeWidget):
         if pos == -1:
             parent.addChild(new)
         else:
-            parent.insertChild(pos + 1, new)
+            ## parent.insertChild(pos + 1, new)
+            parent.insertChild(pos, new)
         return new
 
     def _getitemdata(self, item):
