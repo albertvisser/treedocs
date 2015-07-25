@@ -759,6 +759,8 @@ class Mixin(object):
 
     def paste_item(self, evt=None, before=True, below=False):
         "start paste actie"
+        print("in paste item:", self.add_node_on_paste, self.copied_item,
+            self.cut_from_itemdict)
         current = self.tree._getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
@@ -771,23 +773,23 @@ class Mixin(object):
         if not self.add_node_on_paste:
             self.add_items_back()
         else:
-            self.copied_item, self.itemdict = add_newitems(self.copied_item,
+            pasted_item, self.itemdict = add_newitems(self.copied_item,
                 self.cut_from_itemdict, self.itemdict)
         # items toevoegen aan visual tree
         if below:
-            putsubtree(self.tree, current, *self.copied_item)
+            putsubtree(self.tree, current, *pasted_item)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
             ## if before:
                 ## pos -= 1
             if not before:
                 pos += 1
-            putsubtree(self.tree, add_to, *self.copied_item, pos=pos)
+            putsubtree(self.tree, add_to, *pasted_item, pos=pos)
         # indien nodig het copied_item in eventuele andere views ook toevoegen
         if self.add_node_on_paste:
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
-                    add_item_to_view(self.copied_item, view)
+                    add_item_to_view(pasted_item, view)
         else:
             self.add_node_on_paste = True   # for the next time
 
