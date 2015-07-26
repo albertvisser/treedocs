@@ -152,6 +152,7 @@ class Mixin(object):
         self.add_node_on_paste = False
         self.has_treedata = False
         self._filenames = []
+        self.copied_item, self.cut_from_itemdict = (), []
 
     def _get_menu_data(self):
         return (
@@ -664,10 +665,18 @@ class Mixin(object):
     def cut_item(self, evt= None):
         "cut = copy with removing item from tree"
         self.copy_item(cut=True)
+        with open('views_cut', 'w') as f:
+            print(self.copied_item, file=f)
+            for view in self.views:
+                print(view, file=f)
 
     def delete_item(self, evt=None):
         "delete = copy with removing item from tree and memory"
         self.copy_item(cut=True, retain=False)
+        with open('views_delete', 'w') as f:
+            print(self.copied_item, file=f)
+            for view in self.views:
+                print(view, file=f)
 
     def copy_item(self, evt=None, cut=False, retain=True, to_other_file=None):
         """start copy/cut/delete action
@@ -692,10 +701,11 @@ class Mixin(object):
             return
 
         # create a copy buffer
-        self.cut_from_itemdict = []
+        copied_item, itemlist = getsubtree(self.tree, current)
+        cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
         if retain:
-            self.copied_item, itemlist = getsubtree(self.tree, current)
-            self.cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
+            self.copied_item = copied_item
+            self.cut_from_itemdict = cut_from_itemdict
             self.add_node_on_paste = True
         if not cut:
             return
@@ -707,7 +717,7 @@ class Mixin(object):
         self.activeitem = None
 
         # remove item(s) from view(s)
-        removed = [x[0] for x in self.cut_from_itemdict]
+        removed = [x[0] for x in cut_from_itemdict]
         for ix, item in enumerate(self.opts["ActiveItem"]):
             if item in removed:
                 self.opts["ActiveItem"][ix] = self.tree._getitemkey(prev)
@@ -768,9 +778,11 @@ class Mixin(object):
             self.show_message('Kan alleen *onder* de root kopiëren', 'DocTree')
             return
         if not self.copied_item:
+            self.show_message('Nothing to paste', 'DocTree')
             return
         # items toevoegen aan itemdict
         if not self.add_node_on_paste:
+            pasted_item = self.copied_item
             self.add_items_back()
         else:
             pasted_item, self.itemdict = add_newitems(self.copied_item,
