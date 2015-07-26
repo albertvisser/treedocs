@@ -9,7 +9,7 @@ import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 
 HERE = os.path.dirname(__file__)
-from .doctree_shared import Mixin, init_opts, _write
+from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -59,6 +59,271 @@ class CheckDialog(gui.QDialog):
             self.parent.opts[self.option] = False
         gui.QDialog.done(self, 0)
 
+
+#
+# Undo stack (subclass overriding some event handlers)
+#
+class UndoRedoStack(gui.QUndoStack):
+
+    def __init__(self, parent):
+        ## print('init undostack')
+        ## super().__init__(parent)
+        gui.QUndoStack.__init__(self, parent)
+        self.cleanChanged.connect(self.clean_changed)
+        self.indexChanged.connect(self.index_changed)
+        self.setUndoLimit(1) # self.unset_undo_limit(False)
+        win = self.parent()
+        win.undo_item.setText('Nothing to undo')
+        win.redo_item.setText('Nothing to redo')
+        win.undo_item.setDisabled(True)
+        win.redo_item.setDisabled(True)
+
+    def clean_changed(self, state):
+        ## print('undo stack status changed:', state)
+        win = self.parent()
+        if state:
+            win.undo_item.setText('Nothing to undo')
+        win.undo_item.setDisabled(state)
+
+    def index_changed(self, num):
+        ## """change text of undo/redo menuitems according to stack change"""
+        ## print('undo stack index changed:', num)
+        win = self.parent()
+        test = self.undoText()
+        if test:
+            win.undo_item.setText('&Undo ' + test)
+            win.undo_item.setEnabled(True)
+        else:
+            win.undo_item.setText('Nothing to undo')
+            win.undo_item.setDisabled(True)
+        test = self.redoText()
+        if test:
+            win.redo_item.setText('&Redo ' + test)
+            win.redo_item.setEnabled(True)
+        else:
+            win.redo_item.setText('Nothing to redo')
+            win.redo_item.setDisabled(True)
+#
+# UndoCommand subclasses
+#
+class Add_PasteCommand(gui.QUndoCommand):
+
+    def __init__(self, win, root, under, description, titles=None, treeitem=None,
+            itemdata=None, viewdata=None):
+        """treedata is data in the currentview and is structured as:
+            (key, nested_list_of_keys)
+           dictdata is the concerned entries in itemdict and is structured as:
+            [(key, title, text), (key, title, text), ...]
+           viewdata is a list of zero or more elements structures like treedata
+        """
+        # add komt binnen met titles: één of meer die allemaal onder elkaar komen te hangen
+        # maar als er al tekst toegevoegd is wil ik dat wel mee krijgen dus zou ik dan in de
+        # redo ook een tree item moeten opbouwen met dict keys die tijdens de undo
+        # worden opgehaald?
+        # paste komt binnen met een bestaande boomstructuur (self.copied_item: opgebouwd
+        # als een tuple van titel, key en subtree waarbij de laatste een list is van dit soort tuples),
+        # een lijst itemdict items (self.cut_from_itemdict: een list van int(x), self.itemdict[int(x)]
+        # tuples) en een indicatie of het om nieuwe of
+        # bestaande dict items gaat (self.add_items_on_paste).
+        # deze laatste betekent dat de keys wel of niet hergebruikt kunnen worden
+
+
+class AddCommand(gui.QUndoCommand):
+
+    def __init__(self, win, root, under, new_title, extra_titles,
+            description = 'Add'):
+        print('in AddCommand.__init__')
+        self.win = win
+        self.root = root
+        if root == self.win.root:
+            description += " top level item"
+        self.under = under
+        self.new_title = new_title
+        self.extra_titles = extra_titles
+        self.first_edit = not self.win.project_dirty
+        super().__init__(description)
+
+    def redo(self):
+        print('in AddCommand.redo')
+        self.data = self.win._do_additem(self.root, self.under, self.new_title,
+            self.extra_titles)
+        # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
+        #             en kan ik deze dus ook niet terugstoppen
+
+    def undo(self):
+        print('in AddCommand.undo')
+        newkey, extra_keys, new_item, subitem = self.data
+        cut_from_itemdict = [(newkey, self.win.itemdict[newkey])]
+        for key in extra_keys:
+            cut_from_itemdict.append((key, self.win.itemdict[key]))
+        self.win.tree._removeitem(new_item, cut_from_itemdict)
+        for idx, view in enumerate(self.win.views):
+            if idx != self.win.opts["ActiveView"]:
+                view.pop()
+        if self.first_edit:
+            self.win.set_project_dirty(False)
+        # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
+        #  de tekst(en) meegeven in ermoveitem helpt daar niet bij
+
+class PasteCommand(gui.QUndoCommand):
+
+    def __init__(self, win, before, below, item, description="Paste"):
+        self.win = win          # treewidget
+        if below:
+            description += ' Under'
+        elif before:
+            description += ' Before'
+        else:
+            description += ' After'
+        self.before = before
+        self.below = below
+        self.item = item        # where we are now
+        print("init {}".format(description), self.item)
+        super().__init__(description)
+        ## self.parent = item.parent()
+        self.key = int(self.item.text(1)) # on the root item this can be the editor
+            # contents, but we can't paste the root so we don't have to deal with that
+        self.title = str(self.item.text(0))
+        self.first_edit = not self.win.project_dirty
+        self.replaced = None    # in case item is replaced while redoing
+
+    def redo(self):
+
+        # deze buffers worden hier gebruikt; printen om dat te controleren
+        print(self.win.copied_item, # het bovenste item om in de tree te plakken
+            self.win.cut_from_itemdict, # de betrokken entries in de itemdict
+            self.win.add_node_on_paste) # geeft aan of er nieuwe keys in de dictianary moeten
+            # worden gebruikt
+        self.views = self.win.views # huidige stand onthouden tbv redo
+
+        # items toevoegen aan itemdict (nieuwe keys of de eerder gebruikte)
+        # items toevoegen aan visual tree
+        # indien nodig het copied_item in eventuele andere views ook toevoegen
+        # afmaken
+        self.used_keys, self.used_parent = self.win._do_pasteitem(self.before,
+            self.below, self.item)
+
+        # kennelijk wordt self.win.copied_item wel veranderd en wel van
+        #    ('drijfsijzen', '14', []) in ('drijfsijzen', 15, [])
+        print('kijken of de buffers zijn veranderd:')
+        print(self.win.copied_item, self.win.cut_from_itemdict,
+            self.win.add_node_on_paste)
+
+        ## def zetzeronder(node, data, before=False, below=True):
+            ## text, data, children = data
+            ## tag, value = data
+            ## self.win.item = node
+            ## is_attr = False if text.startswith(ELSTART) else True
+            ## add_under = self.win._add_item(tag, value, before=before,
+                ## below=below, attr=is_attr)
+            ## below = True
+            ## for item in children:
+                ## zetzeronder(add_under, item)
+            ## return add_under
+        ## self.added = self.win._add_item(self.tag, self.data, before=self.before,
+            ## below=self.below)
+        ## if self.children is not None:
+            ## for item in self.children[0][2]:
+                ## zetzeronder(self.added, item)
+        ## self.win.tree.expandItem(self.added)
+
+    def undo(self):
+        "essentially 'cut' Command"
+        # items weer uit itemdict verwijderen
+        for key in self.used_keys:
+            self.win.itemdict.pop(key)
+        # items weer uit de visual tree halen   / _removeitem
+        parent, pos = self.used_parent
+        print(parent, pos)
+        if pos == -1:
+            pos = parent.childCount() - 1
+        print('Taking child', pos, 'from parent', parent)
+        print(parent.text(0))
+        parent.takeChild(pos)
+        print('Child taken')
+        # eventueel andere views weer aanpassen
+        self.win.views = self.views
+        ## self.replaced = self.added   # remember original item in case redo replaces it
+        ## item = CopyElementCommand(self.win, self.added, cut=True, retain=False,
+            ## description="Undo add element")
+        ## item.redo()
+        if self.first_edit:
+            self.win.set_project_dirty(False)
+        self.win.statusbar.showMessage('{} undone'.format(self.text()))
+
+
+class CopyCommand(gui.QUndoCommand):
+    def __init__(self, win, cut, retain, item, description=""):
+        if cut:
+            if retain:
+                description = "Cut"
+            else:
+                description = "Delete"
+        else:
+            description = "Copy"
+        super().__init__(description)
+        self.undodata = None
+        self.win = win      # treewidget
+        self.item = item    # where we are now
+        self.key = int(self.item.text(1)) # on the root item this can be the editor
+            # contents, but we can't copy the root so we don't have to deal with that
+        self.title = str(self.item.text(0))
+        self.first_edit = not self.win.project_dirty
+        print("init {}".format(description), self.key, self.item)
+        self.cut = cut
+        self.retain = retain
+
+    def redo(self):
+        data = self.win.itemdict[self.key]
+        print('copying item', self.item, 'with key', self.key, 'and data', data)
+        self.oldstate = self.win.opts["ActiveItem"], self.win.views
+        print('before (re)do: oldstate is', self.win.activeitem,
+            self.win.opts["ActiveItem"], self.win.views)
+        ## def get_children(current):
+            ## count = current.childCount()
+            ## if count == 0:
+                ## return []
+            ## for ix in count:
+                ## item = current.child(ix)
+                ## text, key, data = current.text(0), current.text[1],
+                    ## get_children(current)
+        ## state['current'] = current.text(0), current.text[1], get_children(current)
+        ## print('state is', state)
+        self.newstate = self.win._do_copyaction(self.cut, self.retain, self.item)
+        print(' after (re)do: newstate is', self.newstate)
+
+    def undo(self):
+        print('Undo copy for', self.item, "with key", self.key)
+        ## # self.cut_el = None
+        ## if self.cut:
+            ## item = PasteElementCommand(self.win, self.tag, self.data, self.parent,
+                ## before=False, below=True, data = self.undodata,
+                ## description="Undo Copy Element")
+            ## item.redo() # add_under=add_under, loc=self.loc)
+            ## self.item = item.added
+        # terugzetten in tree en itemdict indien nodig
+        ## copied_item, itemlist = getsubtree(self.tree, current)
+        ## cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
+        copied_items, oldloc, cut_from_itemdict = self.newstate
+        print(' after undo: newstate is', self.newstate)
+        if self.cut:
+            for key, value in cut_from_itemdict:
+                self.win.itemdict[key] = value
+            parent, pos = oldloc
+            newitem = putsubtree(self.win.tree, parent, *copied_items, pos=pos-1)
+            self.win.activeitem = self.item = newitem
+
+        ## self.win.copied_item = state['copied_item']
+        ## self.win.cut_from_itemdict = state['cut_from_itemdict']
+        ## self.win.add_node_on_paste = state['add_node']
+        self.win.opts["ActiveItem"], self.win.views = self.oldstate
+        print(' after undo: restored old state to', self.win.activeitem,
+            self.win.opts["ActiveItem"], self.win.views)
+
+        if self.first_edit:
+            self.win.set_project_dirty(False)
+        self.win.statusbar.showMessage('{} undone'.format(self.text()))
+            ## self.win.tree.setCurrentItem(self.item)
 
 #
 # main window components
@@ -170,6 +435,8 @@ class TreePanel(gui.QTreeWidget):
                 action.setEnabled(True)
 
     def add_to_parent(self, itemkey, titel, parent, pos=-1):
+        """
+        """
         new = gui.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
         ## new.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
@@ -178,7 +445,6 @@ class TreePanel(gui.QTreeWidget):
         if pos == -1:
             parent.addChild(new)
         else:
-            ## parent.insertChild(pos + 1, new)
             parent.insertChild(pos, new)
         return new
 
@@ -222,20 +488,32 @@ class TreePanel(gui.QTreeWidget):
     def _getselecteditem(self):
         return self.selectedItems()[0] # gui-dependent
 
-    def _removeitem(self, item):
+    def _removeitem(self, item, cut_from_itemdict):
         "removes current treeitem and returns the previous one"
+        print('in _removeitem', item, cut_from_itemdict)
         parent = item.parent()               # gui-dependent
         pos = parent.indexOfChild(item)
+        oldloc = (parent, pos)
         if pos - 1 >= 0:
             prev = parent.child(pos - 1)
         else:
             prev = parent
             if prev == self.parent.root:
                 prev = parent.child(pos + 1)
-        self.parent._popitems(item, self.parent.cut_from_itemdict)
-        parent.takeChild(pos)
-        return prev
-
+        self.parent._popitems(item, cut_from_itemdict)
+        ## parent.takeChild(pos)
+        # bij een undo van een add moeten met " \ " toegevoegde items ook verwijderd worden
+        to_remove = [(parent, pos)]
+        while True:
+            print(item, item.childCount(), item.child(0))
+            if item.childCount() == 0:
+                break
+            to_remove.append((item, 0)) # er is er altijd maar één
+            item = item.child(0)
+        for parent, pos in reversed(to_remove):
+            parent.takeChild(pos)
+        #
+        return oldloc, prev
 
 class EditorPanel(gui.QTextEdit):
     "Rich text editor displaying the selected note"
@@ -589,6 +867,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.splitter.addWidget(self.editor)
 
         self.create_menu(menubar, self._get_menu_data())
+        self.undo_stack = UndoRedoStack(self)
         self.create_stylestoolbar()
 
         pix = gui.QPixmap(14, 14)
@@ -632,6 +911,11 @@ class MainWindow(gui.QMainWindow, Mixin):
                     toolbar.addAction(action)
                 else:
                     action = gui.QAction(label, self)
+                if item == menudata[3][0]:
+                    if label == '&Undo':
+                        self.undo_item = action
+                    elif label == '&Redo':
+                        self.redo_item = action
                 if shortcut:
                     action.setShortcuts([x for x in shortcut.split(",")])
                 if info.startswith("Check"):
@@ -736,6 +1020,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         action.triggered.connect(self.select_view)
         self.viewmenu.addAction(action)
         action.setChecked(True)
+        self.undo_stack.clear()
         self.root = self.tree.takeTopLevelItem(0)
         self.root = gui.QTreeWidgetItem()
         self.root.setText(0, self.opts["RootTitle"])
@@ -784,6 +1069,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.activeitem = item_to_activate = None
         self._rebuild_root()
         self.activeitem = item_to_activate = self.root
+        self.undo_stack.clear()
         self.editor.set_contents(self.opts["RootData"])
         menuitem_list = [x for x in self.viewmenu.actions()]
         for menuitem in menuitem_list[7:]:
@@ -1059,6 +1345,48 @@ class MainWindow(gui.QMainWindow, Mixin):
             dlg.exec_()
             # opslaan zonder vragen (en zonder backuppen?)
             _write(self.project_file, self.opts, self.views, self.itemdict)
+
+    def tree_undo(self, event=None):
+        self.undo_stack.undo()
+
+    def tree_redo(self, event=None):
+        self.undo_stack.redo()
+
+    def add_item(self, event=None, root=None, under=True):
+        """nieuw item toevoegen (default: onder het geselecteerde)"""
+        print("in qt version's add_item")
+        test = self._check_addable()
+        if test:
+            print("adding item")
+            new_title, extra_titles = test
+            ## self._do_additem(root, under, new_title, extra_titles) # dit werkt
+            command = AddCommand(self, root, under, new_title, extra_titles)
+            self.undo_stack.push(command)
+
+
+    def copy_item(self, evt=None, cut=False, retain=True, to_other_file=None):
+        """start copy/cut/delete action
+
+        parameters: cut: remove item from tree (True for cut, delete and move)
+                    retain: remember item for pasting (True for cut and copy)
+                    other_file:
+        """
+        test = self._check_copyable(cut, retain, to_other_file)
+        if test:
+            current = test
+            ## self._do_copyaction(cut, retain, current) # to_other_file)
+            command = CopyCommand(self, cut, retain, current)
+            self.undo_stack.push(command)
+
+
+    def paste_item(self, evt=None, before=True, below=False):
+        "start paste actie"
+        test = self._check_pasteable(before, below)
+        if test:
+            current = test
+            ## self._do_pasteitem(before, below, current)
+            command = PasteCommand(self, before, below, current)
+            self.undo_stack.push(command)
 
 
 def main(fnaam):

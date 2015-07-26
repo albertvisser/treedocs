@@ -70,7 +70,8 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         keymap[key] = newkey
         newkey += 1
     copied_item = replace_keys(copied_item, keymap)
-    return copied_item, itemdict
+    used_keys = list(keymap.values())
+    return copied_item, itemdict, used_keys
 
 def replace_keys(item, keymap):
     """kopie van toe te voegen deelstructuur maken met vervangen van oude key
@@ -196,9 +197,9 @@ class Mixin(object):
                 (),
                 ), ), # label, handler, shortcut, icon, info
             ('&Tree', (
-                ## ('&Undo', self.tree.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
-                ## ('&Redo', self.tree.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
-                ## (),
+                ('&Undo', self.tree_undo,  'Ctrl+Alt+Z', '', 'Undo last operation'),
+                ('&Redo', self.tree_redo, 'Ctrl+Alt+Y', '', 'Redo last undone operation'),
+                (),
                 ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png', 'Copy the selection and delete from tree'),
                 ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png', 'Just copy the selection'),
                 ('&Paste Under', self.paste_item_below, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection under the selected item'),
@@ -381,6 +382,7 @@ class Mixin(object):
             return mld
 
         # read/init/check settings if possible, otherwise cancel
+        print(nt_data[0])
         test = nt_data[0].get("Application", None)
         if test and test != 'DocTree':
             return "{} is not a valid Doctree data file".format(fname)
@@ -425,7 +427,7 @@ class Mixin(object):
         self._read() # do gui-specific stuff
         item_to_activate = self.viewtotree()
         self.has_treedata = True
-        self.set_title()
+        ## self.set_title()
         self.set_project_dirty(False)
         self._finish_read(item_to_activate)
 
@@ -512,7 +514,7 @@ class Mixin(object):
             newtree.append((key, []))
         self.views.append(newtree)
         self._tree_item = self.viewtotree()
-        self.set_title()
+        ## self.set_title()
         self.set_project_dirty(True)
         self._finish_add_view()
 
@@ -536,7 +538,7 @@ class Mixin(object):
             self._add_view_to_menu(newname)
             self.opts["ViewNames"][self.opts["ActiveView"]] = newname
             self.set_project_dirty(True)
-            self.set_title()
+            ## self.set_title()
 
     def _get_name(self, caption, title, oldname):
         raise NotImplementedError
@@ -585,7 +587,7 @@ class Mixin(object):
         self._update_removedview()
         self._rebuild_root()
         self.set_project_dirty(True)
-        self.set_title()
+        ## self.set_title()
         self._finish_remove_view(self.viewtotree())
 
     def _confirm(self, title, text):
@@ -608,20 +610,25 @@ class Mixin(object):
 
     def add_item(self, event=None, root=None, under=True):
         """nieuw item toevoegen (default: onder het geselecteerde)"""
-        # bepaal de parent voor het nieuwe item
-        if under:
-            if root is None:
-                root = self.activeitem or self.root
-        else:
-            root, pos = self.tree._getitemparentpos(self.activeitem)
+        test = self._check_addable()
+        if test:
+            new_title, extra_titles = test
+            self._do_additem(root, under, new_title, extra_titles)
+
+    def _check_addable(self):
         # bepaal een titel voor het nieuwe (en eventueel onderliggende) item
         title = "Geef een titel op voor het nieuwe item"
         text = datetime.today().strftime("%d-%m-%Y %H:%M:%S")
         new = self.ask_title(title, text)
         if not new:
-            return
+            return False
         new_title, extra_titles = new
+        # stel de inhoud van het item onder de cursor veilig
         self.check_active()
+        return new_title, extra_titles
+
+    def _do_additem(self, root, under, new_title, extra_titles):
+        print('in shared._do_additem')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
         while newkey in self.itemdict:
@@ -629,10 +636,16 @@ class Mixin(object):
         # voeg nieuw item toe aan itemdict
         self.itemdict[newkey] = (new_title, "")
         # voeg nieuw item toe aan visual tree
+        # bepaal eerst de parent voor het nieuwe item
         if under:
+            if root is None:
+                root = self.activeitem or self.root
             pos = -1
+        else:
+            root, pos = self.tree._getitemparentpos(self.activeitem)
         item = self.tree.add_to_parent(newkey, new_title, root, pos)
-        # doe hetzelfde met eventueel via \ toegevoegde item(s)
+        new_item = item
+        # doe hetzelfde met het via \ toegevoegde item
         extra_keys = []
         subkey = newkey
         while extra_titles:
@@ -648,35 +661,28 @@ class Mixin(object):
         for idx, view in enumerate(self.views):
             if idx != self.opts["ActiveView"]:
                 view.append((newkey, subitem))
-                ## with open('newview_{}_n'.format(idx), 'w') as f:
-                    ## pprint.pprint(view, stream=f)
-        # afsluiten
+        # data is gewijzigd
         self.set_project_dirty(True)
+        # afmaken
         self._finish_add(root, item)
+        # resultaat t.b.v. undo/redo mechanisme
+        return newkey, extra_keys, new_item, subitem
 
     def root_item(self, event=None):
         """nieuw item toevoegen onder root"""
-        self.add_item(root = self.root)
+        self.add_item(root=self.root)
 
     def insert_item(self, event=None):
         """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
-        self.add_item(event = event, under = False)
+        self.add_item(event=event, under=False)
 
     def cut_item(self, evt= None):
         "cut = copy with removing item from tree"
         self.copy_item(cut=True)
-        with open('views_cut', 'w') as f:
-            print(self.copied_item, file=f)
-            for view in self.views:
-                print(view, file=f)
 
     def delete_item(self, evt=None):
         "delete = copy with removing item from tree and memory"
         self.copy_item(cut=True, retain=False)
-        with open('views_delete', 'w') as f:
-            print(self.copied_item, file=f)
-            for view in self.views:
-                print(view, file=f)
 
     def copy_item(self, evt=None, cut=False, retain=True, to_other_file=None):
         """start copy/cut/delete action
@@ -685,49 +691,63 @@ class Mixin(object):
                     retain: remember item for pasting (True for cut and copy)
                     other_file:
         """
+        test = self._check_copyable(cut, retain, to_other_file)
+        if test:
+            current = test
+            self._do_copyaction(cut, retain, current) # to_other_file)
+
+    def _check_copyable(self, cut, retain, to_other_file):
         if to_other_file:
             current = to_other_file
         else:
             current = self.tree._getselecteditem()
             if current == self.root:
                 self.show_message("Can't do this with root", "DocTree")
-                return
+                return False
         # are-you-sure message + cancel this action if applicable
         go_on = True
         if cut and not retain and not to_other_file:
             go_on = self._confirm("DocTree",
                 "Are you sure you want to remove this item?")
-        if not go_on:
-            return
+        if go_on:
+            return current
+        else:
+            return go_on
 
+
+    def _do_copyaction(self, cut, retain, current): # to_other_file):
         # create a copy buffer
+        self.cut_from_itemdict = []
         copied_item, itemlist = getsubtree(self.tree, current)
         cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
+        oldloc = None # alleen interessant bij undo van cut/delete
         if retain:
             self.copied_item = copied_item
             self.cut_from_itemdict = cut_from_itemdict
             self.add_node_on_paste = True
-        if not cut:
-            return
+        if cut:
+            # remove item (and subitems) from tree and itemdict
+            # they're buffered in (self.)cut_from_itemdict because we still need them
+            self.add_node_on_paste = False
+            oldloc, prev = self.tree._removeitem(current, cut_from_itemdict)
+            self.activeitem = None
 
-        # remove item (and subitems) from tree and itemdict
-        # they're buffered in self.cut_from_itemdict because we still need them
-        self.add_node_on_paste = False
-        prev = self.tree._removeitem(current)
-        self.activeitem = None
+            # remove item(s) from view(s)
+            removed = [x[0] for x in cut_from_itemdict]
+            for ix, item in enumerate(self.opts["ActiveItem"]):
+                if item in removed:
+                    self.opts["ActiveItem"][ix] = self.tree._getitemkey(prev)
+            for ix, view in enumerate(self.views):
+                if ix != self.opts["ActiveView"]:
+                    self._updateview(view, removed)
 
-        # remove item(s) from view(s)
-        removed = [x[0] for x in cut_from_itemdict]
-        for ix, item in enumerate(self.opts["ActiveItem"]):
-            if item in removed:
-                self.opts["ActiveItem"][ix] = self.tree._getitemkey(prev)
-        for ix, view in enumerate(self.views):
-            if ix != self.opts["ActiveView"]:
-                self._updateview(view, removed)
+            # finish up
+            self.set_project_dirty(True)
+            self._finish_copy(prev) # do gui-specific stuff
 
-        # finish up
-        self.set_project_dirty(True)
-        self._finish_copy(prev) # do gui-specific stuff
+        return copied_item, oldloc, cut_from_itemdict
+
+
 
     def _popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
@@ -769,34 +789,41 @@ class Mixin(object):
 
     def paste_item(self, evt=None, before=True, below=False):
         "start paste actie"
-        print("in paste item:", self.add_node_on_paste, self.copied_item,
-            self.cut_from_itemdict)
+        test = self._check_pasteable(before, below)
+        if test:
+            current = test
+            self._do_pasteitem(before, below, current)
+
+    def _check_pasteable(self, before, below):
         current = self.tree._getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
         if current == self.root and not below:
             self.show_message('Kan alleen *onder* de root kopiëren', 'DocTree')
-            return
+            return False
         if not self.copied_item:
             self.show_message('Nothing to paste', 'DocTree')
-            return
+            return False
+        return current
+
+    def _do_pasteitem(self, before, below, current):
         # items toevoegen aan itemdict
         if not self.add_node_on_paste:
             pasted_item = self.copied_item
-            self.add_items_back()
+            used_keys = self.add_items_back()
         else:
-            pasted_item, self.itemdict = add_newitems(self.copied_item,
-                self.cut_from_itemdict, self.itemdict)
+            pasted_item, self.itemdict, used_keys = add_newitems(
+                self.copied_item, self.cut_from_itemdict, self.itemdict)
         # items toevoegen aan visual tree
         if below:
             putsubtree(self.tree, current, *pasted_item)
+            used_parent = (current, -1)
         else:
             add_to, pos = self.tree._getitemparentpos(current)
-            ## if before:
-                ## pos -= 1
             if not before:
                 pos += 1
             putsubtree(self.tree, add_to, *pasted_item, pos=pos)
+            used_parent = (add_to, pos)
         # indien nodig het copied_item in eventuele andere views ook toevoegen
         if self.add_node_on_paste:
             for ix, view in enumerate(self.views):
@@ -805,15 +832,23 @@ class Mixin(object):
         else:
             self.add_node_on_paste = True   # for the next time
 
+        ## self.copied_item = pasted_item
         self.set_project_dirty(True)
         self._finish_paste(current)
+        return used_keys, used_parent
 
     def add_items_back(self):
         """ de/het verwijderde itemdict item(s) weer onder dezelfde key opvoeren
         """
+        keys = []
         for key, item in self.cut_from_itemdict:
-            title, text = item
-            self.itemdict[key] = (title, text)
+            keys.append(key)
+            ## title, text = item
+            self.itemdict[key] = item # (title, text)
+        # alternatief:
+        #   self.itemdict.update({key: item for key, item in self.cut_from_itemdict})
+        #   keys = [key for key, item in self.cut_from_itemdict]
+        return keys
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -865,14 +900,13 @@ class Mixin(object):
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
                     check_item(view, ref, subitem[0])
-                ## with open('newview_{}_r'.format(idx), 'w') as f:
-                    ## pprint.pprint(view, stream=f)
         self._finish_rename(item, root)
 
     def move_to_file(self, event=None):
         "afhandelen Menu > Move / Ctrl-M"
 
         # 0. check the selected item (copied from the copy routine)
+        #eventueel check_copuyable aanroepen in plaats van dit
 
         current = self.tree._getselecteditem() # self.activeitem kan niet?
         if current == self.root:
@@ -912,7 +946,7 @@ class Mixin(object):
         # 4. paste action on the other file
         #     note that these functions mutate their arguments...
 
-        self.copied_item, itemdict = add_newitems(self.copied_item,
+        self.copied_item, itemdict, used_keys = add_newitems(self.copied_item,
             self.cut_from_itemdict, itemdict)
         for view in views:
             add_item_to_view(self.copied_item, view)
@@ -1001,7 +1035,7 @@ class Mixin(object):
                 except (KeyError, ValueError):
                     if content:
                         self.tree._setitemtext(self.root, content)
-                        self.opts["RootData"] = str(content)
+                        self.opts["RootData"] = content
                 else:
                     self.itemdict[int(ref)] = (titel, content)
                 self.editor._mark_dirty(False)
@@ -1057,3 +1091,8 @@ class Mixin(object):
     def confirm(self, setting='', textitem=''):
         if self.opts[setting]:
             print(textitem)
+    def tree_undo(self, event=None):
+        pass
+
+    def tree_redo(self, event=None):
+        pass
