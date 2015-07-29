@@ -7,14 +7,13 @@ and the possibility of nesting notes underneath each other.
 
 For that purpose it uses a tree view on the left-hand side
 and a text window on the right-hand side.
-Another addition to Apropos is that it supports
-`text formatting </avisser/doctree/wiki/formatting>`_.
+Another addition to Apropos is that it supports text formatting.
 
 Some ideas are inspired by Lotus Notes, e.g. the possibility of
-`creating a sublevel by inserting a backslash surrounded by two spaces
-in an item's title </avisser/doctree/wiki/create_sublevel>`_.
-Another is `visually organizing the same collection of notes in different
-ways </avisser/doctree/wiki/reorder_tree>`_.
+creating a sublevel by inserting a backslash surrounded by two spaces
+in an item's title.
+Another is visually organizing the same collection of notes in different
+ways.
 
 This application also supports saving and loading files under different names,
 and reordering items by sorting or using drag 'n drop.
