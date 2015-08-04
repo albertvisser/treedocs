@@ -9,7 +9,7 @@ import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 
 HERE = os.path.dirname(__file__)
-from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree
+from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -66,7 +66,6 @@ class CheckDialog(gui.QDialog):
 class UndoRedoStack(gui.QUndoStack):
 
     def __init__(self, parent):
-        ## print('init undostack')
         ## super().__init__(parent)
         gui.QUndoStack.__init__(self, parent)
         self.cleanChanged.connect(self.clean_changed)
@@ -79,7 +78,6 @@ class UndoRedoStack(gui.QUndoStack):
         win.redo_item.setDisabled(True)
 
     def clean_changed(self, state):
-        ## print('undo stack status changed:', state)
         win = self.parent()
         if state:
             win.undo_item.setText('Nothing to undo')
@@ -87,7 +85,6 @@ class UndoRedoStack(gui.QUndoStack):
 
     def index_changed(self, num):
         ## """change text of undo/redo menuitems according to stack change"""
-        ## print('undo stack index changed:', num)
         win = self.parent()
         test = self.undoText()
         if test:
@@ -132,7 +129,7 @@ class AddCommand(gui.QUndoCommand):
 
     def __init__(self, win, root, under, new_title, extra_titles,
             description = 'Add'):
-        print('in AddCommand.__init__')
+        log('in AddCommand.__init__')
         self.win = win
         self.root = root
         if root == self.win.root:
@@ -144,14 +141,14 @@ class AddCommand(gui.QUndoCommand):
         super().__init__(description)
 
     def redo(self):
-        print('in AddCommand.redo')
+        log('in AddCommand.redo')
         self.data = self.win._do_additem(self.root, self.under, self.new_title,
             self.extra_titles)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #             en kan ik deze dus ook niet terugstoppen
 
     def undo(self):
-        print('in AddCommand.undo')
+        log('in AddCommand.undo')
         newkey, extra_keys, new_item, subitem = self.data
         cut_from_itemdict = [(newkey, self.win.itemdict[newkey])]
         for key in extra_keys:
@@ -163,7 +160,7 @@ class AddCommand(gui.QUndoCommand):
         if self.first_edit:
             self.win.set_project_dirty(False)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
-        #  de tekst(en) meegeven in ermoveitem helpt daar niet bij
+        #  de tekst(en) meegeven in removeitem helpt daar niet bij
 
 class PasteCommand(gui.QUndoCommand):
 
@@ -178,7 +175,7 @@ class PasteCommand(gui.QUndoCommand):
         self.before = before
         self.below = below
         self.item = item        # where we are now
-        print("init {}".format(description), self.item)
+        log("init {} {}".format(description, self.item))
         super().__init__(description)
         ## self.parent = item.parent()
         self.key = int(self.item.text(1)) # on the root item this can be the editor
@@ -190,10 +187,11 @@ class PasteCommand(gui.QUndoCommand):
     def redo(self):
 
         # deze buffers worden hier gebruikt; printen om dat te controleren
-        print(self.win.copied_item, # het bovenste item om in de tree te plakken
-            self.win.cut_from_itemdict, # de betrokken entries in de itemdict
-            self.win.add_node_on_paste) # geeft aan of er nieuwe keys in de dictianary moeten
-            # worden gebruikt
+        ## print(self.win.copied_item, # het bovenste item om in de tree te plakken
+            ## self.win.cut_from_itemdict, # de betrokken entries in de itemdict
+            ## self.win.add_node_on_paste) # geeft aan of er nieuwe keys in de dictianary moeten
+            ## # worden gebruikt
+        log("in paste.redo")
         self.views = self.win.views # huidige stand onthouden tbv redo
 
         # items toevoegen aan itemdict (nieuwe keys of de eerder gebruikte)
@@ -203,11 +201,11 @@ class PasteCommand(gui.QUndoCommand):
         self.used_keys, self.used_parent = self.win._do_pasteitem(self.before,
             self.below, self.item)
 
-        # kennelijk wordt self.win.copied_item wel veranderd en wel van
-        #    ('drijfsijzen', '14', []) in ('drijfsijzen', 15, [])
-        print('kijken of de buffers zijn veranderd:')
-        print(self.win.copied_item, self.win.cut_from_itemdict,
-            self.win.add_node_on_paste)
+        ## # kennelijk wordt self.win.copied_item wel veranderd en wel van
+        ## #    ('drijfsijzen', '14', []) in ('drijfsijzen', 15, [])
+        ## print('kijken of de buffers zijn veranderd:')
+        ## print(self.win.copied_item, self.win.cut_from_itemdict,
+            ## self.win.add_node_on_paste)
 
         ## def zetzeronder(node, data, before=False, below=True):
             ## text, data, children = data
@@ -230,17 +228,16 @@ class PasteCommand(gui.QUndoCommand):
     def undo(self):
         "essentially 'cut' Command"
         # items weer uit itemdict verwijderen
+        log("in paste.undo")
         for key in self.used_keys:
             self.win.itemdict.pop(key)
         # items weer uit de visual tree halen   / _removeitem
         parent, pos = self.used_parent
-        print(parent, pos)
+        ## print(parent, pos)
         if pos == -1:
             pos = parent.childCount() - 1
-        print('Taking child', pos, 'from parent', parent)
-        print(parent.text(0))
+        log('Taking child {} from parent {} {}'.format(pos, parent, parent.text(0)))
         parent.takeChild(pos)
-        print('Child taken')
         # eventueel andere views weer aanpassen
         self.win.views = self.views
         ## self.replaced = self.added   # remember original item in case redo replaces it
@@ -269,16 +266,17 @@ class CopyCommand(gui.QUndoCommand):
             # contents, but we can't copy the root so we don't have to deal with that
         self.title = str(self.item.text(0))
         self.first_edit = not self.win.project_dirty
-        print("init {}".format(description), self.key, self.item)
+        log("init {} {} {}".format(description, self.key, self.item))
         self.cut = cut
         self.retain = retain
 
     def redo(self):
         data = self.win.itemdict[self.key]
-        print('copying item', self.item, 'with key', self.key, 'and data', data)
+        log('in copy.redo for item {} with key {} and data {}'.format(self.item,
+            self.key, data))
         self.oldstate = self.win.opts["ActiveItem"], self.win.views
-        print('before (re)do: oldstate is', self.win.activeitem,
-            self.win.opts["ActiveItem"], self.win.views)
+        log('before (re)do: oldstate is {} {} {}'.format(self.win.activeitem,
+            self.win.opts["ActiveItem"], self.win.views))
         ## def get_children(current):
             ## count = current.childCount()
             ## if count == 0:
@@ -290,10 +288,10 @@ class CopyCommand(gui.QUndoCommand):
         ## state['current'] = current.text(0), current.text[1], get_children(current)
         ## print('state is', state)
         self.newstate = self.win._do_copyaction(self.cut, self.retain, self.item)
-        print(' after (re)do: newstate is', self.newstate)
+        log(' after (re)do: newstate is {}'.format(self.newstate))
 
     def undo(self):
-        print('Undo copy for', self.item, "with key", self.key)
+        log('Undo copy for {} with key'.format(self.item, self.key))
         ## # self.cut_el = None
         ## if self.cut:
             ## item = PasteElementCommand(self.win, self.tag, self.data, self.parent,
@@ -305,7 +303,7 @@ class CopyCommand(gui.QUndoCommand):
         ## copied_item, itemlist = getsubtree(self.tree, current)
         ## cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
         copied_items, oldloc, cut_from_itemdict = self.newstate
-        print(' after undo: newstate is', self.newstate)
+        log(' after undo: newstate is {}'.format(self.newstate))
         if self.cut:
             for key, value in cut_from_itemdict:
                 self.win.itemdict[key] = value
@@ -317,8 +315,8 @@ class CopyCommand(gui.QUndoCommand):
         ## self.win.cut_from_itemdict = state['cut_from_itemdict']
         ## self.win.add_node_on_paste = state['add_node']
         self.win.opts["ActiveItem"], self.win.views = self.oldstate
-        print(' after undo: restored old state to', self.win.activeitem,
-            self.win.opts["ActiveItem"], self.win.views)
+        log(' after undo: restored old state to {} {} {}'.format(self.win.activeitem,
+            self.win.opts["ActiveItem"], self.win.views))
 
         if self.first_edit:
             self.win.set_project_dirty(False)
@@ -490,7 +488,7 @@ class TreePanel(gui.QTreeWidget):
 
     def _removeitem(self, item, cut_from_itemdict):
         "removes current treeitem and returns the previous one"
-        print('in _removeitem', item, cut_from_itemdict)
+        log('in _removeitem {} {}'.format(item, cut_from_itemdict))
         parent = item.parent()               # gui-dependent
         pos = parent.indexOfChild(item)
         oldloc = (parent, pos)
@@ -505,7 +503,7 @@ class TreePanel(gui.QTreeWidget):
         # bij een undo van een add moeten met " \ " toegevoegde items ook verwijderd worden
         to_remove = [(parent, pos)]
         while True:
-            print(item, item.childCount(), item.child(0))
+            log('{} {} {}'.format(item, item.childCount(), item.child(0)))
             if item.childCount() == 0:
                 break
             to_remove.append((item, 0)) # er is er altijd maar één
@@ -1354,10 +1352,10 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def add_item(self, event=None, root=None, under=True):
         """nieuw item toevoegen (default: onder het geselecteerde)"""
-        print("in qt version's add_item")
+        log("in qt version's add_item")
         test = self._check_addable()
         if test:
-            print("adding item")
+            log("adding item")
             new_title, extra_titles = test
             ## self._do_additem(root, under, new_title, extra_titles) # dit werkt
             command = AddCommand(self, root, under, new_title, extra_titles)

@@ -15,8 +15,8 @@ import zipfile as zip
 import bs4 as bs
 import pprint
 import logging
-logging.basicConfig(filename='doctree.log', level=logging.DEBUG,
-    format='%(asctime)s %(message)s')
+logging.basicConfig(filename=os.path.join(os.path.abspath(os.path.dirname(__file__)),
+    'logs', 'doctree.log'), level=logging.DEBUG, format='%(asctime)s %(message)s')
 import datetime as dt
 
 def init_opts():
@@ -28,7 +28,8 @@ def init_opts():
 
 def log(message):
     "write message to logfile"
-    logging.info(message)
+    if 'DEBUG' in os.environ and os.environ['DEBUG'] != "0":
+        logging.info(message)
 
 def getsubtree(tree, item, itemlist=None):
     """recursieve functie om de structuur onder de te verplaatsen data
@@ -64,11 +65,13 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         newkey = max(itemdict.keys()) + 1
     except ValueError:
         newkey = 0
+    log("add_newitem: cut_from_itemdict is {}".format(cut_from_itemdict))
     for key, item in cut_from_itemdict:
         title, text = item
         itemdict[newkey] = (title, text)
         keymap[key] = newkey
         newkey += 1
+    log("add_newitem: keymap is {}".format(keymap))
     copied_item = replace_keys(copied_item, keymap)
     used_keys = list(keymap.values())
     return copied_item, itemdict, used_keys
@@ -382,7 +385,7 @@ class Mixin(object):
             return mld
 
         # read/init/check settings if possible, otherwise cancel
-        print(nt_data[0])
+        ## print(nt_data[0])
         test = nt_data[0].get("Application", None)
         if test and test != 'DocTree':
             return "{} is not a valid Doctree data file".format(fname)
@@ -628,7 +631,7 @@ class Mixin(object):
         return new_title, extra_titles
 
     def _do_additem(self, root, under, new_title, extra_titles):
-        print('in shared._do_additem')
+        log('in shared._do_additem')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
         while newkey in self.itemdict:
@@ -717,7 +720,7 @@ class Mixin(object):
 
     def _do_copyaction(self, cut, retain, current): # to_other_file):
         # create a copy buffer
-        self.cut_from_itemdict = []
+        # self.cut_from_itemdict = []
         copied_item, itemlist = getsubtree(self.tree, current)
         cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
         oldloc = None # alleen interessant bij undo van cut/delete
@@ -746,8 +749,6 @@ class Mixin(object):
             self._finish_copy(prev) # do gui-specific stuff
 
         return copied_item, oldloc, cut_from_itemdict
-
-
 
     def _popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
