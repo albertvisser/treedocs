@@ -1112,7 +1112,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         ## if item != self.root:
             ## self.editor.setFocus()
 
-    def ok_to_reload(self):
+    def _ok_to_reload(self):
         retval = gui.QMessageBox.question(self, "DocTree", "OK to reload?",
             gui.QMessageBox.Ok | gui.QMessageBox.Cancel,
             defaultButton = gui.QMessageBox.Ok)
