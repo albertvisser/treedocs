@@ -616,7 +616,8 @@ class Mixin(object):
         test = self._check_addable()
         if test:
             new_title, extra_titles = test
-            self._do_additem(root, under, new_title, extra_titles)
+            pos = -1 # doesn't matter for now
+            self._do_additem(root, under, pos, new_title, extra_titles)
 
     def _check_addable(self):
         # bepaal een titel voor het nieuwe (en eventueel onderliggende) item
@@ -630,7 +631,7 @@ class Mixin(object):
         self.check_active()
         return new_title, extra_titles
 
-    def _do_additem(self, root, under, new_title, extra_titles):
+    def _do_additem(self, root, under, origpos, new_title, extra_titles):
         log('in shared._do_additem')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
@@ -640,12 +641,20 @@ class Mixin(object):
         self.itemdict[newkey] = (new_title, "")
         # voeg nieuw item toe aan visual tree
         # bepaal eerst de parent voor het nieuwe item
+        log('root is {} ({}), under is {}'.format(root, root.text(0), under))
         if under:
             if root is None:
                 root = self.activeitem or self.root
             pos = -1
         else:
             root, pos = self.tree._getitemparentpos(self.activeitem)
+            if origpos == -1:
+                pos += 1    # we want to insert after, not before
+                if pos == root.childCount():
+                    pos = -1
+            else:
+                pos = origpos
+        log('root, pos is {} ({}), {}'.format(root, root.text(0), pos))
         item = self.tree.add_to_parent(newkey, new_title, root, pos)
         new_item = item
         # doe hetzelfde met het via \ toegevoegde item

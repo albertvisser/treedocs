@@ -129,12 +129,18 @@ class AddCommand(gui.QUndoCommand):
 
     def __init__(self, win, root, under, new_title, extra_titles,
             description = 'Add'):
+        # root is self.parent.root in geval van "nieuw item onder root"
+        # anders is deze None en moet deze bepaald worden op self.win.item
         log('in AddCommand.__init__')
         self.win = win
-        self.root = root
+        self.root = root if root is not None else self.win.activeitem
         if root == self.win.root:
             description += " top level item"
         self.under = under
+        if under:
+            self.pos = -1
+        else:
+            self.pos = self.win.tree._getitemparentpos(self.win.activeitem)[1] + 1
         self.new_title = new_title
         self.extra_titles = extra_titles
         self.first_edit = not self.win.project_dirty
@@ -142,14 +148,24 @@ class AddCommand(gui.QUndoCommand):
 
     def redo(self):
         log('in AddCommand.redo')
-        self.data = self.win._do_additem(self.root, self.under, self.new_title,
-            self.extra_titles)
+        log("root, under zijn {} ({}) en {}".format(self.root, self.root.text(0),
+            self.under))
+        self.data = self.win._do_additem(self.root, self.under, self.pos,
+            self.new_title, self.extra_titles)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #             en kan ik deze dus ook niet terugstoppen
 
     def undo(self):
         log('in AddCommand.undo')
         newkey, extra_keys, new_item, subitem = self.data
+        # TODO: als ik wil dat de eventuele tekstinhoud onthouden wordt
+        # dan moet ik volgens mij uitvoeren:
+        # self.win.activeitem = new_item
+        # self.win.check_active()
+        # maar eigenlijk moet ik dit dan ook uitvoeren voor eventuele via \ toegevoegde extra
+        # items
+        # en misschien moet ik check_active eigenlijk herdefinieren om niet self.activeitem
+        # te controleren maar een meegegeven item
         cut_from_itemdict = [(newkey, self.win.itemdict[newkey])]
         for key in extra_keys:
             cut_from_itemdict.append((key, self.win.itemdict[key]))
