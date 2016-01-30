@@ -641,21 +641,25 @@ class Mixin(object):
         self.itemdict[newkey] = (new_title, "")
         # voeg nieuw item toe aan visual tree
         # bepaal eerst de parent voor het nieuwe item
-        log('root is {} ({}), under is {}'.format(root, root.text(0), under))
+        log('root is {} ({}), under is {}, origpos is {}'.format(root,
+            root.text(0), under, origpos))
         if under:
-            if root is None:
-                root = self.activeitem or self.root
+            ## if root is None:
+                ## root = self.activeitem or self.root
+            parent = root or self.activeitem or self.root
             pos = -1
         else:
-            root, pos = self.tree._getitemparentpos(self.activeitem)
+            ## root, pos = self.tree._getitemparentpos(self.activeitem)
+            parent, pos = self.tree._getitemparentpos(root)
+            log("na getitemparentpos: root, pos is {}, {}".format(parent, pos))
             if origpos == -1:
                 pos += 1    # we want to insert after, not before
-                if pos == root.childCount():
+                if pos == parent.childCount():
                     pos = -1
             else:
                 pos = origpos
-        log('root, pos is {} ({}), {}'.format(root, root.text(0), pos))
-        item = self.tree.add_to_parent(newkey, new_title, root, pos)
+        log('parent, pos is {} ({}), {}'.format(parent, parent.text(0), pos))
+        item = self.tree.add_to_parent(newkey, new_title, parent, pos)
         new_item = item
         # doe hetzelfde met het via \ toegevoegde item
         extra_keys = []
@@ -676,7 +680,7 @@ class Mixin(object):
         # data is gewijzigd
         self.set_project_dirty(True)
         # afmaken
-        self._finish_add(root, item)
+        self._finish_add(parent, item)
         # resultaat t.b.v. undo/redo mechanisme
         return newkey, extra_keys, new_item, subitem
 

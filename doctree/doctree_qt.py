@@ -365,7 +365,7 @@ class TreePanel(gui.QTreeWidget):
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.check_active()
         h = self.currentItem()
-        ## log('size hint for item {}'.format(h.sizeHint(0)))
+        log('current item is now {} {}'.format(h, h.text(0)))
         self.parent.activate_item(h)
 
     def dropEvent(self, event):
@@ -456,6 +456,8 @@ class TreePanel(gui.QTreeWidget):
         ## new.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
         new.setText(1, str(itemkey))
         new.setToolTip(0, titel.rstrip())
+        log('adding child {} ({}) to parent {} ({}) at pos {}'.format(new,
+            new.text(0), parent, parent.text(0), pos))
         if pos == -1:
             parent.addChild(new)
         else:
