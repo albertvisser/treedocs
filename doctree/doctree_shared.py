@@ -133,11 +133,13 @@ def _write(filename, opts, views, itemdict, extra_images=None):
         mode = "a"
     # add extra images to the zipfile
     path = os.path.dirname((filename)) # eventueel eerst absoluut maken
+    zipped = []
     with zip.ZipFile(zipfile, mode) as _out:
         for name in _filenames:
-            _out.write(os.path.join(path, name), arcname=os.path.basename(name))
-
-    return _filenames
+            if name.startswith(filename):
+                _out.write(os.path.join(path, name), arcname=os.path.basename(name))
+                zipped.append(name)
+    return zipped
 
 class TreePanel(object):
     "geen mixin, maar een placeholder om te tonen dat deze gebouwd moet worden"
