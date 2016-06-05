@@ -1047,7 +1047,7 @@ class MainWindow(gui.QMainWindow, Mixin):
         self.editor.setReadOnly(False)
         self.tree.setFocus()
 
-    def save_needed(self, meld=True, always_check=False):
+    def save_needed(self, meld=True, always_check=True):
         """vraag of het bestand opgeslagen moet worden als er iets aan de
         verzameling notities is gewijzigd
 
@@ -1168,7 +1168,7 @@ class MainWindow(gui.QMainWindow, Mixin):
 
     def closeEvent(self, event):
         """applicatie afsluiten"""
-        if not self.save_needed(meld=False, always_check=True):
+        if not self.save_needed(meld=False):
             event.ignore()
         else:
             Mixin.afsl(self)

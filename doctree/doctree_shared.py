@@ -441,8 +441,10 @@ class Mixin(object):
 
     def reread(self, event=None):
         """afhandelen Menu > Reload (Ctrl-R)"""
-        if self._ok_to_reload():
-            self.read()
+        if not self.save_needed():
+            return
+        ## if self._ok_to_reload():
+        self.read()
         self.show_statusmessage('{} herlezen'.format(self.project_file))
 
     def _ok_to_reload(self):
