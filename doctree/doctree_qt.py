@@ -611,6 +611,15 @@ class EditorPanel(gui.QTextEdit):
         fmt.setFontUnderline(self.parent.actiondict['&Underline'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
+    def text_strikethrough(self, event=None):
+        "selectie doorstrepen"
+        # TODO make this accessible (define an action for it)
+        if not self.hasFocus():
+            return
+        fmt = gui.QTextCharFormat()
+        fmt.setFontStrikeOut(self.parent.actiondict['Strike&through'].isChecked())
+        self.mergeCurrentCharFormat(fmt)
+
     def align_left(self, event=None):
         "alinea links uitlijnen"
         if not self.hasFocus():
