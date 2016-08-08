@@ -1344,7 +1344,11 @@ class MainWindow(gui.QMainWindow, Mixin):
                 tag = root.child(num)
                 self._reorder_items(tag, recursive)
 
-    def _set_next_item(self):
+    def _set_next_item(self, any_level=False):
+        if any_level and self.activeitem.childCount() > 0:
+            item = self.activeitem.child(0)
+            self.tree.setCurrentItem(item)
+            return True
         parent = self.activeitem.parent()
         if parent is not None:
             pos = parent.indexOfChild(self.activeitem)
@@ -1352,12 +1356,33 @@ class MainWindow(gui.QMainWindow, Mixin):
                 item = parent.child(pos + 1)
                 self.tree.setCurrentItem(item)
                 return True
+            if any_level:
+                gp = parent.parent()
+                if gp is not None:
+                    pos = gp.indexOfChild(parent)
+                    if pos < gp.childCount() - 1:
+                        item = gp.child(pos + 1)
+                        self.tree.setCurrentItem(item)
+                        return True
 
-    def _set_prev_item(self):
+    def _set_prev_item(self, any_level=False):
+        def get_prev_child_if_any(item):
+            test = item.childCount()
+            if test > 0:
+                item = get_prev_child_if_any(item.child(test - 1))
+            return item
         parent = self.activeitem.parent()
         if parent is not None:
             pos = parent.indexOfChild(self.activeitem)
-            if pos > 0:
+            if any_level:
+                if pos == 0:
+                    self.tree.setCurrentItem(parent)
+                    return True
+                else:
+                    item = get_prev_child_if_any(parent.child(pos - 1))
+                    self.tree.setCurrentItem(item)
+                    return True
+            elif pos > 0:
                 item = parent.child(pos - 1)
                 self.tree.setCurrentItem(item)
                 return True

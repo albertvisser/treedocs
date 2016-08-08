@@ -181,16 +181,18 @@ class Mixin(object):
             ("&Note", (
                 ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
                 ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
-                ("New under &Root", self.root_item, 'Shift+Ctrl+N', '', 'Add note (below root)'),
+                ("New &under root", self.root_item, 'Shift+Ctrl+N', '', 'Add note (below root)'),
                 ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
                 ("&Move", self.move_to_file, 'Ctrl+M', '', 'Copy note to other file and remove'),
                 (),
                 ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
-                ("Subitems sorteren", self.order_this, '', '', 'Onderliggend niveau sorteren op titel'),
-                ("Subitems recursief sorteren", self.order_lower, '', '', 'Alle onderliggende niveaus sorteren op titel'),
+                ("Subitems &sorteren", self.order_this, '', '', 'Onderliggend niveau sorteren op titel'),
+                ("Subitems &recursief sorteren", self.order_lower, '', '', 'Alle onderliggende niveaus sorteren op titel'),
                 (),
-                ("&Forward", self.next_note, 'Ctrl+PgDown', '', 'View next note'),
-                ("&Back", self.prev_note, 'Ctrl+PgUp', '', 'View previous note'),
+                ("&Forward (same level)", self.next_note, 'Ctrl+PgDown', '', 'View next note'),
+                ("For&ward (regardless)", self.next_note_any, 'Shift+Ctrl+PgDown', '', 'View next note'),
+                ("&Back (same level)", self.prev_note, 'Ctrl+PgUp', '', 'View previous note'),
+                ("Bac&k (regardless)", self.prev_note_any, 'Shift+Ctrl+PgUp', '', 'View previous note'),
                 ),),
             ("&View", (
                 ('&New View', self.add_view, '', '', 'Add an alternative view (tree) to this data'),
@@ -1040,6 +1042,16 @@ class Mixin(object):
         """move to previous item"""
         if not self._set_prev_item():
             self.show_message("Geen vorig item op dit niveau", "DocTree")
+
+    def next_note_any(self, event=None):
+        """move to next item"""
+        if not self._set_next_item(any_level=True):
+            self.show_message("Geen volgend item", "DocTree")
+
+    def prev_note_any(self, event=None):
+        """move to previous item"""
+        if not self._set_prev_item(any_level=True):
+            self.show_message("Geen vorig item", "DocTree")
 
     def check_active(self, message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
