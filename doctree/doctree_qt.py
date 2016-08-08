@@ -802,6 +802,7 @@ class EditorPanel(gui.QTextEdit):
         self.parent.actiondict["&Bold"].setChecked(font.bold())
         self.parent.actiondict["&Italic"].setChecked(font.italic())
         self.parent.actiondict["&Underline"].setChecked(font.underline())
+        self.parent.actiondict["Strike&through"].setChecked(font.strikeOut())
 
     def color_changed(self, col):
         """kleur aanpassen
