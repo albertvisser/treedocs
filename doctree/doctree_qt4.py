@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
-"DocTree PyQt5 specifieke code"
+"DocTree PyQt specifieke code"
 
 import os
 import sys
 
-import PyQt5.QtWidgets as qtw
-import PyQt5.QtGui as gui
-import PyQt5.QtCore as core
+import PyQt4.QtGui as gui
+import PyQt4.QtCore as core
 
 HERE = os.path.dirname(__file__)
 from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
@@ -17,7 +16,7 @@ def tabsize(pointsize):
      x, y = divmod(pointsize * 8, 10)
      return x * 4 if y < 5 else (x + 1) * 4
 
-class CheckDialog(qtw.QDialog):
+class CheckDialog(gui.QDialog):
     """Dialog die kan worden ingesteld om niet nogmaals te tonen
 
     wordt aangestuurd met de boodschap die in de dialoog moet worden getoond
@@ -25,29 +24,29 @@ class CheckDialog(qtw.QDialog):
     def __init__(self, parent, title, message="", option=""):
         self.parent = parent
         self.option = option
-        super().__init__(parent)
+        gui.QDialog.__init__(self, parent)
         self.setWindowTitle(title)
         self.setWindowIcon(self.parent.nt_icon)
-        txt = qtw.QLabel(message, self)
+        txt = gui.QLabel(message, self)
         ## show_text = languages[self.parent.opts["language"]]["show_text"]
         show_text = "Deze melding niet meer laten zien"
-        self.check = qtw.QCheckBox(show_text, self)
-        ok_button = qtw.QPushButton("&Ok", self)
+        self.check = gui.QCheckBox(show_text, self)
+        ok_button = gui.QPushButton("&Ok", self)
         ok_button.clicked.connect(self.klaar)
 
-        vbox = qtw.QVBoxLayout()
+        vbox = gui.QVBoxLayout()
 
-        hbox = qtw.QHBoxLayout()
+        hbox = gui.QHBoxLayout()
         hbox.addWidget(txt)
         vbox.addLayout(hbox)
 
-        hbox = qtw.QHBoxLayout()
+        hbox = gui.QHBoxLayout()
         hbox.addWidget(ok_button)
         hbox.insertStretch(0, 1)
         hbox.addStretch(1)
         vbox.addLayout(hbox)
 
-        hbox = qtw.QHBoxLayout()
+        hbox = gui.QHBoxLayout()
         hbox.addWidget(self.check)
         vbox.addLayout(hbox)
 
@@ -58,16 +57,17 @@ class CheckDialog(qtw.QDialog):
         "dialoog afsluiten"
         if self.check.isChecked():
             self.parent.opts[self.option] = False
-        super().done(0)
+        gui.QDialog.done(self, 0)
 
 
 #
 # Undo stack (subclass overriding some event handlers)
 #
-class UndoRedoStack(qtw.QUndoStack):
+class UndoRedoStack(gui.QUndoStack):
 
     def __init__(self, parent):
-        super().__init__(parent)
+        ## super().__init__(parent)
+        gui.QUndoStack.__init__(self, parent)
         self.cleanChanged.connect(self.clean_changed)
         self.indexChanged.connect(self.index_changed)
         self.setUndoLimit(1) # self.unset_undo_limit(False)
@@ -103,7 +103,7 @@ class UndoRedoStack(qtw.QUndoStack):
 #
 # UndoCommand subclasses
 #
-class Add_PasteCommand(qtw.QUndoCommand):
+class Add_PasteCommand(gui.QUndoCommand):
 
     def __init__(self, win, root, under, description, titles=None, treeitem=None,
             itemdata=None, viewdata=None):
@@ -125,7 +125,7 @@ class Add_PasteCommand(qtw.QUndoCommand):
         # deze laatste betekent dat de keys wel of niet hergebruikt kunnen worden
 
 
-class AddCommand(qtw.QUndoCommand):
+class AddCommand(gui.QUndoCommand):
 
     def __init__(self, win, root, under, new_title, extra_titles,
             description = 'Add'):
@@ -178,7 +178,7 @@ class AddCommand(qtw.QUndoCommand):
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #  de tekst(en) meegeven in removeitem helpt daar niet bij
 
-class PasteCommand(qtw.QUndoCommand):
+class PasteCommand(gui.QUndoCommand):
 
     def __init__(self, win, before, below, item, description="Paste"):
         self.win = win          # treewidget
@@ -265,7 +265,7 @@ class PasteCommand(qtw.QUndoCommand):
         self.win.statusbar.showMessage('{} undone'.format(self.text()))
 
 
-class CopyCommand(qtw.QUndoCommand):
+class CopyCommand(gui.QUndoCommand):
     def __init__(self, win, cut, retain, item, description=""):
         if cut:
             if retain:
@@ -342,14 +342,14 @@ class CopyCommand(qtw.QUndoCommand):
 #
 # main window components
 #
-class TreePanel(qtw.QTreeWidget):
+class TreePanel(gui.QTreeWidget):
     "Tree structure depicting the notes organization"
     def __init__(self, parent):
         self.parent = parent
-        super().__init__()
+        gui.QTreeWidget.__init__(self)
         self.setColumnCount(2)
         self.hideColumn(1)
-        self.headerItem().setHidden(True)
+        self.setItemHidden(self.headerItem(), True)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setSelectionMode(self.SingleSelection)
@@ -380,7 +380,7 @@ class TreePanel(qtw.QTreeWidget):
         if not dropitem:
             ## event.ignore()
             return
-        super().dropEvent(event)
+        gui.QTreeWidget.dropEvent(self, event)
         count = self.topLevelItemCount()
         if count > 1:
             for ix in range(count):
@@ -401,7 +401,7 @@ class TreePanel(qtw.QTreeWidget):
         item = self.itemAt(xc, yc)
         if item:
             self.oldparent, self.oldpos = self._getitemparentpos(item)
-        super().mousePressEvent(event)
+        gui.QTreeWidget.mousePressEvent(self, event)
 
     def mouseReleaseEvent(self, event):
         "for showing a context menu"
@@ -415,7 +415,7 @@ class TreePanel(qtw.QTreeWidget):
                 ## event.ignore()
         ## else:
             ## event.ignore()
-        super().mouseReleaseEvent(event)
+        gui.QTreeWidget.mouseReleaseEvent(self, event)
 
     def keyReleaseEvent(self, event):
         "also for showing a context menu"
@@ -425,10 +425,10 @@ class TreePanel(qtw.QTreeWidget):
             return
         ## else:
             ## gui.QMainWindow.keyReleaseEvent(self, event)
-        super().keyReleaseEvent(event)
+        gui.QTreeWidget.keyReleaseEvent(self, event)
 
     def create_popupmenu(self, item):
-        menu = qtw.QMenu()
+        menu = gui.QMenu()
         for action in self.parent.notemenu.actions():
             act = menu.addAction(action)
             if item == self.parent.root and action.text() in ('&Add', '&Delete',
@@ -451,7 +451,7 @@ class TreePanel(qtw.QTreeWidget):
     def add_to_parent(self, itemkey, titel, parent, pos=-1):
         """
         """
-        new = qtw.QTreeWidgetItem()
+        new = gui.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
         ## new.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
         new.setText(1, str(itemkey))
@@ -531,15 +531,15 @@ class TreePanel(qtw.QTreeWidget):
         #
         return oldloc, prev
 
-class EditorPanel(qtw.QTextEdit):
+class EditorPanel(gui.QTextEdit):
     "Rich text editor displaying the selected note"
 
     def __init__(self, parent):
         self.parent = parent
-        super().__init__()
+        gui.QTextEdit.__init__(self)
         self.setAcceptRichText(True)
         ## self.setTabChangesFocus(True)
-        self.setAutoFormatting(qtw.QTextEdit.AutoAll)
+        self.setAutoFormatting(gui.QTextEdit.AutoAll)
         self.currentCharFormatChanged.connect(self.charformat_changed)
         self.cursorPositionChanged.connect(self.cursorposition_changed)
         font = self.currentFont()
@@ -549,7 +549,7 @@ class EditorPanel(qtw.QTextEdit):
         if source.hasImage:
             return True
         else:
-            return super().canInsertFromMimeData(source)
+            return gui.QTextEdit.canInsertFromMimeData(source)
 
     def insertFromMimeData(self, source):
         if source.hasImage():
@@ -568,7 +568,7 @@ class EditorPanel(qtw.QTextEdit):
                 core.QUrl(urlname), image)
             cursor.insertImage(urlname)
         else:
-            super().insertFromMimeData(source)
+            gui.QTextEdit.insertFromMimeData(self, source)
 
     def set_contents(self, data):
         "load contents into editor"
@@ -613,6 +613,7 @@ class EditorPanel(qtw.QTextEdit):
 
     def text_strikethrough(self, event=None):
         "selectie doorstrepen"
+        # TODO make this accessible (define an action for it)
         if not self.hasFocus():
             return
         fmt = gui.QTextCharFormat()
@@ -682,7 +683,7 @@ class EditorPanel(qtw.QTextEdit):
         "lettertype en/of -grootte instellen"
         if not self.hasFocus():
             return
-        font, ok = qtw.QFontDialog.getFont(self.currentFont(), self)
+        font, ok = gui.QFontDialog.getFont(self.currentFont(), self)
         if ok:
             fmt = gui.QTextCharFormat()
             fmt.setFont(font)
@@ -724,7 +725,7 @@ class EditorPanel(qtw.QTextEdit):
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
             return
-        col = qtw.QColorDialog.getColor(self.textColor(), self)
+        col = gui.QColorDialog.getColor(self.textColor(), self)
         if not col.isValid():
             return
         self.parent.setcoloraction_color = col
@@ -751,7 +752,7 @@ class EditorPanel(qtw.QTextEdit):
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
             return
-        col = qtw.QColorDialog.getColor(self.textBackgroundColor(), self)
+        col = gui.QColorDialog.getColor(self.textBackgroundColor(), self)
         if not col.isValid():
             return
         self.parent.setbackgroundcoloraction_color = col
@@ -843,7 +844,7 @@ class EditorPanel(qtw.QTextEdit):
         if not cursor.hasSelection():
             cursor.select(gui.QTextCursor.WordUnderCursor)
         cursor.mergeCharFormat(format)
-        super().mergeCurrentCharFormat(format)
+        gui.QTextEdit.mergeCurrentCharFormat(self, format)
 
     def _check_dirty(self):
         "check for modifications"
@@ -857,18 +858,19 @@ class EditorPanel(qtw.QTextEdit):
         "make text accessible (or not)"
         self.setReadOnly(not value)
 
-class MainWindow(qtw.QMainWindow, Mixin):
+class MainWindow(gui.QMainWindow, Mixin):
     """Hoofdscherm van de applicatie"""
 
     def __init__(self, parent=None, fnaam=""):
-        ## gui.QMainWindow.__init__(self)
-        ## Mixin.__init__(self)
-        super().__init__()
+        gui.QMainWindow.__init__(self)
+        Mixin.__init__(self)
         offset = 40 if os.name != 'posix' else 10
         self.move(offset, offset)
         self.nt_icon = gui.QIcon(os.path.join(HERE, "doctree.xpm"))
-        self.tray_icon = qtw.QSystemTrayIcon(self.nt_icon, self)
+        self.tray_icon = gui.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
+        self.connect(self.tray_icon, core.SIGNAL('clicked'),
+            self.revive) # werkt dit wel?
         self.tray_icon.activated.connect(self.revive)
         self.tray_icon.hide()
 
@@ -881,7 +883,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
         self.actiondict = {}
         menubar = self.menuBar()
-        self.splitter = qtw.QSplitter(self)
+        self.splitter = gui.QSplitter(self)
         self.setCentralWidget(self.splitter)
         self.tree = TreePanel(self)
         self.splitter.addWidget(self.tree)
@@ -926,7 +928,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if icon:
-                    action = qtw.QAction(gui.QIcon(os.path.join(HERE, icon)), label,
+                    action = gui.QAction(gui.QIcon(os.path.join(HERE, icon)), label,
                         self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
@@ -934,7 +936,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
                         toolbar_added = True
                     toolbar.addAction(action)
                 else:
-                    action = qtw.QAction(label, self)
+                    action = gui.QAction(label, self)
                 if item == menudata[3][0]:
                     if label == '&Undo':
                         self.undo_item = action
@@ -957,20 +959,18 @@ class MainWindow(qtw.QMainWindow, Mixin):
                         info = ''
                 if info:
                     action.setStatusTip(info)
-                ## self.connect(action, core.SIGNAL('triggered()'), handler)
+                self.connect(action, core.SIGNAL('triggered()'), handler)
                 # action.triggered.connect(handler) werkt hier niet
-                action.triggered.connect(handler) # voor qt5 toch hopenlijk wel
                 if label:
                     menu.addAction(action)
                     self.actiondict[label] = action
 
     def create_stylestoolbar(self):
         toolbar = self.addToolBar('styles')
-        self.combo_font = qtw.QFontComboBox(toolbar)
+        self.combo_font = gui.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
-        ## self.combo_font.activated[str].connect(self.editor.text_family)
-        self.combo_font.activated.connect(self.editor.text_family)
-        self.combo_size = qtw.QComboBox(toolbar)
+        self.combo_font.activated[str].connect(self.editor.text_family)
+        self.combo_size = gui.QComboBox(toolbar)
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
         db = gui.QFontDatabase()
@@ -978,41 +978,40 @@ class MainWindow(qtw.QMainWindow, Mixin):
         for size in db.standardSizes():
             self.combo_size.addItem(str(size))
             self.fontsizes.append(str(size))
-        ## self.combo_size.activated[str].connect(self.editor.text_size)
-        self.combo_size.activated.connect(self.editor.text_size)
+        self.combo_size.activated[str].connect(self.editor.text_size)
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
         pix = gui.QPixmap(14, 14)
         pix.fill(core.Qt.black)
-        action = qtw.QAction(gui.QIcon(pix), "Change text color", self)
+        action = gui.QAction(gui.QIcon(pix), "Change text color", self)
         action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
         pix = gui.QPixmap(14, 14)
         self.setcoloraction_color = core.Qt.magenta
         pix.fill(self.setcoloraction_color)
-        action = qtw.QAction(gui.QIcon(pix), "Set text color", self)
+        action = gui.QAction(gui.QIcon(pix), "Set text color", self)
         action.triggered.connect(self.editor.set_text_color)
         toolbar.addAction(action)
         self.setcolor_action = action
 
         pix = gui.QPixmap(18, 18)
         pix.fill(core.Qt.white)
-        action = qtw.QAction(gui.QIcon(pix), "Change background color", self)
+        action = gui.QAction(gui.QIcon(pix), "Change background color", self)
         action.triggered.connect(self.editor.background_color)
         toolbar.addAction(action)
         self.actiondict["&Background..."] = action
         pix = gui.QPixmap(18, 18)
         self.setbackgroundcoloraction_color = core.Qt.yellow
         pix.fill(self.setbackgroundcoloraction_color)
-        action = qtw.QAction(gui.QIcon(pix), "Set background color", self)
+        action = gui.QAction(gui.QIcon(pix), "Set background color", self)
         action.triggered.connect(self.editor.set_background_color)
         toolbar.addAction(action)
         self.setbackgroundcolor_action = action
 
     def show_message(self, text, title):
-        qtw.QMessageBox.information(self, title, text)
+        gui.QMessageBox.information(self, title, text)
 
     def show_statusmessage(self, text):
         self.statusbar.showMessage(text)
@@ -1027,11 +1026,11 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def getfilename(self, title, start, save=False):
         filter = "Pickle files (*.pck)"
         if save:
-            filename = qtw.QFileDialog.getSaveFileName(self, title, start, filter)
+            filename = gui.QFileDialog.getSaveFileName(self, title, start, filter)
         else:
-            filename = qtw.QFileDialog.getOpenFileName(self, title, start, filter)
-        ok = True if filename[0] else False
-        return ok, filename[0]
+            filename = gui.QFileDialog.getOpenFileName(self, title, start, filter)
+        ok = True if filename else False
+        return ok, filename
 
     def new(self, evt=None):
         if not Mixin.new(self, evt):
@@ -1041,7 +1040,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         menuitem_list = [x for x in self.viewmenu.actions()]
         for menuitem in menuitem_list[7:]:
             self.viewmenu.removeAction(menuitem)
-        action = qtw.QAction('&1 Default', self)
+        action = gui.QAction('&1 Default', self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
         action.triggered.connect(self.select_view)
@@ -1049,7 +1048,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         action.setChecked(True)
         self.undo_stack.clear()
         self.root = self.tree.takeTopLevelItem(0)
-        self.root = qtw.QTreeWidgetItem()
+        self.root = gui.QTreeWidgetItem()
         self.root.setText(0, self.opts["RootTitle"])
         self.root.setText(1, self.opts["RootData"])
         self.tree.addTopLevelItem(self.root)
@@ -1075,13 +1074,13 @@ class MainWindow(qtw.QMainWindow, Mixin):
         if save_is_needed or need_to_save:
             if self.editor.hasFocus():
                 self.check_active()
-            retval = qtw.QMessageBox.question(self, "DocTree",
+            retval = gui.QMessageBox.question(self, "DocTree",
                 "Data changed - save current file before continuing?",
-                qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-                defaultButton = qtw.QMessageBox.Yes)
-            if retval == qtw.QMessageBox.Yes:
+                gui.QMessageBox.Yes | gui.QMessageBox.No | gui.QMessageBox.Cancel,
+                defaultButton = gui.QMessageBox.Yes)
+            if retval == gui.QMessageBox.Yes:
                 self.save(meld=meld)
-            if retval == qtw.QMessageBox.Cancel:
+            if retval == gui.QMessageBox.Cancel:
                 return False
         return True
 
@@ -1102,7 +1101,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         for menuitem in menuitem_list[7:]:
             self.viewmenu.removeAction(menuitem)
         for idx, name in enumerate(self.opts["ViewNames"]):
-            action = qtw.QAction('&{} {}'.format(idx + 1, name), self)
+            action = gui.QAction('&{} {}'.format(idx + 1, name), self)
             action.setStatusTip("switch to this view")
             action.setCheckable(True)
             action.triggered.connect(self.select_view)
@@ -1142,10 +1141,10 @@ class MainWindow(qtw.QMainWindow, Mixin):
             ## self.editor.setFocus()
 
     def _ok_to_reload(self):
-        retval = qtw.QMessageBox.question(self, "DocTree", "OK to reload?",
-            qtw.QMessageBox.Ok | qtw.QMessageBox.Cancel,
+        retval = gui.QMessageBox.question(self, "DocTree", "OK to reload?",
+            gui.QMessageBox.Ok | gui.QMessageBox.Cancel,
             defaultButton = gui.QMessageBox.Ok)
-        return True if retval == qtw.QMessageBox.Ok else False
+        return True if retval == gui.QMessageBox.Ok else False
 
     def write(self, meld=True):
         self.opts["ScreenSize"] = self.width(), self.height() # tuple(self.size())
@@ -1165,9 +1164,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
     def revive(self, event=None):
         """applicatie weer zichtbaar maken"""
-        if event == qtw.QSystemTrayIcon.Unknown:
+        if event == gui.QSystemTrayIcon.Unknown:
             self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
-        elif event == qtw.QSystemTrayIcon.Context:
+        elif event == gui.QSystemTrayIcon.Context:
             pass
         else:
             self.show()
@@ -1186,9 +1185,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
             event.accept()
 
     def viewportEvent(self, event):
-        if event.Type == core.QEvent.ToolTip:
+        if event.Type == gui.QEvent.ToolTip:
             item = self.tree.currentItem()
-            qtw.QToolTip.ShowText(event.pos, item.toolTip().text(), item)
+            gui.QToolTip.ShowText(event.pos, item.toolTip().text(), item)
 
     def _update_newview(self, new_view):
         "view menu bijwerken n.a.v. toevoeging nieuwe view"
@@ -1196,7 +1195,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         for idx, menuitem in enumerate(menuitem_list[7:]):
             if idx == self.opts["ActiveView"]:
                 menuitem.setChecked(False)
-        action = qtw.QAction('&{} {}'.format(self.viewcount, new_view), self)
+        action = gui.QAction('&{} {}'.format(self.viewcount, new_view), self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
         action.triggered.connect(self.select_view)
@@ -1206,15 +1205,15 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def _rebuild_root(self):
         "tree leegmaken en root opnieuw neerzetten"
         self.root = self.tree.takeTopLevelItem(0)
-        self.root = qtw.QTreeWidgetItem()
+        self.root = gui.QTreeWidgetItem()
         self.root.setText(0, self.opts["RootTitle"])
         self.root.setText(1, self.opts["RootData"])
         self.tree.addTopLevelItem(self.root)
 
     def _get_name(self, caption, title, oldname):
         newname = oldname
-        data, ok = qtw.QInputDialog.getText(self, title, caption,
-            qtw.QLineEdit.Normal, oldname)
+        data, ok = gui.QInputDialog.getText(self, title, caption,
+            gui.QLineEdit.Normal, oldname)
         if ok:
             newname = str(data)
         return ok, newname
@@ -1258,7 +1257,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             if self.opts["ActiveView"] >= len(self.opts["ViewNames"]):
                 self.opts["ActiveView"] = 0
         self.root = self.tree.takeTopLevelItem(0)
-        self.root = qtw.QTreeWidgetItem()
+        self.root = gui.QTreeWidgetItem()
         self.root.setText(0, self.opts["RootTitle"])
         self.root.setText(1, self.opts["RootData"])
         self.tree.addTopLevelItem(self.root)
@@ -1285,10 +1284,10 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.tree.setCurrentItem(tree_item)
 
     def _confirm(self, title, text):
-        retval = qtw.QMessageBox.question(self, title, text,
-            qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-            defaultButton = qtw.QMessageBox.Yes)
-        return True if retval == qtw.QMessageBox.Yes else False
+        retval = gui.QMessageBox.question(self, title, text,
+            gui.QMessageBox.Yes | gui.QMessageBox.No,
+            defaultButton = gui.QMessageBox.Yes)
+        return True if retval == gui.QMessageBox.Yes else False
 
     def _update_removedview(self):
         "view menu bijwerken n.a.v. verwijderen view"
@@ -1442,7 +1441,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
 
 def main(fnaam):
-    app = qtw.QApplication(sys.argv)
+    app = gui.QApplication(sys.argv)
     if fnaam == '':
         fnaam = 'data/qt_tree.pck'
     main = MainWindow(fnaam=fnaam)
@@ -1451,5 +1450,5 @@ def main(fnaam):
     main.project_file = fnaam
     err = main.read()
     if err:
-        qtw.QMessageBox.information(main, "Error", err, qtw.QMessageBox.Ok)
+        gui.QMessageBox.information(main, "Error", err, gui.QMessageBox.Ok)
     sys.exit(app.exec_())
