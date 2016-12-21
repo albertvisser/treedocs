@@ -141,6 +141,45 @@ def _write(filename, opts, views, itemdict, extra_images=None):
                 zipped.append(name)
     return zipped
 
+def _find(needle, haystack, options):
+    if options & 2: pass # case sensitive
+    if options & 4: pass # whole words
+    # simple search for now
+    return needle in haystack
+
+def _find_in_title(needle, haystack, options):
+    return _find(needle, haystack, options)
+
+def _find_in_text(needle, haystack, options):
+    return _find(needle, bs.BeautifulSoup(haystack, 'lxml').get_text(), options)
+    ## return _find(needle, haystack, options)
+
+def _search(view, itemdict, findstr, search_type, search_flags, loc=None):
+    """recursive search in view items
+    result is a list of 4 items:
+    - key to the itemdict item (not necessary if we have the fourth?)
+    - node address in the form of a series of sequence numbers
+    - indicatinon of where the string was found
+    - title of the itemdict item
+    """
+    result = []
+    if not loc:
+        location = []
+    else:
+        location = loc
+    for ix, item in enumerate(view):
+        loc = location + [ix]
+        value, value_list = item
+        title, text = itemdict[value]
+        if search_type & 1 and _find_in_title(findstr, title, search_flags):
+            result.append((value, loc, 'title', title))
+        if search_type & 2 and _find_in_text(findstr, text, search_flags):
+            result.append((value, loc, 'text', title))
+        test = _search(value_list, itemdict, findstr, search_type, search_flags, loc)
+        if test:
+            result.extend(test)
+    return result
+
 class TreePanel(object):
     "geen mixin, maar een placeholder om te tonen dat deze gebouwd moet worden"
     def __init__(self, parent):
@@ -260,6 +299,18 @@ class Mixin(object):
                 ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
                 ("&Background...", self.editor.background_color, '', '',
                     'Set/change background colour'),
+                ), ),
+            ('&Search', (
+                ('&Current text', self.search, 'Ctrl+F', '',
+                    "Search in current text"),
+                ('All t&exts', self.search_texts, 'Shift+Ctrl+F', '',
+                    "Search in all texts"),
+                ('All t&itles', self.search_titles, 'Ctrl+Alt+F', '',
+                    "Search in all titles"),
+                (),
+                ('&Next', self.find_next, 'F3', '', 'Repeat search forwards'),
+                ('&Previous', self.find_prev, 'Shift+F3', '',
+                    'Repeat search backwards'),
                 ), ),
             ("&Help", (
                 ("&About", self.info_page, '', '', 'About this application'),

@@ -10,7 +10,8 @@ import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 
 HERE = os.path.dirname(__file__)
-from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
+from doctree.doctree_shared import Mixin, init_opts, _write, _search, putsubtree
+from doctree.doctree_shared import log
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
@@ -60,6 +61,169 @@ class CheckDialog(qtw.QDialog):
             self.parent.opts[self.option] = False
         super().done(0)
 
+
+class SearchDialog(qtw.QDialog):
+    """search mode: 0 = current document, 1 = all titles, 2 = all texts
+    """
+    def __init__(self, parent, title='', mode=0):
+        self.parent = parent
+        if not title:
+            title = self.parent.title
+        ## self.option = option
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowIcon(self.parent.nt_icon)
+        vbox = qtw.QVBoxLayout()
+
+        hbox = qtw.QHBoxLayout()
+        hbox.addWidget(qtw.QLabel('Zoek naar: ', self))
+        vbox.addLayout(hbox)
+
+        self.t_zoek = qtw.QLineEdit(self)
+        hbox = qtw.QHBoxLayout()
+        ## hbox.addStretch()
+        hbox.addWidget(self.t_zoek)
+        ## hbox.addStretch()
+        vbox.addLayout(hbox)
+
+        self.c_titl = qtw.QCheckBox('Alle titels', self)
+        self.c_titl.clicked.connect(self.check_modes)
+        self.c_text = qtw.QCheckBox('Alle teksten', self)
+        self.c_text.clicked.connect(self.check_modes)
+        self.c_curr = qtw.QCheckBox('Alleen huidige tekst', self)
+        self.c_curr.toggled.connect(self.check_modes)
+        hbox = qtw.QHBoxLayout()
+        hbox.addStretch()
+        vbox2 = qtw.QVBoxLayout()
+        vbox2.addSpacing(3)
+        vbox2.addWidget(qtw.QLabel('In: ', self))
+        vbox2.addStretch()
+        hbox.addLayout(vbox2)
+        vbox2 = qtw.QVBoxLayout()
+        vbox2.addWidget(self.c_titl)
+        vbox2.addWidget(self.c_text)
+        vbox2.addWidget(self.c_curr)
+        hbox.addLayout(vbox2)
+        hbox.addStretch()
+        vbox.addLayout(hbox)
+
+        hbox = qtw.QHBoxLayout()
+        self.c_richt = qtw.QCheckBox('Achterwaarts zoeken', self)
+        self.c_hlett = qtw.QCheckBox('Hoofdlettergevoelig', self)
+        self.c_woord = qtw.QCheckBox('Hele woorden', self)
+        vbox2 = qtw.QVBoxLayout()
+        vbox2.addWidget(self.c_richt)
+        vbox2.addWidget(self.c_hlett)
+        vbox2.addWidget(self.c_woord)
+        hbox.addLayout(vbox2)
+        hbox.addStretch()
+        vbox.addLayout(hbox)
+
+        vbox.addSpacing(5)
+        hbox = qtw.QHBoxLayout()
+        self.c_lijst = qtw.QCheckBox('Toon lijst met zoekresultaten', self)
+        hbox.addWidget(self.c_lijst)
+        vbox.addLayout(hbox)
+
+        hbox = qtw.QHBoxLayout()
+        hbox.addStretch(1)
+        ok_button = qtw.QPushButton("&Ok", self)
+        ok_button.clicked.connect(self.accept)
+        hbox.addWidget(ok_button)
+        cancel_button = qtw.QPushButton("&Cancel", self)
+        cancel_button.clicked.connect(self.reject)
+        hbox.addWidget(cancel_button)
+        hbox.addStretch(1)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+        if mode == 0:
+            self.c_curr.setChecked(True)
+        elif mode == 1:
+            self.c_titl.setChecked(True)
+        elif mode == 2:
+            self.c_text.setChecked(True)
+        if self.parent.srchtext:
+            self.t_zoek.setText(self.parent.srchtext)
+        if self.parent.srchflags & gui.QTextDocument.FindBackward:
+            self.c_richt.setChecked(True)
+        if self.parent.srchflags & gui.QTextDocument.FindCaseSensitively:
+            self.c_hlett.setChecked(True)
+        if self.parent.srchflags & gui.QTextDocument.FindWholeWords:
+            self.c_woord.setChecked(True)
+        if self.parent.srchlist:
+            self.c_lijst.setChecked(True)
+        self.t_zoek.setFocus()
+
+    def check_modes(self, evt):
+        """
+        bij aanzetten current:
+            titel en text uitzetten
+            lijst en search backwards deactiveren
+        bij aanzetten titel of text:
+            current uitzetten
+            lijst en search backwards activeren
+        """
+        if self.sender() == self.c_curr:
+            self.c_titl.setChecked(False)
+            self.c_text.setChecked(False)
+            self.c_richt.setEnabled(False)
+            self.c_lijst.setEnabled(False)
+        else:
+            self.c_curr.setChecked(False)
+            self.c_richt.setEnabled(False) # True)
+            self.c_lijst.setEnabled(True)
+        pass
+
+    def accept(self):
+        zoek = self.t_zoek.text()
+        if not zoek:
+            self.parent.show_message('Wel iets te zoeken opgeven')
+            return
+        mode = 0
+        if self.c_titl.isChecked():
+            mode += 1
+        if self.c_text.isChecked():
+            mode += 2
+        if not mode and not self.c_curr.isChecked():
+            self.parent.show_message('Wel een zoek modus kiezen')
+            return
+        self.parent.srchtext = zoek
+        self.parent.srchtype = mode
+        flags = gui.QTextDocument.FindFlags()
+        if self.c_richt.isChecked():
+            flags |= gui.QTextDocument.FindBackward
+        if self.c_hlett.isChecked():
+            flags |= gui.QTextDocument.FindCaseSensitively
+        if self.c_woord.isChecked():
+            flags |= gui.QTextDocument.FindWholeWords
+        self.parent.srchflags = flags
+        self.parent.srchlist = self.c_lijst.isChecked()
+        super().accept()
+
+class ResultsDialog(qtw.QDialog):
+    def __init__(self, parent):
+        self.parent = parent
+        super().__init__(parent)
+        self.setWindowTitle("Search Results")
+        self.setWindowIcon(self.parent.nt_icon)
+        # non-modaal maken!
+        vbox = qtw.QVBoxLayout()
+
+        hbox = qtw.QHBoxLayout()
+        hbox.addWidget(qtw.QLabel("Now showing: a list of search results"
+            " with select & goto possibility in a nonmodal dialog", self))
+        vbox.addLayout(hbox)
+
+        hbox = qtw.QHBoxLayout()
+        ok_button = qtw.QPushButton("&Ok", self)
+        ok_button.clicked.connect(self.accept)
+        hbox.addWidget(ok_button)
+        hbox.insertStretch(0, 1)
+        hbox.addStretch(1)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
 
 #
 # Undo stack (subclass overriding some event handlers)
@@ -877,7 +1041,8 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
         self.opts = init_opts()
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1]) # 800, 500)
-        self.setWindowTitle('DocTree')
+        self.title = 'DocTree'
+        self.setWindowTitle(self.title)
 
         self.actiondict = {}
         menubar = self.menuBar()
@@ -900,6 +1065,11 @@ class MainWindow(qtw.QMainWindow, Mixin):
         pix = gui.QPixmap(18, 18)
         pix.fill(self.setbackgroundcoloraction_color)
         self.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
+
+        self.srchtext = ''
+        self.srchtype = 0
+        self.srchflags = gui.QTextDocument.FindFlags()
+        self.srchlist = False
 
     def change_pane(self, event=None):
         "wissel tussen tree en editor"
@@ -1011,7 +1181,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
         toolbar.addAction(action)
         self.setbackgroundcolor_action = action
 
-    def show_message(self, text, title):
+    def show_message(self, text, title=''):
+        if not title:
+            title = self.title
         qtw.QMessageBox.information(self, title, text)
 
     def show_statusmessage(self, text):
@@ -1440,7 +1612,77 @@ class MainWindow(qtw.QMainWindow, Mixin):
             command = PasteCommand(self, before, below, current)
             self.undo_stack.push(command)
 
+    def search_texts(self):
+        self.search(mode=2)
 
+    def search_titles(self):
+        self.search(mode=1)
+
+    def search(self, mode=0):
+        dlg = SearchDialog(self, mode=mode)
+        if dlg.exec_() != qtw.QDialog.Accepted:
+            return
+        if self.srchtype == 0:
+            self.editor.moveCursor(gui.QTextCursor.Start)
+            ok = self.editor.find(self.srchtext, self.srchflags)
+            if ok:
+                self.editor.ensureCursorVisible()
+            return
+        if self.srchtype not in (1, 2, 3): # failsafe
+            self.show_message('wrong search type')
+            return
+        print('start search...')
+        self.search_results = _search(self.views[self.opts['ActiveView']],
+            self.itemdict, self.srchtext, self.srchtype, self.srchflags)
+        print('searching done')
+        if self.srchlist:
+            dlg = ResultsDialog(self).exec_()
+        else:
+            self.srchno = 0
+            self.go_to_result()
+
+    def find_next(self):
+        if not self.srchtext:
+            return
+        if not self.srchtype:
+            if self.editor.find(self.srchtext, self.srchflags & (
+                    gui.QTextDocument.FindCaseSensitively	|
+                    gui.QTextDocument.FindWholeWords)):
+                self.editor.ensureCursorVisible()
+        else:
+            self.srchno += 1
+            self.go_to_result()
+
+    def find_prev(self):
+        if not self.srchtext:
+            return
+        if not self.srchtype:
+            if self.editor.find(self.srchtext, self.srchflags |
+                    gui.QTextDocument.FindBackward):
+                self.editor.ensureCursorVisible()
+        else:
+            self.srchno -= 1
+            self.go_to_result()
+
+    def go_to_result(self):
+        ## self.show_statusmessage('Showing result {} for search mode {}'.format(
+            ## self.srchno, self.srchtype))
+        ## return
+        key, loc, type, text = self.search_results[self.srchno]
+        treeitem = self.root
+        for x in loc:
+            treeitem = treeitem.child(x)
+        self.tree.setCurrentItem(treeitem)
+        ## self.activate_item(treeitem)    # dit is niet genoeg, tree wordt niet bijgewerkt
+        if type == 'text':
+            ok = self.editor.find(self.srchtext, self.srchflags)
+            if ok:
+                self.editor.ensureCursorVisible()
+
+
+
+        # find textitem in tree and activate it
+        # find (first) occurrence of findstr and position
 def main(fnaam):
     app = qtw.QApplication(sys.argv)
     if fnaam == '':
