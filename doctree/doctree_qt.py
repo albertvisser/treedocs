@@ -10,13 +10,49 @@ import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 
 HERE = os.path.dirname(__file__)
-from doctree.doctree_shared import Mixin, init_opts, _write, _search, putsubtree
-from doctree.doctree_shared import log
+## from doctree.doctree_shared import Mixin, init_opts, _write, _search, putsubtree
+## from doctree.doctree_shared import log
+from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
+
+def _find(needle, haystack, options):
+    if options & 2: pass # case sensitive
+    if options & 4: pass # whole words
+    # simple search for now
+    return needle in haystack
+
+def _search(parent, findstr, search_type, search_flags, loc=None):
+    """recursive search in tree items
+    assumes item.text(0) contains title, item.data(0) contains text without format
+    result is a list of 3 items:
+    - node address in the form of a series of sequence numbers
+    - indicatinon of where the string was found
+    - title of the itemdict item
+    """
+    result = []
+    if not loc:
+        location = []
+    else:
+        location = loc
+    for ix in range(parent.childCount()):
+        loc = location + [ix]
+        treeitem = parent.child(ix)
+        title = treeitem.text(0)
+        text = treeitem.data(0, core.Qt.UserRole)
+        if search_type & 1 and _find(findstr, title, search_flags):
+            result.append((loc, 'title', title))
+        if search_type & 2 and _find(findstr, text, search_flags):
+            result.append((loc, 'text', title))
+        test = _search(treeitem, findstr, search_type, search_flags, loc)
+        if test:
+            result.extend(test)
+    return result
 
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
      x, y = divmod(pointsize * 8, 10)
      return x * 4 if y < 5 else (x + 1) * 4
+
+
 
 class CheckDialog(qtw.QDialog):
     """Dialog die kan worden ingesteld om niet nogmaals te tonen
@@ -617,6 +653,13 @@ class TreePanel(qtw.QTreeWidget):
         """
         new = qtw.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
+        # save plain text on tree item to facilitate search
+        # faster that using BeautifulSoup? Also, we don't need the import this way
+        doc = gui.QTextDocument()
+        doc.setHtml(self.parent.itemdict[itemkey][1])
+        rawtext = doc.toPlainText()
+        new.setData(0, core.Qt.UserRole, rawtext)
+        #
         ## new.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
         new.setText(1, str(itemkey))
         new.setToolTip(0, titel.rstrip())
@@ -745,6 +788,8 @@ class EditorPanel(qtw.QTextEdit):
 
     def get_contents(self):
         "return contents from editor"
+        # update plain text in tree item to facilitate search
+        self.parent.tree.setCurrentItem(0, core.Qt.UserRole, self.toPlainText())
         return self.toHtml().replace('img src="{}/'.format(os.path.dirname(
             self.parent.project_file)), 'img src="')
 
@@ -1634,8 +1679,12 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.show_message('Wrong search type')
             return
         print('start search...')
-        self.search_results = _search(self.views[self.opts['ActiveView']],
-            self.itemdict, self.srchtext, self.srchtype, self.srchflags)
+        # old search assumes view is up-to-date
+        ## self.search_results = _search(self.views[self.opts['ActiveView']],
+            ## self.itemdict, self.srchtext, self.srchtype, self.srchflags)
+        # new search assumes plain text is contained in tree items
+        self.search_results = _search(self.root, self.srchtext, self.srchtype,
+            self.srchflags)
         print('searching done')
         if not self.search_results:
             self.show_message('Search string not found')
@@ -1670,24 +1719,18 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.go_to_result()
 
     def go_to_result(self):
-        ## self.show_statusmessage('Showing result {} for search mode {}'.format(
-            ## self.srchno, self.srchtype))
-        ## return
-        key, loc, type, text = self.search_results[self.srchno]
+        ## key, loc, type, text = self.search_results[self.srchno]
+        loc, type, text = self.search_results[self.srchno]
         treeitem = self.root
         for x in loc:
             treeitem = treeitem.child(x)
         self.tree.setCurrentItem(treeitem)
-        ## self.activate_item(treeitem)    # dit is niet genoeg, tree wordt niet bijgewerkt
         if type == 'text':
             ok = self.editor.find(self.srchtext, self.srchflags)
             if ok:
                 self.editor.ensureCursorVisible()
 
 
-
-        # find textitem in tree and activate it
-        # find (first) occurrence of findstr and position
 def main(fnaam):
     app = qtw.QApplication(sys.argv)
     if fnaam == '':
