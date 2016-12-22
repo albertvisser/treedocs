@@ -789,7 +789,8 @@ class EditorPanel(qtw.QTextEdit):
     def get_contents(self):
         "return contents from editor"
         # update plain text in tree item to facilitate search
-        self.parent.tree.setCurrentItem(0, core.Qt.UserRole, self.toPlainText())
+        self.parent.tree.currentItem().setData(0, core.Qt.UserRole,
+            self.toPlainText())
         return self.toHtml().replace('img src="{}/'.format(os.path.dirname(
             self.parent.project_file)), 'img src="')
 

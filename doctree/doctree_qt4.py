@@ -1439,6 +1439,20 @@ class MainWindow(gui.QMainWindow, Mixin):
             command = PasteCommand(self, before, below, current)
             self.undo_stack.push(command)
 
+    def search_texts(self):
+        self.search(mode=2)
+
+    def search_titles(self):
+        self.search(mode=1)
+
+    def search(self, mode=0):
+        pass
+
+    def find_next(self):
+        pass
+
+    def find_prev(self):
+        pass
 
 def main(fnaam):
     app = gui.QApplication(sys.argv)
