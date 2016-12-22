@@ -1627,14 +1627,19 @@ class MainWindow(qtw.QMainWindow, Mixin):
             ok = self.editor.find(self.srchtext, self.srchflags)
             if ok:
                 self.editor.ensureCursorVisible()
+            else:
+                self.show_message('Search string not found')
             return
         if self.srchtype not in (1, 2, 3): # failsafe
-            self.show_message('wrong search type')
+            self.show_message('Wrong search type')
             return
         print('start search...')
         self.search_results = _search(self.views[self.opts['ActiveView']],
             self.itemdict, self.srchtext, self.srchtype, self.srchflags)
         print('searching done')
+        if not self.search_results:
+            self.show_message('Search string not found')
+            return
         if self.srchlist:
             dlg = ResultsDialog(self).exec_()
         else:
