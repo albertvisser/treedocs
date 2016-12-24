@@ -1749,7 +1749,8 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.show_message('Search string not found')
             return
         if self.srchlist:
-            dlg = ResultsDialog(self).exec_()
+            dlg = ResultsDialog(self)
+            dlg.show()
         else:
             self.srchno = 0
             self.go_to_result()
