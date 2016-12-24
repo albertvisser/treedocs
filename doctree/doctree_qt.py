@@ -10,8 +10,6 @@ import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 
 HERE = os.path.dirname(__file__)
-## from doctree.doctree_shared import Mixin, init_opts, _write, _search, putsubtree
-## from doctree.doctree_shared import log
 from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
 
 def tabsize(pointsize):
@@ -111,11 +109,9 @@ class SearchDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
-        ## self.c_richt = qtw.QCheckBox('Achterwaarts zoeken', self)
         self.c_hlett = qtw.QCheckBox('Hoofdlettergevoelig', self)
         self.c_woord = qtw.QCheckBox('Hele woorden', self)
         vbox2 = qtw.QVBoxLayout()
-        ## vbox2.addWidget(self.c_richt)
         vbox2.addWidget(self.c_hlett)
         vbox2.addWidget(self.c_woord)
         hbox.addLayout(vbox2)
@@ -123,6 +119,10 @@ class SearchDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         vbox.addSpacing(5)
+        hbox = qtw.QHBoxLayout()
+        self.c_wrap = qtw.QCheckBox('Wrap around', self)
+        hbox.addWidget(self.c_wrap)
+        vbox.addLayout(hbox)
         hbox = qtw.QHBoxLayout()
         self.c_lijst = qtw.QCheckBox('Toon lijst met zoekresultaten', self)
         hbox.addWidget(self.c_lijst)
@@ -148,14 +148,14 @@ class SearchDialog(qtw.QDialog):
             self.c_text.setChecked(True)
         if self.parent.srchtext:
             self.t_zoek.setText(self.parent.srchtext)
-        ## if self.parent.srchflags & gui.QTextDocument.FindBackward:
-            ## self.c_richt.setChecked(True)
         if self.parent.srchflags & gui.QTextDocument.FindCaseSensitively:
             self.c_hlett.setChecked(True)
         if self.parent.srchflags & gui.QTextDocument.FindWholeWords:
             self.c_woord.setChecked(True)
         if self.parent.srchlist:
             self.c_lijst.setChecked(True)
+        if self.parent.srchwrap:
+            self.c_wrap.setChecked(True)
         self.t_zoek.setFocus()
 
     def check_modes(self, evt):
@@ -202,6 +202,7 @@ class SearchDialog(qtw.QDialog):
             flags |= gui.QTextDocument.FindWholeWords
         self.parent.srchflags = flags
         self.parent.srchlist = self.c_lijst.isChecked()
+        self.parent.srchwrap = self.c_wrap.isChecked()
         super().accept()
 
 class ResultsDialog(qtw.QDialog):
@@ -1145,7 +1146,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.srchtext = ''
         self.srchtype = 0
         self.srchflags = gui.QTextDocument.FindFlags()
-        self.srchlist = False
+        self.srchlist = self.srchwrap = False
 
     def change_pane(self, event=None):
         "wissel tussen tree en editor"
@@ -1689,10 +1690,11 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.undo_stack.push(command)
 
     def _find_in(self, haystack):
-        if self.srchflags & 2: pass # case sensitive
-        if self.srchflags & 4: pass # whole words
-        # simple search for now
-        return self.srchtext in haystack
+        doc = gui.QTextDocument()
+        doc.setPlainText(haystack)
+        ok = doc.find(self.srchtext, options=self.srchflags)
+        ## return ok.hasSelection()
+        return not ok.isNull()
 
     def _search_from(self, parent, loc=None):
         """recursive search in tree items
@@ -1738,13 +1740,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         if self.srchtype not in (1, 2, 3): # failsafe
             self.show_message('Wrong search type')
             return
-        print('start search...')
-        # old search assumes view is up-to-date
-        ## self.search_results = _search(self.views[self.opts['ActiveView']],
-            ## self.itemdict, self.srchtext, self.srchtype, self.srchflags)
-        # new search assumes plain text is contained in tree items
         self.search_results = self._search_from(self.root)
-        print('searching done')
         if not self.search_results:
             self.show_message('Search string not found')
             return
@@ -1764,27 +1760,41 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def find_next(self):
         if not self.srchtext:
             return
-        if not self.srchtype:
+        if self.srchtype:
+            self.srchno += 1
+            self.go_to_result()
+        else:
             if self.editor.find(self.srchtext, self.srchflags & (
                     gui.QTextDocument.FindCaseSensitively	|
                     gui.QTextDocument.FindWholeWords)):
                 self.editor.ensureCursorVisible()
-        else:
-            self.srchno += 1
-            self.go_to_result()
 
     def find_prev(self):
         if not self.srchtext:
             return
-        if not self.srchtype:
+        if self.srchtype:
+            self.srchno -= 1
+            self.go_to_result()
+        else:
             if self.editor.find(self.srchtext, self.srchflags |
                     gui.QTextDocument.FindBackward):
                 self.editor.ensureCursorVisible()
-        else:
-            self.srchno -= 1
-            self.go_to_result()
 
     def go_to_result(self):
+        msg = ''
+        if self.srchno >= len(self.search_results):
+            if self.srchwrap:
+                self.srchno = 0
+            else:
+                msg = 'No next result'
+        elif self.srchno < 0:
+            if self.srchwrap:
+                self.srchno = len(self.search_results) - 1
+            else:
+                msg = 'No prior result'
+        if msg:
+            self.show_message(msg)
+            return
         ## key, loc, type, text = self.search_results[self.srchno]
         loc, type = self.search_results[self.srchno][:2]
         treeitem = self.root
