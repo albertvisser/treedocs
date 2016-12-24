@@ -14,39 +14,6 @@ HERE = os.path.dirname(__file__)
 ## from doctree.doctree_shared import log
 from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
 
-def _find(needle, haystack, options):
-    if options & 2: pass # case sensitive
-    if options & 4: pass # whole words
-    # simple search for now
-    return needle in haystack
-
-def _search(parent, findstr, search_type, search_flags, loc=None):
-    """recursive search in tree items
-    assumes item.text(0) contains title, item.data(0) contains text without format
-    result is a list of 3 items:
-    - node address in the form of a series of sequence numbers
-    - indicatinon of where the string was found
-    - title of the itemdict item
-    """
-    result = []
-    if not loc:
-        location = []
-    else:
-        location = loc
-    for ix in range(parent.childCount()):
-        loc = location + [ix]
-        treeitem = parent.child(ix)
-        title = treeitem.text(0)
-        text = treeitem.data(0, core.Qt.UserRole)
-        if search_type & 1 and _find(findstr, title, search_flags):
-            result.append((loc, 'title', title))
-        if search_type & 2 and _find(findstr, text, search_flags):
-            result.append((loc, 'text', title))
-        test = _search(treeitem, findstr, search_type, search_flags, loc)
-        if test:
-            result.extend(test)
-    return result
-
 def tabsize(pointsize):
      "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
      x, y = divmod(pointsize * 8, 10)
@@ -144,11 +111,11 @@ class SearchDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
-        self.c_richt = qtw.QCheckBox('Achterwaarts zoeken', self)
+        ## self.c_richt = qtw.QCheckBox('Achterwaarts zoeken', self)
         self.c_hlett = qtw.QCheckBox('Hoofdlettergevoelig', self)
         self.c_woord = qtw.QCheckBox('Hele woorden', self)
         vbox2 = qtw.QVBoxLayout()
-        vbox2.addWidget(self.c_richt)
+        ## vbox2.addWidget(self.c_richt)
         vbox2.addWidget(self.c_hlett)
         vbox2.addWidget(self.c_woord)
         hbox.addLayout(vbox2)
@@ -181,8 +148,8 @@ class SearchDialog(qtw.QDialog):
             self.c_text.setChecked(True)
         if self.parent.srchtext:
             self.t_zoek.setText(self.parent.srchtext)
-        if self.parent.srchflags & gui.QTextDocument.FindBackward:
-            self.c_richt.setChecked(True)
+        ## if self.parent.srchflags & gui.QTextDocument.FindBackward:
+            ## self.c_richt.setChecked(True)
         if self.parent.srchflags & gui.QTextDocument.FindCaseSensitively:
             self.c_hlett.setChecked(True)
         if self.parent.srchflags & gui.QTextDocument.FindWholeWords:
@@ -203,11 +170,11 @@ class SearchDialog(qtw.QDialog):
         if self.sender() == self.c_curr:
             self.c_titl.setChecked(False)
             self.c_text.setChecked(False)
-            self.c_richt.setEnabled(False)
+            ## self.c_richt.setEnabled(False)
             self.c_lijst.setEnabled(False)
         else:
             self.c_curr.setChecked(False)
-            self.c_richt.setEnabled(False) # True)
+            ## self.c_richt.setEnabled(False) # True)
             self.c_lijst.setEnabled(True)
         pass
 
@@ -227,8 +194,8 @@ class SearchDialog(qtw.QDialog):
         self.parent.srchtext = zoek
         self.parent.srchtype = mode
         flags = gui.QTextDocument.FindFlags()
-        if self.c_richt.isChecked():
-            flags |= gui.QTextDocument.FindBackward
+        ## if self.c_richt.isChecked():
+            ## flags |= gui.QTextDocument.FindBackward
         if self.c_hlett.isChecked():
             flags |= gui.QTextDocument.FindCaseSensitively
         if self.c_woord.isChecked():
@@ -248,19 +215,82 @@ class ResultsDialog(qtw.QDialog):
 
         hbox = qtw.QHBoxLayout()
         hbox.addWidget(qtw.QLabel("Now showing: a list of search results"
-            " with select & goto possibility in a nonmodal dialog", self))
+            " with select & goto possibility in a nonmodal dialog\n"
+            "Doubleclick to go to an entry", self))
         vbox.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
-        ok_button = qtw.QPushButton("&Ok", self)
+        self.result_list = qtw.QTreeWidget()
+        self.result_list.setColumnCount(2)
+        self.result_list.setHeaderLabels(('Node Root', 'Node Title'))
+        ## self.result_list.setSelectionMode(self.SingleSelection)
+        self.result_list.itemDoubleClicked.connect(self.goto_selected)
+        self.populate_list()
+        hbox.addWidget(self.result_list)
+        vbox.addLayout(hbox)
+
+        hbox = qtw.QHBoxLayout()
+        go_button = qtw.QPushButton("&Goto", self)
+        go_button.clicked.connect(self.goto_selected)
+        gook_button = qtw.QPushButton("g&Oto and Close", self)
+        gook_button.clicked.connect(self.goto_and_close)
+        ok_button = qtw.QPushButton("&Close", self)
         ok_button.clicked.connect(self.accept)
+        hbox.addStretch(1)
+        hbox.addWidget(go_button)
+        hbox.addWidget(gook_button)
         hbox.addWidget(ok_button)
-        hbox.insertStretch(0, 1)
+        ## hbox.insertStretch(0, 1)
         hbox.addStretch(1)
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
 
+    def populate_list(self):
+        oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
+        def add_item_to_list():
+            ## result_text = ''
+            ## if in_title > 0:
+                ## result_text += "title"
+            ## if in_title > 1:
+                ## result_text += " ({})".format(in_title)
+            ## if in_text > 0:
+                ## if result_text:
+                    ## result_text += ", "
+                ## result_text += "text"
+            ## if in_text > 1:
+                ## result_text += " ({})".format(in_text)
+            new = qtw.QTreeWidgetItem()
+            ## new.setText(0, str(oldloc))
+            new.setText(0, oldroot)
+            new.setData(0, core.Qt.UserRole, oldix)
+            new.setText(1, oldtitle)
+            new.setData(1, core.Qt.UserRole, oldloc)
+            ## new.setText(2, result_text.title())
+            self.result_list.addTopLevelItem(new)
+        for ix, item in enumerate(self.parent.search_results):
+            loc, type, root, title = item
+            if loc != oldloc:
+                if oldloc is not None:
+                    add_item_to_list()
+                in_title = 0
+                in_text = 0
+            if type == 'title':
+                in_title += 1
+            elif type == 'text':
+                in_text += 1
+            oldloc, oldtype, oldroot, oldtitle = loc, type, root, title
+            oldix = ix
+        add_item_to_list()
+
+    def goto_selected(self):
+        selected = self.result_list.currentItem()
+        self.parent.srchno = selected.data(0, core.Qt.UserRole)
+        self.parent.go_to_result()
+
+    def goto_and_close(self):
+        self.goto_selected()
+        super().accept()
 #
 # Undo stack (subclass overriding some event handlers)
 #
@@ -1658,11 +1688,40 @@ class MainWindow(qtw.QMainWindow, Mixin):
             command = PasteCommand(self, before, below, current)
             self.undo_stack.push(command)
 
-    def search_texts(self):
-        self.search(mode=2)
+    def _find_in(self, haystack):
+        if self.srchflags & 2: pass # case sensitive
+        if self.srchflags & 4: pass # whole words
+        # simple search for now
+        return self.srchtext in haystack
 
-    def search_titles(self):
-        self.search(mode=1)
+    def _search_from(self, parent, loc=None):
+        """recursive search in tree items
+        assumes item.text(0) contains title, item.data(0) contains text without format
+        result is a list of 3 items:
+        - node address in the form of a series of sequence numbers
+        - indicatinon of where the string was found
+        - title of the itemdict item
+        """
+        result = []
+        if not loc:
+            location = []
+        else:
+            location = loc
+        for ix in range(parent.childCount()):
+            loc = location + [ix]
+            treeitem = parent.child(ix)
+            if len(loc) == 1:
+                self._root_title = treeitem.text(0)
+            title = treeitem.text(0)
+            text = treeitem.data(0, core.Qt.UserRole)
+            if self.srchtype & 1 and self._find_in(title):
+                result.append((loc, 'title',self._root_title, title))
+            if self.srchtype & 2 and self._find_in(text):
+                result.append((loc, 'text', self._root_title, title))
+            test = self._search_from(treeitem, loc)
+            if test:
+                result.extend(test)
+        return result
 
     def search(self, mode=0):
         dlg = SearchDialog(self, mode=mode)
@@ -1684,8 +1743,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ## self.search_results = _search(self.views[self.opts['ActiveView']],
             ## self.itemdict, self.srchtext, self.srchtype, self.srchflags)
         # new search assumes plain text is contained in tree items
-        self.search_results = _search(self.root, self.srchtext, self.srchtype,
-            self.srchflags)
+        self.search_results = self._search_from(self.root)
         print('searching done')
         if not self.search_results:
             self.show_message('Search string not found')
@@ -1695,6 +1753,12 @@ class MainWindow(qtw.QMainWindow, Mixin):
         else:
             self.srchno = 0
             self.go_to_result()
+
+    def search_texts(self):
+        self.search(mode=2)
+
+    def search_titles(self):
+        self.search(mode=1)
 
     def find_next(self):
         if not self.srchtext:
@@ -1721,7 +1785,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
     def go_to_result(self):
         ## key, loc, type, text = self.search_results[self.srchno]
-        loc, type, text = self.search_results[self.srchno]
+        loc, type = self.search_results[self.srchno][:2]
         treeitem = self.root
         for x in loc:
             treeitem = treeitem.child(x)
