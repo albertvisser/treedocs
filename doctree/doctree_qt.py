@@ -215,9 +215,17 @@ class ResultsDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         hbox = qtw.QHBoxLayout()
-        hbox.addWidget(qtw.QLabel("Now showing: a list of search results"
-            " with select & goto possibility in a nonmodal dialog\n"
-            "Doubleclick to go to an entry", self))
+        where = ''
+        if self.parent.srchtype & 1 :
+            where += 'titles'
+        if self.parent.srchtype & 2:
+            if self.parent.srchtype & 1 :
+                where += ' and '
+            where += 'texts'
+        hbox.addWidget(qtw.QLabel('\n'.join((
+            "Showing results of searching for `{}` in all {}".format(
+                self.parent.srchtext, where),
+            "Doubleclick to go to an entry")), self))
         vbox.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
@@ -235,17 +243,26 @@ class ResultsDialog(qtw.QDialog):
         go_button.clicked.connect(self.goto_selected)
         gook_button = qtw.QPushButton("g&Oto and Close", self)
         gook_button.clicked.connect(self.goto_and_close)
+        self.next_button = qtw.QPushButton("Goto &Next", self)
+        self.next_button.clicked.connect(self.goto_next)
+        self.next_button.setEnabled(False)
+        self.prev_button = qtw.QPushButton("Goto &Previous", self)
+        self.prev_button.clicked.connect(self.goto_prev)
+        self.prev_button.setEnabled(False)
         ok_button = qtw.QPushButton("&Close", self)
         ok_button.clicked.connect(self.accept)
         hbox.addStretch(1)
         hbox.addWidget(go_button)
         hbox.addWidget(gook_button)
+        hbox.addWidget(self.next_button)
+        hbox.addWidget(self.prev_button)
         hbox.addWidget(ok_button)
         ## hbox.insertStretch(0, 1)
         hbox.addStretch(1)
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
+        self.result_list.setCurrentItem(self.result_list.itemAt(0,0))
 
     def populate_list(self):
         oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
@@ -284,14 +301,46 @@ class ResultsDialog(qtw.QDialog):
             oldix = ix
         add_item_to_list()
 
+    def goto_next(self):
+        new = self.result_list.itemBelow(self.result_list.currentItem())
+        if new:
+            self.result_list.setCurrentItem(new)
+            self.goto_selected()
+        else:
+            self.next_button.setEnabled(False)
+            self.parent.show_message('This is the last one')
+
+    def goto_prev(self):
+        new = self.result_list.itemAbove(self.result_list.currentItem())
+        if new:
+            self.result_list.setCurrentItem(new)
+            self.goto_selected()
+        else:
+            self.prev_button.setEnabled(False)
+            self.parent.show_message('This is the first one')
+
     def goto_selected(self):
+        if not self.next_button.isEnabled():
+            self.next_button.setEnabled(True)
+        if not self.prev_button.isEnabled():
+            self.prev_button.setEnabled(True)
         selected = self.result_list.currentItem()
         self.parent.srchno = selected.data(0, core.Qt.UserRole)
         self.parent.go_to_result()
 
     def goto_and_close(self):
         self.goto_selected()
+        self.accept()
+
+    def accept(self):
+        print("accept")
+        self.parent.srchlist = False
         super().accept()
+
+    def reject(self):
+        print("reject")
+        self.parent.srchlist = False
+        super().reject()
 #
 # Undo stack (subclass overriding some event handlers)
 #
@@ -1726,6 +1775,11 @@ class MainWindow(qtw.QMainWindow, Mixin):
         return result
 
     def search(self, mode=0):
+        print('starting new search, srchlist =', self.srchlist)
+        if self.srchlist:
+            self.show_message('Cannot start new search while results screen is '
+                'showing')
+            return
         dlg = SearchDialog(self, mode=mode)
         if dlg.exec_() != qtw.QDialog.Accepted:
             return
@@ -1742,6 +1796,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             return
         self.search_results = self._search_from(self.root)
         if not self.search_results:
+            self.srchlist = False
             self.show_message('Search string not found')
             return
         if self.srchlist:
