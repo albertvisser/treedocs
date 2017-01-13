@@ -245,7 +245,6 @@ class ResultsDialog(qtw.QDialog):
         gook_button.clicked.connect(self.goto_and_close)
         self.next_button = qtw.QPushButton("Goto &Next", self)
         self.next_button.clicked.connect(self.goto_next)
-        self.next_button.setEnabled(False)
         self.prev_button = qtw.QPushButton("Goto &Previous", self)
         self.prev_button.clicked.connect(self.goto_prev)
         self.prev_button.setEnabled(False)
@@ -267,24 +266,11 @@ class ResultsDialog(qtw.QDialog):
     def populate_list(self):
         oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
         def add_item_to_list():
-            ## result_text = ''
-            ## if in_title > 0:
-                ## result_text += "title"
-            ## if in_title > 1:
-                ## result_text += " ({})".format(in_title)
-            ## if in_text > 0:
-                ## if result_text:
-                    ## result_text += ", "
-                ## result_text += "text"
-            ## if in_text > 1:
-                ## result_text += " ({})".format(in_text)
             new = qtw.QTreeWidgetItem()
-            ## new.setText(0, str(oldloc))
             new.setText(0, oldroot)
             new.setData(0, core.Qt.UserRole, oldix)
             new.setText(1, oldtitle)
             new.setData(1, core.Qt.UserRole, oldloc)
-            ## new.setText(2, result_text.title())
             self.result_list.addTopLevelItem(new)
         for ix, item in enumerate(self.parent.search_results):
             loc, type, root, title = item
