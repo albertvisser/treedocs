@@ -633,6 +633,7 @@ class TreePanel(qtw.QTreeWidget):
         h = self.currentItem()
         log('current item is now {} {}'.format(h, h.text(0)))
         self.parent.activate_item(h)
+        self.parent.set_title()
 
     def dropEvent(self, event):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
@@ -775,7 +776,7 @@ class TreePanel(qtw.QTreeWidget):
         return root, pos
 
     def _getselecteditem(self):
-        return self.selectedItems()[0] # gui-dependent
+        return self.selectedItems()[0]
 
     def _removeitem(self, item, cut_from_itemdict):
         "removes current treeitem and returns the previous one"
@@ -1132,6 +1133,16 @@ class EditorPanel(qtw.QTextEdit):
     def _openup(self, value):
         "make text accessible (or not)"
         self.setReadOnly(not value)
+    def focusInEvent(self, *args):
+        self.parent.in_editor = True
+        self.parent.set_title()
+        super().focusInEvent(*args)
+
+    def focusOutEvent(self, *args):
+        self.parent.in_editor = False
+        self.parent.set_title()
+        super().focusOutEvent(*args)
+
 
 class MainWindow(qtw.QMainWindow, Mixin):
     """Hoofdscherm van de applicatie"""
@@ -1154,6 +1165,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.opts = init_opts()
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1]) # 800, 500)
         self.title = 'DocTree'
+        self.in_editor = False
         self.setWindowTitle(self.title)
 
         self.actiondict = {}
@@ -1303,10 +1315,15 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
     def set_title(self):
         """standaard titel updaten"""
-        self.setWindowTitle("{}{} (view: {}) - DocTree".format(
+        if self.in_editor:
+            ## text = 'text: {}'.format(self.tree.currentItem().text(0))
+            text = 'title: {}'.format(self.activeitem.text(0))
+        else:
+            text = 'view: {}'.format(self.opts["ViewNames"][self.opts['ActiveView']])
+        self.setWindowTitle("{}{} ({}) - DocTree".format(
             os.path.split(self.project_file)[1],
             '*' if self.project_dirty else '',
-            self.opts["ViewNames"][self.opts['ActiveView']]))
+            text))
 
     def getfilename(self, title, start, save=False):
         filter = "Pickle files (*.pck)"
@@ -1397,6 +1414,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ## for x, y in self.itemdict.items():
             ## log('  {} ({}): {} ({})'.format(x, type(x), y, type(y)))
         self.tree.setFocus()
+        self.in_editor = False
 
     def _finish_read(self, item_to_activate):
         self.root.setExpanded(True)
