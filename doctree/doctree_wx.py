@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-
-"Doctree wxPython specifieke code"
+"""Doctree wxPython specifieke code - currently unmaintained
+"""
 
 import os
 import datetime as dt

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-
-"DocTree PyQt specifieke code"
+"""DocTree PyQt4 specifieke code - currently unmaintained
+"""
 
 import os
 import sys

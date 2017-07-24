@@ -1,8 +1,10 @@
-# -*- coding: utf-8 -*-
-import os
+"""Leesbaar weergeven van een DocTree data file
+"""
+## import os
 import sys
 import pickle as pck
 import bs4 as bs
+
 
 def main(fname):
     """

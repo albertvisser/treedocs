@@ -1,20 +1,21 @@
 #! /usr/bin/env python
-# -*- coding: latin-1 -*-
-
 """
+DocTree data file conversion program
 usage: [python] convert.py [<filename> [<method>]]
 
 <filename> is a pre-richedit doctree file, can even be a pre-views one.
            If none is given, the name 'MyMan.ini' is used.
 <method> can be 'wx' or 'qt', if none is given 'qt' is used.
 """
+from __future__ import print_function
 import os
 import sys
 import cPickle as pck
-import pprint
+## import pprint
 
 data_list = []
 items_list = {}
+
 
 def unravel(item):
     "recursieve functie voor het opbouwen van de view"
@@ -26,6 +27,7 @@ def unravel(item):
     for subitem in subitems:
         subitem_list.append(unravel(subitem))
     return data_item
+
 
 def convert(data):
     """
@@ -79,28 +81,27 @@ def convert(data):
         ## print key, value
         data_list.append(unravel(value))
         data.pop(key)
-    data[0]["ActiveItem"] = [activeitem,]
+    data[0]["ActiveItem"] = [activeitem]
     # resultaat samenstellen en opslaan
     data[0]["ActiveView"] = 0
     data[1] = (data_list,)
     data[2] = items_list
+
 
 def make_richtext(data, methode):
     """
     plain text buffers vervangen door rich text buffers door er wat XML (voor wx versie)
     of HTML (voor qt versie) omheen te zetten
     """
-    omzetdict = {
-        'wx': "richtext_wx.xml",
-        'qt': 'richtext_qt.html',
-        }
+    omzetdict = {'wx': "richtext_wx.xml",
+                 'qt': 'richtext_qt.html'}
     try:
         fnaam = omzetdict[methode]
     except KeyError:
         raise
     with open(os.path.join(os.path.dirname(__file__), fnaam)) as f_in:
         template = f_in.read()
-    print data[0]['RootData']
+    print(data[0]['RootData'])
     data[0]['RootData'] = template.format(
         data[0]['RootData'].replace('\n', '<br/>').encode('utf-8'))
     for key, item in data[2].iteritems():
@@ -109,7 +110,8 @@ def make_richtext(data, methode):
         data[2][key] = titel, content
     return data
 
-if __name__ == "__main__":
+
+def main():
     """
     data file laden, unpicklen, converteren, picklen en terugschrijven
     """
@@ -124,22 +126,18 @@ if __name__ == "__main__":
         methode = sys.argv[2]
     else:
         methode = 'qt'
-    file = open(filenaam,"rb")
-    ## try:
-        ## file = open(fnaam,"rb")
-    ## except ValueError:
-        ## file = open(fnaam,"r")
-    data = pck.load(file)
-    file.close()
+    with open(filenaam, "rb") as f_in:
+        data = pck.load(f_in)
     if len(data) != 3:
-        print 'converting to multiple view format'
+        print('converting to multiple view format')
         convert(data)
-        file = open("_multi".join(os.path.splitext(filenaam)),"wb")
-        pck.dump(data, file)
-        file.close()
-    print 'converting to rich text format'
+        with open("_multi".join(os.path.splitext(filenaam)), "wb") as f_out:
+            pck.dump(data, f_out)
+    print('converting to rich text format')
     data = make_richtext(data, methode)
     ## pprint.pprint(data)
-    file = open("_{}".format(methode).join(os.path.splitext(filenaam)),"wb")
-    pck.dump(data, file)
-    file.close()
+    with open("_{}".format(methode).join(os.path.splitext(filenaam)), "wb") as f_out:
+        pck.dump(data, f_out)
+
+if __name__ == "__main__":
+    main()

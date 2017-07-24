@@ -1,7 +1,10 @@
+"""DocTree utility program to present the data in a viewable form
+"""
 import os.path
 import pprint
 import pickle as pck
 import bs4 as bs
+
 
 def filter_html(data):
     """
@@ -15,6 +18,7 @@ def filter_html(data):
     else:
         return ''
 
+
 def write_file(fname, title, data, as_html):
     """
     schrijf `data` weg als "`title`.html of `title`.out"
@@ -25,6 +29,7 @@ def write_file(fname, title, data, as_html):
     outfile = os.path.join(root, '_'.join((base, '_'.join(title.split()))) + ext)
     with open(outfile, 'w') as _out:
         _out.write(data)
+
 
 def main(fname, *, donot_filter_html=False, to_files=False):
     """Produce readable output from a DocTree document collection
@@ -89,7 +94,7 @@ def main(fname, *, donot_filter_html=False, to_files=False):
         if to_files:
             for key, value in itemdict.items():
                 write_file(fname, " ".join((str(key), value[0])), value[1],
-                    donot_filter_html)
+                           donot_filter_html)
         else:
             print('itemdict', file=_out)
             pprint.pprint(itemdict, stream=_out)

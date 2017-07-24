@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""\
-voor uitwisseling van Python2 naar Python3
+"""
+Voor uitwisseling van Python2 naar Python3
 
 lees een doctree file en sla het op zonder de sashposition vanuit de gui
 to be run under Python 2
@@ -8,15 +8,19 @@ to be run under Python 2
 import sys
 import os
 import shutil
-if sys.version < '3':
+try:
     import cPickle as pck
-else:
+except ImportError:
     import pickle as pck
 
 usage = """\
 usage: [python] doctree_2to3.py <filename>
 """
+
+
 def load(fname):
+    """load the Python 2 created version
+    """
     mld = ""
     try:
         f_in = open(fname, "rb")
@@ -36,15 +40,21 @@ def load(fname):
         return "{} is not a valid Doctree data file".format(fname)
     return nt_data
 
+
 def save(fname, data):
+    """Save in format suitable for Python 3
+    """
     try:
         shutil.copyfile(fname, fname + ".py2")
     except IOError:
         pass
-    with open(fname,"wb") as f_out:
+    with open(fname, "wb") as f_out:
         pck.dump(data, f_out, protocol=2)
 
+
 def main(args):
+    """Start processing
+    """
     if sys.version >= '3':
         print('This script is not meant to be run using Python 3 or higher')
         return False

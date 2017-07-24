@@ -12,7 +12,11 @@ import pickle as pck
 usage = """\
 usage: [python] doctree_qt4to5.py <filename>
 """
+
+
 def load(fname):
+    """load the PyQt4 created version
+    """
     mld = ""
     try:
         f_in = open(fname, "rb")
@@ -32,15 +36,21 @@ def load(fname):
         return "{} is not a valid Doctree data file".format(fname)
     return nt_data
 
+
 def save(fname, data):
+    """Save in format suitable for PyQt5
+    """
     try:
         shutil.copyfile(fname, fname + ".qt4")
     except IOError:
         pass
-    with open(fname,"wb") as f_out:
+    with open(fname, "wb") as f_out:
         pck.dump(data, f_out, protocol=2)
 
+
 def main(args):
+    """Start processing
+    """
     if len(args) != 2:
         print("wrong number of arguments")
         return False
@@ -52,7 +62,7 @@ def main(args):
     if isinstance(data, str):
         print(data)
         return False
-    for key, value in data[0].items():
+    for key, _ in data[0].items():
         if key == "SashPosition":
             data[0][key] = 180
         ## elif key == "RootData":

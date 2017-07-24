@@ -1,49 +1,55 @@
 # -*- coding: utf-8 -*-
-
-"DocTree gui-onafhankelijk gedeelte"
-
+"""DocTree gui-onafhankelijk gedeelte
+"""
 import os
 import sys
-if sys.version[0] < '3':
-    import cPickle as pck
-    str = unicode
-else:
+try:
+    import cPickle as pck  # Python 2
+except ImportError:
     import pickle as pck
+else:
+    str = unicode
 import shutil
 from datetime import datetime
 import zipfile as zip
-import bs4 as bs
-import pprint
+## import pprint
 import logging
-logging.basicConfig(filename=os.path.join(os.path.abspath(os.path.dirname(__file__)),
-    'logs', 'doctree.log'), level=logging.DEBUG, format='%(asctime)s %(message)s')
-import datetime as dt
+## import datetime as dt
+import bs4 as bs
+HERE = os.path.abspath(os.path.dirname(__file__))
+logging.basicConfig(filename=os.path.join(HERE, 'logs', 'doctree.log'),
+                    level=logging.DEBUG, format='%(asctime)s %(message)s')
+
 
 def init_opts():
-    return {
-        "Application": "DocTree", "NotifyOnSave": True,
-        "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
-        "ActiveItem": [0,], "ActiveView": 0, "ViewNames": ["Default",],
-        "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
+    """return dict of options and their initial values
+    """
+    return {"Application": "DocTree", "NotifyOnSave": True,
+            "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
+            "ActiveItem": [0], "ActiveView": 0, "ViewNames": ["Default"],
+            "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
+
 
 def log(message):
     "write message to logfile"
     if 'DEBUG' in os.environ and os.environ['DEBUG'] != "0":
         logging.info(message)
 
+
 def getsubtree(tree, item, itemlist=None):
     """recursieve functie om de structuur onder de te verplaatsen data
     te onthouden"""
     if itemlist is None:
         itemlist = []
-    titel, key = tree._getitemdata(item)
+    titel, key = tree.getitemdata(item)
     itemlist.append(key)
     log(' getsubtree item {}, {}'.format(titel, key))
     subtree = []
-    for kid in tree._getitemkids(item):
+    for kid in tree.getitemkids(item):
         data, itemlist = getsubtree(tree, kid, itemlist)
         subtree.append(data)
     return (titel, key, subtree), itemlist
+
 
 def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
     """recursieve functie om de onthouden structuur terug te zetten"""
@@ -52,7 +58,8 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
     new = tree.add_to_parent(str(key), str(titel), parent, pos)
     for subtitel, subkey, subsubtree in subtree:
         putsubtree(tree, new, subtitel, subkey, subsubtree)
-    return new # , itemdict
+    return new  # , itemdict
+
 
 def add_newitems(copied_item, cut_from_itemdict, itemdict):
     """met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
@@ -76,6 +83,7 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
     used_keys = list(keymap.values())
     return copied_item, itemdict, used_keys
 
+
 def replace_keys(item, keymap):
     """kopie van toe te voegen deelstructuur maken met vervangen van oude key
     door nieuwe key volgens keymap
@@ -90,20 +98,23 @@ def replace_keys(item, keymap):
     item[2] = hlp
     return tuple(item)
 
+
 def add_item_to_view(item, view):
     """nieuwe deelstructuur achteraan toevoegen aan tree view
     """
     def add_to_view(item, struct):
-        titel, key, children = item
+        "do so recursively"
+        _, key, children = item
         kids = []
         struct.append((int(key), kids))
         for child in children:
             add_to_view(child, kids)
-    titel, key, children = item
+    _, key, children = item
     struct = []
     for child in children:
         add_to_view(child, struct)
     view.append((int(key), struct))
+
 
 def _write(filename, opts, views, itemdict, extra_images=None):
     """settings en tree data in een structuur omzetten en opslaan
@@ -116,8 +127,7 @@ def _write(filename, opts, views, itemdict, extra_images=None):
         shutil.copyfile(zipfile, zipfile + ".bak")
     except IOError as err:
         print(err)
-        pass
-    with open(filename,"wb") as f_out:
+    with open(filename, "wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
 
     if extra_images is None:
@@ -126,13 +136,13 @@ def _write(filename, opts, views, itemdict, extra_images=None):
         for _, data in nt_data[2].values():
             names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
             _filenames.extend(names)
-        fname = os.path.basename(filename)
+        ## fname = os.path.basename(filename)
         mode = "w"
     else:
         _filenames = extra_images
         mode = "a"
     # add extra images to the zipfile
-    path = os.path.dirname((filename)) # eventueel eerst absoluut maken
+    path = os.path.dirname((filename))  # eventueel eerst absoluut maken
     zipped = []
     with zip.ZipFile(zipfile, mode) as _out:
         for name in _filenames:
@@ -141,20 +151,23 @@ def _write(filename, opts, views, itemdict, extra_images=None):
                 zipped.append(name)
     return zipped
 
+
 class TreePanel(object):
     "geen mixin, maar een placeholder om te tonen dat deze gebouwd moet worden"
     def __init__(self, parent):
         raise NotImplementedError
+
 
 class EditorPanel(object):
     "geen mixin, maar een placeholder om te tonen dat deze gebouwd moet worden"
     def __init__(self, parent):
         raise NotImplementedError
 
+
 class Mixin(object):
     """Hoofdscherm van de applicatie"""
-    def __init__(self): #, parent=None, fnaam=""):
-        self.project_dirty = False # set it directly because self.set_project_dirty doesn't exist yet
+    def __init__(self):  # , parent=None, fnaam=""):
+        self.project_dirty = False  # need to set this directly here
         self.add_node_on_paste = False
         self.has_treedata = False
         self._filenames = []
@@ -163,85 +176,119 @@ class Mixin(object):
     def _get_menu_data(self):
         return (
             ("&Main", (
-                ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png', 'Reread notes file'),
-                ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png', "Choose and open notes file"),
-                ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png', 'Start a new notes file'),
+                ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png',
+                 'Reread notes file'),
+                ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png',
+                 "Choose and open notes file"),
+                ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png',
+                 'Start a new notes file'),
                 ("&Save", self.save, 'Ctrl+S', 'icons/filesave.png', 'Save notes file'),
-                ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png', 'Name and save notes file'),
+                ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png',
+                 'Name and save notes file'),
                 (),
                 ("&Root title", self.rename_root, 'Shift+F2', '', 'Rename root'),
-                ("Items sorteren", self.order_top, '', '', 'Bovenste niveau sorteren op titel'),
-                ("Items recursief sorteren", self.order_all, '', '', 'Alle niveaus sorteren op titel'),
+                ("Items sorteren", self.order_top, '', '',
+                 'Bovenste niveau sorteren op titel'),
+                ("Items recursief sorteren", self.order_all, '', '',
+                 'Alle niveaus sorteren op titel'),
                 (),
                 ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
-                ("Switch pane", self.change_pane, 'Ctrl+Tab', '', 'switch tussen tree en editor'),
+                ("Switch pane", self.change_pane, 'Ctrl+Tab', '',
+                 'switch tussen tree en editor'),
                 (),
-                ("e&Xit", self.afsl, 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'),
-                ), ),
+                ("e&Xit", self.afsl, 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'))),
             ("&Note", (
                 ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
                 ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
-                ("New &under root", self.root_item, 'Shift+Ctrl+N', '', 'Add note (below root)'),
+                ("New &under root", self.root_item, 'Shift+Ctrl+N', '',
+                 'Add note (below root)'),
                 ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
-                ("&Move", self.move_to_file, 'Ctrl+M', '', 'Copy note to other file and remove'),
+                ("&Move", self.move_to_file, 'Ctrl+M', '',
+                 'Copy note to other file and remove'),
                 (),
                 ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
-                ("Subitems &sorteren", self.order_this, '', '', 'Onderliggend niveau sorteren op titel'),
-                ("Subitems &recursief sorteren", self.order_lower, '', '', 'Alle onderliggende niveaus sorteren op titel'),
+                ("Subitems &sorteren", self.order_this, '', '',
+                 'Onderliggend niveau sorteren op titel'),
+                ("Subitems &recursief sorteren", self.order_lower, '', '',
+                 'Alle onderliggende niveaus sorteren op titel'),
                 (),
-                ("&Forward (same level)", self.next_note, 'Ctrl+PgDown', '', 'View next note'),
-                ("For&ward (regardless)", self.next_note_any, 'Shift+Ctrl+PgDown', '', 'View next note'),
-                ("&Back (same level)", self.prev_note, 'Ctrl+PgUp', '', 'View previous note'),
-                ("Bac&k (regardless)", self.prev_note_any, 'Shift+Ctrl+PgUp', '', 'View previous note'),
-                ),),
+                ("&Forward (same level)", self.next_note, 'Ctrl+PgDown', '',
+                 'View next note'),
+                ("For&ward (regardless)", self.next_note_any, 'Shift+Ctrl+PgDown', '',
+                 'View next note'),
+                ("&Back (same level)", self.prev_note, 'Ctrl+PgUp', '',
+                 'View previous note'),
+                ("Bac&k (regardless)", self.prev_note_any, 'Shift+Ctrl+PgUp', '',
+                 'View previous note'))),
             ("&View", (
-                ('&New View', self.add_view, '', '', 'Add an alternative view (tree) to this data'),
-                ('&Rename Current View', self.rename_view, '', '', 'Rename the current tree view'),
-                ('&Delete Current View', self.remove_view, '', '', 'Remove the current tree view'),
+                ('&New View', self.add_view, '', '',
+                 'Add an alternative view (tree) to this data'),
+                ('&Rename Current View', self.rename_view, '', '',
+                 'Rename the current tree view'),
+                ('&Delete Current View', self.remove_view, '', '',
+                 'Remove the current tree view'),
                 (),
-                ('Next View', self.next_view, 'Ctrl++', '', 'Switch to the next view in the list'),
-                ('Prior View', self.prev_view, 'Ctrl+-', '', 'Switch to the previous view in the list'),
-                (),
-                ), ), # label, handler, shortcut, icon, info
+                ('Next View', self.next_view, 'Ctrl++', '',
+                 'Switch to the next view in the list'),
+                ('Prior View', self.prev_view, 'Ctrl+-', '',
+                 'Switch to the previous view in the list'),
+                ())),  # label, handler, shortcut, icon, info
             ('&Tree', (
-                ('&Undo', self.tree_undo,  'Ctrl+Alt+Z', '', 'Undo last operation'),
+                ('&Undo', self.tree_undo, 'Ctrl+Alt+Z', '', 'Undo last operation'),
                 ('&Redo', self.tree_redo, 'Ctrl+Alt+Y', '', 'Redo last undone operation'),
                 (),
-                ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png', 'Copy the selection and delete from tree'),
-                ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png', 'Just copy the selection'),
-                ('&Paste Under', self.paste_item_below, 'Ctrl+Alt+V', 'icons/treeitem-paste.png', 'Paste the copied selection under the selected item'),
-                ('&Paste After', self.paste_item_after, 'Shift+Ctrl+Alt+V', '', 'Paste the copied selection after the selected item (same parent)'),
-                ('&Paste Before', self.paste_item, '', '', 'Paste the copied selection before the selected item (same parent)'),
+                ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png',
+                 'Copy the selection and delete from tree'),
+                ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png',
+                 'Just copy the selection'),
+                ('&Paste Under', self.paste_item_below, 'Ctrl+Alt+V',
+                 'icons/treeitem-paste.png',
+                 'Paste the copied selection under the selected item'),
+                ('&Paste After', self.paste_item_after, 'Shift+Ctrl+Alt+V', '',
+                 'Paste the copied selection after the selected item (same parent)'),
+                ('&Paste Before', self.paste_item, '', '',
+                 'Paste the copied selection before the selected item (same parent)'),
                 (),
                 ('Expand', self.expand_item, 'Ctrl+<', '', 'Expand tree item'),
                 ('Collapse', self.collapse_item, 'Ctrl+>', '', 'Collapse tree item'),
                 ('Expand all', self.expand_all, 'Ctrl+Alt+<', '', 'Expand all subitems'),
-                ('Collapse all', self.collapse_all, 'Ctrl+Alt+>', '', 'Collapse all subitems'),
-                ## (),
-                ## ('Select A&ll', self.tree.selectAll, 'Ctrl+A', "", 'Select the entire tree'),
-                ## ("&Clear All (can't undo)", self.tree.clear, '', '', 'Delete the entire tree'),
-                ), ),
+                ('Collapse all', self.collapse_all, 'Ctrl+Alt+>', '',
+                 'Collapse all subitems'))),
             ('T&ext', (
-                ('&Undo', self.editor.undo,  'Ctrl+Z', 'icons/edit-undo.png', 'Undo last operation'),
-                ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png', 'Redo last undone operation'),
+                ('&Undo', self.editor.undo, 'Ctrl+Z', 'icons/edit-undo.png',
+                 'Undo last operation'),
+                ('&Redo', self.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png',
+                 'Redo last undone operation'),
                 (),
-                ('Cu&t', self.editor.cut, 'Ctrl+X', 'icons/edit-cut.png', 'Copy the selection and delete from text'),
-                ('&Copy', self.editor.copy, 'Ctrl+C', 'icons/edit-copy.png', 'Just copy the selection'),
-                ('&Paste', self.editor.paste, 'Ctrl+V', 'icons/edit-paste.png', 'Paste the copied selection'),
+                ('Cu&t', self.editor.cut, 'Ctrl+X', 'icons/edit-cut.png',
+                 'Copy the selection and delete from text'),
+                ('&Copy', self.editor.copy, 'Ctrl+C', 'icons/edit-copy.png',
+                 'Just copy the selection'),
+                ('&Paste', self.editor.paste, 'Ctrl+V', 'icons/edit-paste.png',
+                 'Paste the copied selection'),
                 (),
-                ('Select A&ll', self.editor.selectAll, 'Ctrl+A', "", 'Select the entire text'),
-                ("&Clear All (can't undo)", self.editor.clear, '', '', 'Delete the entire text'),
-                ), ),
+                ('Select A&ll', self.editor.selectAll, 'Ctrl+A', "",
+                 'Select the entire text'),
+                ("&Clear All (can't undo)", self.editor.clear, '', '',
+                 'Delete the entire text'))),
             ('&Format', (
-                ('&Bold', self.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png', 'CheckB'),
-                ('&Italic', self.editor.text_italic, 'Ctrl+I', 'icons/format-text-italic.png', 'CheckI'),
-                ('&Underline', self.editor.text_underline, 'Ctrl+U', 'icons/format-text-underline.png', 'CheckU'),
-                ('Strike&through', self.editor.text_strikethrough, 'Ctrl+~', 'icons/format-text-strikethrough.png', 'CheckS'),
+                ('&Bold', self.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png',
+                 'CheckB'),
+                ('&Italic', self.editor.text_italic, 'Ctrl+I',
+                 'icons/format-text-italic.png', 'CheckI'),
+                ('&Underline', self.editor.text_underline, 'Ctrl+U',
+                 'icons/format-text-underline.png', 'CheckU'),
+                ('Strike&through', self.editor.text_strikethrough, 'Ctrl+~',
+                 'icons/format-text-strikethrough.png', 'CheckS'),
                 (),
-                ('Align &Left', self.editor.align_left, 'Shift+Ctrl+L', 'icons/format-justify-left.png', 'Check'),
-                ('C&enter', self.editor.align_center, 'Shift+Ctrl+C', 'icons/format-justify-center.png', 'Check'),
-                ('Align &Right', self.editor.align_right, 'Shift+Ctrl+R', 'icons/format-justify-right.png', 'Check'),
-                ('&Justify', self.editor.text_justify, 'Shift+Ctrl+J', 'icons/format-justify-fill.png', 'Check'),
+                ('Align &Left', self.editor.align_left, 'Shift+Ctrl+L',
+                 'icons/format-justify-left.png', 'Check'),
+                ('C&enter', self.editor.align_center, 'Shift+Ctrl+C',
+                 'icons/format-justify-center.png', 'Check'),
+                ('Align &Right', self.editor.align_right, 'Shift+Ctrl+R',
+                 'icons/format-justify-right.png', 'Check'),
+                ('&Justify', self.editor.text_justify, 'Shift+Ctrl+J',
+                 'icons/format-justify-fill.png', 'Check'),
                 (),
                 ## ("Indent &More", self.editor.indent_more, 'Ctrl+]', '', 'Increase indentation'),
                 ## ("Indent &Less", self.editor.indent_less, 'Ctrl+[', '', 'Decrease indentation'),
@@ -254,29 +301,27 @@ class Mixin(object):
                 ## ("Double Line Spacing", self.editor.OnLineSpacingDouble, ''),
                 ## (),
                 ("&Font...", self.editor.text_font, '', '', 'Set/change font'),
-                ("&Enlarge text", self.editor.enlarge_text, 'Ctrl+Up', '', 'Use bigger letters'),
-                ("&Shrink text", self.editor.shrink_text, 'Ctrl+Down', '', 'Use smaller letters'),
+                ("&Enlarge text", self.editor.enlarge_text, 'Ctrl+Up', '',
+                 'Use bigger letters'),
+                ("&Shrink text", self.editor.shrink_text, 'Ctrl+Down', '',
+                 'Use smaller letters'),
                 (),
                 ("&Color...", self.editor.text_color, '', '', 'Set/change colour'),
                 ("&Background...", self.editor.background_color, '', '',
-                    'Set/change background colour'),
-                ), ),
+                 'Set/change background colour'))),
             ('&Search', (
-                ('&Current text', self.search, 'Ctrl+F', '',
-                    "Search in current text"),
+                ('&Current text', self.search, 'Ctrl+F', '', "Search in current text"),
                 ('All t&exts', self.search_texts, 'Shift+Ctrl+F', '',
-                    "Search in all texts"),
+                 "Search in all texts"),
                 ('All t&itles', self.search_titles, 'Ctrl+Alt+F', '',
-                    "Search in all titles"),
+                 "Search in all titles"),
                 (),
                 ('&Next', self.find_next, 'F3', '', 'Repeat search forwards'),
                 ('&Previous', self.find_prev, 'Shift+F3', '',
-                    'Repeat search backwards'),
-                ), ),
+                 'Repeat search backwards'))),
             ("&Help", (
                 ("&About", self.info_page, '', '', 'About this application'),
-                ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'),
-                ), ), )
+                ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'))))
 
     def show_message(self, text='', title=''):
         "voor elke gui variant apart te implementeren"
@@ -286,11 +331,12 @@ class Mixin(object):
         "voor elke gui variant apart te implementeren"
         print('status: {}'.format(text))
 
-    def change_pane(self, event=None):
+    def change_pane(self):
         "wissel tussen tree en editor"
         raise NotImplementedError
 
     def set_project_dirty(self, value):
+        "indicate that there have been changes"
         self.project_dirty = value
         self.set_title()
 
@@ -298,7 +344,7 @@ class Mixin(object):
         """standaard titel updaten"""
         raise NotImplementedError
 
-    def open(self, event=None):
+    def open(self):
         "afhandelen Menu > Open / Ctrl-O"
         if not self.save_needed():
             return
@@ -312,13 +358,13 @@ class Mixin(object):
             self.show_message(title="Error", text=err)
         self.show_statusmessage('{} gelezen'.format(self.project_file))
 
-    def new(self, event=None):
+    def new(self):
         "Afhandelen Menu - Init / Ctrl-I"
         if not self.save_needed():
             return False
         dirname = os.path.dirname(self.project_file)
         ok, filename = self.getfilename("DocTree - enter name for new file",
-            dirname, save=True)
+                                        dirname, save=True)
         if not ok:
             return
         filename = str(filename)
@@ -326,7 +372,7 @@ class Mixin(object):
         if len(test) == 1 or test[1] != '.pck':
             filename += '.pck'
         self.project_file = filename
-        self.views = [[],]
+        self.views = [[]]
         self.viewcount = 1
         self.itemdict = {}
         self._filenames = []
@@ -344,17 +390,17 @@ class Mixin(object):
         """zet de visuele tree om in een tree om op te slaan"""
         def lees_item(item):
             """recursieve functie om de data in een pickle-bare structuur om te zetten"""
-            textref = self.tree._getitemkey(item)
+            textref = self.tree.getitemkey(item)
             if item == self.activeitem:
                 self.opts["ActiveItem"][self.opts["ActiveView"]] = textref
-            kids = [lees_item(x) for x in self.tree._getitemkids(item)]
+            kids = [lees_item(x) for x in self.tree.getitemkids(item)]
             return textref, kids
-        data = [lees_item(x) for x in self.tree._getitemkids(self.root)]
+        data = [lees_item(x) for x in self.tree.getitemkids(self.root)]
         return data
 
     def viewtotree(self):
         """zet de geselecteerde view om in een visuele tree"""
-        def maak_item(parent, key, children = None):
+        def maak_item(parent, key, children=None):
             """recursieve functie om de TreeCtrl op te bouwen vanuit de opgeslagen data"""
             item_to_activate = None
             if children is None:
@@ -364,14 +410,14 @@ class Mixin(object):
             if key == self.opts["ActiveItem"][self.opts['ActiveView']]:
                 item_to_activate = tree_item
             for child in children:
-                x, y = maak_item(tree_item, *child)
+                _, y = maak_item(tree_item, *child)
                 if y is not None:
                     item_to_activate = y
             return key, item_to_activate
-        item_to_activate = 0
+        item_to_activate = None
         current_view = self.views[self.opts['ActiveView']]
         for item in current_view:
-            x, y = maak_item(self.root, *item)
+            _, y = maak_item(self.root, *item)
             if y is not None:
                 item_to_activate = y
         return item_to_activate
@@ -411,7 +457,7 @@ class Mixin(object):
         try:
             views = list(nt_data[1])
         except KeyError:
-            views = [[],]
+            views = [[]]
         viewcount = len(views)
 
         # read itemdict
@@ -436,15 +482,14 @@ class Mixin(object):
         self._filenames = []
         err = FileNotFoundError if sys.version >= '3.3' else OSError
         try:
-            with zip.ZipFile(os.path.splitext(self.project_file)[0] + '.zip',
-                    "r") as _in:
+            with zip.ZipFile(os.path.splitext(self.project_file)[0] + '.zip') as _in:
                 _in.extractall(path=path)
                 self._filenames = _in.namelist()
         except err:
             pass
 
         # finish up (set up necessary attributes etc)
-        self._read() # do gui-specific stuff
+        self._read()  # do gui-specific stuff
         item_to_activate = self.viewtotree()
         self.has_treedata = True
         ## self.set_title()
@@ -452,9 +497,10 @@ class Mixin(object):
         self._finish_read(item_to_activate)
 
     def _read(self):
+        "placeholder"
         raise NotImplementedError
 
-    def reread(self, event=None):
+    def reread(self):
         """afhandelen Menu > Reload (Ctrl-R)"""
         if not self.save_needed():
             return
@@ -463,9 +509,10 @@ class Mixin(object):
         self.show_statusmessage('{} herlezen'.format(self.project_file))
 
     def _ok_to_reload(self):
+        "placeholder"
         return NotImplementedError
 
-    def save(self, event=None, meld=True):
+    def save(self, meld=True):
         """afhandelen Menu > save"""
         if self.project_file:
             self.write(meld=meld)
@@ -473,24 +520,21 @@ class Mixin(object):
             self.saveas()
         self.show_statusmessage('{} opgeslagen'.format(self.project_file))
 
-    def write(self, event=None, meld=True):
+    def write(self, meld=True):
         """settings en tree data in een structuur omzetten en opslaan"""
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self._filenames = _write(self.project_file, self.opts, self.views,
-            self.itemdict)
+                                 self.itemdict)
         self.set_project_dirty(False)
         if meld:
-            ## self.show_message(self.project_file + " is opgeslagen", "DocTool")
             save_text = self.project_file + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
 
-
-    def saveas(self, event=None):
+    def saveas(self):
         """afhandelen Menu > Save As"""
         dirname = os.path.dirname(self.project_file)
-        ok, filename = self.getfilename("DocTree - save file as:", dirname,
-            save=True)
+        ok, filename = self.getfilename("DocTree - save file as:", dirname, save=True)
         if ok:
             filename = str(filename)
             test = os.path.splitext(filename)
@@ -500,26 +544,26 @@ class Mixin(object):
             self.write()
             self.set_title()
 
-    def hide_me(self, event=None):
+    def hide_me(self):
         """applicatie verbergen"""
         raise NotImplementedError
 
-    def revive(self, event=None):
+    def revive(self):
         """applicatie weer zichtbaar maken"""
         raise NotImplementedError
 
-    def afsl(self, event=None):
-        err = FileNotFoundError if sys.version >= '3.3' else OSError
+    def afsl(self):
+        "remove temporary files on exit (as they have been zipped)"
         for name in self._filenames:
             try:
                 os.remove(name)
-            except err:
+            except FileNotFoundError:
                 pass
 
-    def add_view(self, event=None):
+    def add_view(self):
         "handles Menu > View > New view"
         self.check_active()
-        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree._getitemdata(
+        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree.getitemdata(
             self.activeitem)
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.viewcount += 1
@@ -541,9 +585,10 @@ class Mixin(object):
         self._finish_add_view()
 
     def _set_activeitem_for_view(self):
+        "placeholder"
         raise NotImplementedError
 
-    def _update_newview(self):
+    def _update_newview(self, new_view):
         "view menu bijwerken n.a.v. toevoeging nieuwe view"
         raise NotImplementedError
 
@@ -551,11 +596,11 @@ class Mixin(object):
         "tree leegmaken en root opnieuw neerzetten"
         raise NotImplementedError
 
-    def rename_view(self, event=None):
+    def rename_view(self):
         "handles Menu > View > Rename current view"
         oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
         ok, newname = self._get_name('Geef een nieuwe naam voor de huidige view',
-            'DocTree', oldname)
+                                     'DocTree', oldname)
         if ok and newname != oldname:
             self._add_view_to_menu(newname)
             self.opts["ViewNames"][self.opts["ActiveView"]] = newname
@@ -563,12 +608,14 @@ class Mixin(object):
             ## self.set_title()
 
     def _get_name(self, caption, title, oldname):
+        "placeholder"
         raise NotImplementedError
 
     def _add_view_to_menu(self, newname):
+        "placeholder"
         raise NotImplementedError
 
-    def next_view(self, prev=False): # voorlopig even overgeslagen
+    def next_view(self, prev=False):  # voorlopig even overgeslagen
         """cycle to next view if available (default direction / forward)"""
         raise NotImplementedError
 
@@ -576,7 +623,7 @@ class Mixin(object):
         """cycle to previous view (alternate direction / backward)"""
         self.next_view(prev=True)
 
-    def select_view(self, event=None):
+    def select_view(self):
         "handles Menu > View > <view name>"
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
@@ -591,7 +638,7 @@ class Mixin(object):
         "view menu bijwerken n.a.v. wijzigen view naam"
         raise NotImplementedError
 
-    def remove_view(self, event=None):
+    def remove_view(self):
         "handles Menu > View > Delete current view"
         if self.viewcount == 1:
             self.show_message('Doctree', "Can't delete the last (only) view")
@@ -613,6 +660,7 @@ class Mixin(object):
         self._finish_remove_view(self.viewtotree())
 
     def _confirm(self, title, text):
+        "get confirmation"
         ok = input('{}: {} (y/N)'.format(title, text))
         ok = True if ok.upper() == 'Y' else False
         return ok
@@ -621,25 +669,33 @@ class Mixin(object):
         "view menu bijwerken n.a.v. verwijderen view"
         raise NotImplementedError
 
-    def rename_root(self, event=None):
+    def rename_root(self):
         """afhandelen Menu > Rename Root (Shift-Ctrl-F2"""
         ok, data = self._get_name('Geef nieuwe titel voor het root item:',
-            'DocTree', self.opts['RootTitle'])
+                                  'DocTree', self.opts['RootTitle'])
         if ok:
             self.set_project_dirty(True)
             self.opts['RootTitle'] = data
-            self.tree._setitemtitle(self.root, data)
+            self.tree.setitemtitle(self.root, data)
 
-    def add_item(self, event=None, root=None, under=True):
-        """nieuw item toevoegen (default: onder het geselecteerde)"""
+    def add_item(self):
+        """nieuw item toevoegen (default: onder het geselecteerde)
+
+        separate entry point for menu callback
+        """
+        self._add_item()
+
+    def _add_item(self, root=None, under=True):
+        "nieuw item toevoegen"
         test = self._check_addable()
         if test:
             new_title, extra_titles = test
-            pos = -1 # doesn't matter for now
-            self._do_additem(root, under, pos, new_title, extra_titles)
+            pos = -1  # doesn't matter for now
+            self.do_additem(root, under, pos, new_title, extra_titles)
 
     def _check_addable(self):
-        # bepaal een titel voor het nieuwe (en eventueel onderliggende) item
+        """bepaal een titel voor het nieuwe (en eventueel onderliggende) item
+        """
         title = "Geef een titel op voor het nieuwe item"
         text = datetime.today().strftime("%d-%m-%Y %H:%M:%S")
         new = self.ask_title(title, text)
@@ -650,8 +706,10 @@ class Mixin(object):
         self.check_active()
         return new_title, extra_titles
 
-    def _do_additem(self, root, under, origpos, new_title, extra_titles):
-        log('in shared._do_additem')
+    def do_additem(self, root, under, origpos, new_title, extra_titles):
+        """toevoegen nieuw item
+        """
+        log('in shared.do_additem')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
         while newkey in self.itemdict:
@@ -660,16 +718,16 @@ class Mixin(object):
         self.itemdict[newkey] = (new_title, "")
         # voeg nieuw item toe aan visual tree
         # bepaal eerst de parent voor het nieuwe item
-        log('root is {} ({}), under is {}, origpos is {}'.format(root,
-            root.text(0), under, origpos))
+        log('root is {} ({}), under is {}, origpos is {}'.format(root, root.text(0),
+                                                                 under, origpos))
         if under:
             ## if root is None:
                 ## root = self.activeitem or self.root
             parent = root or self.activeitem or self.root
             pos = -1
         else:
-            ## root, pos = self.tree._getitemparentpos(self.activeitem)
-            parent, pos = self.tree._getitemparentpos(root)
+            ## root, pos = getitemparentpos(self.activeitem)
+            parent, pos = self.tree.getitemparentpos(root)
             log("na getitemparentpos: root, pos is {}, {}".format(parent, pos))
             if origpos == -1:
                 pos += 1    # we want to insert after, not before
@@ -703,23 +761,27 @@ class Mixin(object):
         # resultaat t.b.v. undo/redo mechanisme
         return newkey, extra_keys, new_item, subitem
 
-    def root_item(self, event=None):
+    def root_item(self):
         """nieuw item toevoegen onder root"""
-        self.add_item(root=self.root)
+        self._add_item(root=self.root)
 
-    def insert_item(self, event=None):
+    def insert_item(self):
         """nieuw item toevoegen *achter* het geselecteerde (en onder diens parent)"""
-        self.add_item(event=event, under=False)
+        self._add_item(under=False)
 
-    def cut_item(self, evt= None):
+    def cut_item(self):
         "cut = copy with removing item from tree"
-        self.copy_item(cut=True)
+        self._copy_item(cut=True)
 
-    def delete_item(self, evt=None):
+    def delete_item(self):
         "delete = copy with removing item from tree and memory"
-        self.copy_item(cut=True, retain=False)
+        self._copy_item(cut=True, retain=False)
 
-    def copy_item(self, evt=None, cut=False, retain=True, to_other_file=None):
+    def copy_item(self):
+        "copy: retain item in tree and in memory"
+        self._copy_item()
+
+    def _copy_item(self, cut=False, retain=True, to_other_file=None):
         """start copy/cut/delete action
 
         parameters: cut: remove item from tree (True for cut, delete and move)
@@ -729,33 +791,33 @@ class Mixin(object):
         test = self._check_copyable(cut, retain, to_other_file)
         if test:
             current = test
-            self._do_copyaction(cut, retain, current) # to_other_file)
+            self.do_copyaction(cut, retain, current)  # to_other_file)
 
     def _check_copyable(self, cut, retain, to_other_file):
+        "can we copy from here?"
         if to_other_file:
             current = to_other_file
         else:
-            current = self.tree._getselecteditem()
+            current = self.tree.getselecteditem()
             if current == self.root:
                 self.show_message("Can't do this with root", "DocTree")
                 return False
         # are-you-sure message + cancel this action if applicable
         go_on = True
         if cut and not retain and not to_other_file:
-            go_on = self._confirm("DocTree",
-                "Are you sure you want to remove this item?")
+            go_on = self._confirm("DocTree", "Are you sure you want to remove this item?")
         if go_on:
             return current
         else:
             return go_on
 
-
-    def _do_copyaction(self, cut, retain, current): # to_other_file):
+    def do_copyaction(self, cut, retain, current):  # to_other_file):
+        "do the copying"
         # create a copy buffer
         # self.cut_from_itemdict = []
         copied_item, itemlist = getsubtree(self.tree, current)
         cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
-        oldloc = None # alleen interessant bij undo van cut/delete
+        oldloc = None  # alleen interessant bij undo van cut/delete
         if retain:
             self.copied_item = copied_item
             self.cut_from_itemdict = cut_from_itemdict
@@ -764,38 +826,39 @@ class Mixin(object):
             # remove item (and subitems) from tree and itemdict
             # they're buffered in (self.)cut_from_itemdict because we still need them
             self.add_node_on_paste = False
-            oldloc, prev = self.tree._removeitem(current, cut_from_itemdict)
+            oldloc, prev = self.tree.removeitem(current, cut_from_itemdict)
             self.activeitem = None
 
             # remove item(s) from view(s)
             removed = [x[0] for x in cut_from_itemdict]
             for ix, item in enumerate(self.opts["ActiveItem"]):
                 if item in removed:
-                    self.opts["ActiveItem"][ix] = self.tree._getitemkey(prev)
+                    self.opts["ActiveItem"][ix] = self.tree.getitemkey(prev)
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
                     self._updateview(view, removed)
 
             # finish up
             self.set_project_dirty(True)
-            self._finish_copy(prev) # do gui-specific stuff
+            self._finish_copy(prev)  # do gui-specific stuff
 
         return copied_item, oldloc, cut_from_itemdict
 
-    def _popitems(self, current, itemlist):
+    def popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
         niet-actieve views te verwijderen
         """
-        ref = self.tree._getitemkey(current)
+        ref = self.tree.getitemkey(current)
         ## try:
-        data = self.itemdict.pop(ref)
+        self.itemdict.pop(ref)
         ## except KeyError:
             ## pass
         ## else:
-        for kid in self.tree._getitemkids(current):
-            self._popitems(kid, itemlist)
+        for kid in self.tree.getitemkids(current):
+            self.popitems(kid, itemlist)
 
     def _updateview(self, view, removed):
+        "recursieve routine om de view bij te werken"
         klaar = False
         for idx, item in reversed(list(enumerate(view))):
             itemref, subview = item
@@ -812,23 +875,28 @@ class Mixin(object):
                 ## break
         return klaar
 
-    def paste_item_after(self, evt=None):
+    def paste_item(self):
+        "paste before"
+        self._paste_item()
+
+    def paste_item_after(self):
         "paste after instead of before"
-        self.paste_item(before=False)
+        self._paste_item(before=False)
 
-    def paste_item_below(self, evt=None):
+    def paste_item_below(self):
         "paste below instead of before"
-        self.paste_item(below=True)
+        self._paste_item(below=True)
 
-    def paste_item(self, evt=None, before=True, below=False):
+    def _paste_item(self, before=True, below=False):
         "start paste actie"
-        test = self._check_pasteable(before, below)
+        test = self._check_pasteable(below)  # before,
         if test:
             current = test
-            self._do_pasteitem(before, below, current)
+            self.do_pasteitem(before, below, current)
 
-    def _check_pasteable(self, before, below):
-        current = self.tree._getselecteditem()
+    def _check_pasteable(self, below):  # , before
+        "can we paste here?"
+        current = self.tree.getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
         if current == self.root and not below:
@@ -839,7 +907,8 @@ class Mixin(object):
             return False
         return current
 
-    def _do_pasteitem(self, before, below, current):
+    def do_pasteitem(self, before, below, current):
+        "do the pasting"
         # items toevoegen aan itemdict
         if not self.add_node_on_paste:
             pasted_item = self.copied_item
@@ -852,7 +921,7 @@ class Mixin(object):
             putsubtree(self.tree, current, *pasted_item)
             used_parent = (current, -1)
         else:
-            add_to, pos = self.tree._getitemparentpos(current)
+            add_to, pos = self.tree.getitemparentpos(current)
             if not before:
                 pos += 1
             putsubtree(self.tree, add_to, *pasted_item, pos=pos)
@@ -877,7 +946,7 @@ class Mixin(object):
         for key, item in self.cut_from_itemdict:
             keys.append(key)
             ## title, text = item
-            self.itemdict[key] = item # (title, text)
+            self.itemdict[key] = item  # (title, text)
         # alternatief:
         #   self.itemdict.update({key: item for key, item in self.cut_from_itemdict})
         #   keys = [key for key, item in self.cut_from_itemdict]
@@ -900,16 +969,16 @@ class Mixin(object):
         root = item = self.activeitem
         self.check_active()
         new = self.ask_title('Nieuwe titel voor het huidige item:',
-            self.tree._getitemtitle(item))
+                             self.tree.getitemtitle(item))
         if not new:
             return
         self.set_project_dirty(True)
         new_title, extra_titles = new
-        self.tree._setitemtitle(self.activeitem, new_title)
+        self.tree.setitemtitle(self.activeitem, new_title)
         if item == self.root:
             self.opts['RootTitle'] = new_title
             return
-        ref = self.tree._getitemkey(self.activeitem)
+        ref = self.tree.getitemkey(self.activeitem)
         old_title, data = self.itemdict[ref]
         self.itemdict[ref] = (new_title, data)
         # toevoegen nieuwe onderliggende items
@@ -935,13 +1004,13 @@ class Mixin(object):
                     check_item(view, ref, subitem[0])
         self._finish_rename(item, root)
 
-    def move_to_file(self, event=None):
+    def move_to_file(self):
         "afhandelen Menu > Move / Ctrl-M"
 
         # 0. check the selected item (copied from the copy routine)
-        #eventueel check_copuyable aanroepen in plaats van dit
+        # eventueel check_copyable aanroepen in plaats van dit
 
-        current = self.tree._getselecteditem() # self.activeitem kan niet?
+        current = self.tree.getselecteditem()  # self.activeitem kan niet?
         if current == self.root:
             self.show_message("Can't do this with root", "DocTree")
             return
@@ -950,7 +1019,7 @@ class Mixin(object):
 
         dirname = os.path.dirname(self.project_file)
         ok, filename = self.getfilename("DocTree - choose file to move the item to",
-            dirname)
+                                        dirname)
         if not ok:
             return
 
@@ -960,15 +1029,15 @@ class Mixin(object):
         if not os.path.exists(other_file):
             opts = init_opts()
             opts['Version'] = self.opts.get('Version', None)
-            views, viewcount, itemdict = [[],], 1, {}
+            views, viewcount, itemdict = [[]], 1, {}
         else:
             opts, views, viewcount, itemdict = self.read(other_file=other_file)
 
         # 3. cut action on the item
 
-        self.copy_item(cut=True, to_other_file=current)
+        self._copy_item(cut=True, to_other_file=current)
 
-        #3a. Make a list of the images contained in self.cut_from_itemdict
+        # 3a. Make a list of the images contained in self.cut_from_itemdict
         #      so they can be copied over to the other zipfile
 
         extra_images = []
@@ -980,7 +1049,8 @@ class Mixin(object):
         #     note that these functions mutate their arguments...
 
         self.copied_item, itemdict, used_keys = add_newitems(self.copied_item,
-            self.cut_from_itemdict, itemdict)
+                                                             self.cut_from_itemdict,
+                                                             itemdict)
         for view in views:
             add_item_to_view(self.copied_item, view)
 
@@ -989,21 +1059,27 @@ class Mixin(object):
         _write(filename, opts, views, itemdict, extra_images)
 
     def _expand(self, recursive=False):
+        "placeholder"
         raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
 
     def _collapse(self, recursive=False):
+        "placeholder"
         raise NotImplementedError('collapse {}'.format('all' if recursive else 'item'))
 
     def expand_item(self):
+        "expand one level"
         self._expand()
 
     def collapse_item(self):
+        "collapse one level"
         self._collapse()
 
     def expand_all(self):
+        "expand all levels"
         self._expand(recursive=True)
 
     def collapse_all(self):
+        "collapse all levels"
         self._collapse(recursive=True)
 
     def ask_title(self, _title, _text):
@@ -1020,13 +1096,13 @@ class Mixin(object):
             return new_title, extra_title
         return
 
-    def order_top(self, event=None):
+    def order_top(self):
         """order items directly under the top level"""
         self.reorder_items(self.root)
 
-    def order_all(self, event=None):
+    def order_all(self):
         """order items under top level and below"""
-        self.reorder_items(self.root, recursive = True)
+        self.reorder_items(self.root, recursive=True)
 
     def reorder_items(self, root, recursive=False):
         "(re)order_items"
@@ -1037,30 +1113,30 @@ class Mixin(object):
         "(re)order_items"
         raise NotImplementedError
 
-    def order_this(self, event=None):
+    def order_this(self):
         """order items directly under current level"""
         self.reorder_items(self.activeitem)
 
-    def order_lower(self, event=None):
+    def order_lower(self):
         """order items under current level and below"""
-        self.reorder_items(self.activeitem, recursive = True)
+        self.reorder_items(self.activeitem, recursive=True)
 
-    def next_note(self, event=None):
+    def next_note(self):
         """move to next item"""
         if not self._set_next_item():
             self.show_message("Geen volgend item op dit niveau", "DocTree")
 
-    def prev_note(self, event=None):
+    def prev_note(self):
         """move to previous item"""
         if not self._set_prev_item():
             self.show_message("Geen vorig item op dit niveau", "DocTree")
 
-    def next_note_any(self, event=None):
+    def next_note_any(self):
         """move to next item"""
         if not self._set_next_item(any_level=True):
             self.show_message("Geen volgend item", "DocTree")
 
-    def prev_note_any(self, event=None):
+    def prev_note_any(self):
         """move to previous item"""
         if not self._set_prev_item(any_level=True):
             self.show_message("Geen vorig item", "DocTree")
@@ -1068,74 +1144,75 @@ class Mixin(object):
     def check_active(self, message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         if self.activeitem:
-            if self.editor._check_dirty():
+            if self.editor.check_dirty():
                 if message:
                     self.show_message(message, 'Doctree')
-                ref = self.tree._getitemkey(self.activeitem)
+                ref = self.tree.getitemkey(self.activeitem)
                 content = str(self.editor.get_contents())
                 try:
                     titel, tekst = self.itemdict[int(ref)]
                 except (KeyError, ValueError):
                     if content:
-                        self.tree._setitemtext(self.root, content)
+                        self.tree.setitemtext(self.root, content)
                         self.opts["RootData"] = content
                 else:
                     self.itemdict[int(ref)] = (titel, content)
-                self.editor._mark_dirty(False)
+                self.editor.mark_dirty(False)
                 self.set_project_dirty(True)
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
         self.activeitem = item
-        ref = self.tree._getitemkey(item)
+        ref = self.tree.getitemkey(item)
         try:
             titel, tekst = self.itemdict[ref]
         except (KeyError, ValueError):
             self.editor.set_contents(str(ref))
         else:
-            self.editor.set_contents(tekst) # , titel)
-        self.editor._openup(True)
+            self.editor.set_contents(tekst)  # , titel)
+        self.editor.openup(True)
 
-    def info_page(self, event=None):
+    def info_page(self):
         """help -> about"""
-        info = [
-            "DocTree door Albert Visser",
-            "Uitgebreid electronisch notitieblokje",
-            "PyQt versie",
-            ]
+        info = ["DocTree door Albert Visser",
+                "Uitgebreid electronisch notitieblokje",
+                "PyQt versie"]
         self.show_message("\n".join(info), "DocTree")
 
-    def help_page(self, event=None):
+    def help_page(self):
         """help -> keys"""
-        info = [
-            "Ctrl-N\t\t- nieuwe notitie onder huidige",
-            "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
-            "Insert\t\t- nieuwe notitie achter huidige",
-            "Ctrl-PgDn in editor of",
-            " CursorDown in tree\t- volgende notitie",
-            "Ctrl-PgUp in editor of",
-            " CursorUp in tree\t- vorige notitie",
-            "Ctrl-D of Delete in tree\t- verwijder notitie",
-            "Ctrl-S\t\t- alle notities opslaan",
-            "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
-            "Ctrl-R\t\t- alle notities opnieuw laden",
-            "Ctrl-O\t\t- ander bestand met notities laden",
-            "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
-            "Ctrl-Q, Esc\t\t- opslaan en sluiten",
-            "Ctrl-H\t\t- verbergen in system tray",
-            "",
-            "F1\t\t- deze (help)informatie",
-            "F2\t\t- wijzig notitie titel",
-            "Shift-F2\t\t- wijzig root titel",
-            "",
-            "See menu for editing keys",
-            ]
+        info = ["Ctrl-N\t\t- nieuwe notitie onder huidige",
+                "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
+                "Insert\t\t- nieuwe notitie achter huidige",
+                "Ctrl-PgDn in editor of",
+                " CursorDown in tree\t- volgende notitie",
+                "Ctrl-PgUp in editor of",
+                " CursorUp in tree\t- vorige notitie",
+                "Ctrl-D of Delete in tree\t- verwijder notitie",
+                "Ctrl-S\t\t- alle notities opslaan",
+                "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
+                "Ctrl-R\t\t- alle notities opnieuw laden",
+                "Ctrl-O\t\t- ander bestand met notities laden",
+                "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
+                "Ctrl-Q, Esc\t\t- opslaan en sluiten",
+                "Ctrl-H\t\t- verbergen in system tray",
+                "",
+                "F1\t\t- deze (help)informatie",
+                "F2\t\t- wijzig notitie titel",
+                "Shift-F2\t\t- wijzig root titel",
+                "",
+                "See menu for editing keys"]
         self.show_message("\n".join(info), "DocTree")
+
     def confirm(self, setting='', textitem=''):
+        "confirm action if necessary"
         if self.opts[setting]:
             print(textitem)
-    def tree_undo(self, event=None):
+
+    def tree_undo(self):
+        "placeholder"
         pass
 
-    def tree_redo(self, event=None):
+    def tree_redo(self):
+        "placeholder"
         pass

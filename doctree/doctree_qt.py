@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
-"DocTree PyQt5 specifieke code"
+"""DocTree PyQt5 specifieke code
+"""
 
 import os
 import sys
@@ -9,14 +8,15 @@ import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 
-HERE = os.path.dirname(__file__)
 from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
+HERE = os.path.dirname(__file__)
+
 
 def tabsize(pointsize):
-     "pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte"
-     x, y = divmod(pointsize * 8, 10)
-     return x * 4 if y < 5 else (x + 1) * 4
-
+    """pointsize omrekenen in pixels t.b.v. (gemiddelde) tekenbreedte
+    """
+    x, y = divmod(pointsize * 8, 10)
+    return x * 4 if y < 5 else (x + 1) * 4
 
 
 class CheckDialog(qtw.QDialog):
@@ -158,7 +158,7 @@ class SearchDialog(qtw.QDialog):
             self.c_wrap.setChecked(True)
         self.t_zoek.setFocus()
 
-    def check_modes(self, evt):
+    def check_modes(self):
         """
         bij aanzetten current:
             titel en text uitzetten
@@ -176,9 +176,9 @@ class SearchDialog(qtw.QDialog):
             self.c_curr.setChecked(False)
             ## self.c_richt.setEnabled(False) # True)
             self.c_lijst.setEnabled(True)
-        pass
 
     def accept(self):
+        "afsluiten met bijwerken"
         zoek = self.t_zoek.text()
         if not zoek:
             self.parent.show_message('Wel iets te zoeken opgeven')
@@ -205,7 +205,9 @@ class SearchDialog(qtw.QDialog):
         self.parent.srchwrap = self.c_wrap.isChecked()
         super().accept()
 
+
 class ResultsDialog(qtw.QDialog):
+    "Present search results in a non-modal dialog"
     def __init__(self, parent):
         self.parent = parent
         super().__init__(parent)
@@ -216,10 +218,10 @@ class ResultsDialog(qtw.QDialog):
 
         hbox = qtw.QHBoxLayout()
         where = ''
-        if self.parent.srchtype & 1 :
+        if self.parent.srchtype & 1:
             where += 'titles'
         if self.parent.srchtype & 2:
-            if self.parent.srchtype & 1 :
+            if self.parent.srchtype & 1:
                 where += ' and '
             where += 'texts'
         hbox.addWidget(qtw.QLabel('\n'.join((
@@ -261,17 +263,19 @@ class ResultsDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
-        self.result_list.setCurrentItem(self.result_list.itemAt(0,0))
+        self.result_list.setCurrentItem(self.result_list.itemAt(0, 0))
 
     def populate_list(self):
-        oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
+        "zoekresultaten vullen in list"
         def add_item_to_list():
+            "item opbouwen"
             new = qtw.QTreeWidgetItem()
             new.setText(0, oldroot)
             new.setData(0, core.Qt.UserRole, oldix)
             new.setText(1, oldtitle)
             new.setData(1, core.Qt.UserRole, oldloc)
             self.result_list.addTopLevelItem(new)
+        oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
         for ix, item in enumerate(self.parent.search_results):
             loc, type, root, title = item
             if loc != oldloc:
@@ -288,6 +292,7 @@ class ResultsDialog(qtw.QDialog):
         add_item_to_list()
 
     def goto_next(self):
+        "sync displays voor zoek volgende"
         new = self.result_list.itemBelow(self.result_list.currentItem())
         if new:
             self.result_list.setCurrentItem(new)
@@ -297,6 +302,7 @@ class ResultsDialog(qtw.QDialog):
             self.parent.show_message('This is the last one')
 
     def goto_prev(self):
+        "sync displays voor zoek vorige"
         new = self.result_list.itemAbove(self.result_list.currentItem())
         if new:
             self.result_list.setCurrentItem(new)
@@ -306,6 +312,7 @@ class ResultsDialog(qtw.QDialog):
             self.parent.show_message('This is the first one')
 
     def goto_selected(self):
+        "toon geselecteerd zoekresultaat"
         if not self.next_button.isEnabled():
             self.next_button.setEnabled(True)
         if not self.prev_button.isEnabled():
@@ -315,28 +322,29 @@ class ResultsDialog(qtw.QDialog):
         self.parent.go_to_result()
 
     def goto_and_close(self):
+        "toon zoekresultaat en sluit dialoog"
         self.goto_selected()
         self.accept()
 
     def accept(self):
-        print("accept")
+        "sluit dialoog"
         self.parent.srchlist = False
         super().accept()
 
     def reject(self):
-        print("reject")
+        "sluit dialoog"
         self.parent.srchlist = False
         super().reject()
-#
-# Undo stack (subclass overriding some event handlers)
-#
-class UndoRedoStack(qtw.QUndoStack):
 
+
+class UndoRedoStack(qtw.QUndoStack):
+    """Undo stack (subclass overriding some event handlers)
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.cleanChanged.connect(self.clean_changed)
         self.indexChanged.connect(self.index_changed)
-        self.setUndoLimit(1) # self.unset_undo_limit(False)
+        self.setUndoLimit(1)  # self.unset_undo_limit(False)
         win = self.parent()
         win.undo_item.setText('Nothing to undo')
         win.redo_item.setText('Nothing to redo')
@@ -344,13 +352,18 @@ class UndoRedoStack(qtw.QUndoStack):
         win.redo_item.setDisabled(True)
 
     def clean_changed(self, state):
+        """clear text of undo/redo menuitems according to stack change
+        """
         win = self.parent()
         if state:
             win.undo_item.setText('Nothing to undo')
         win.undo_item.setDisabled(state)
 
     def index_changed(self, num):
-        ## """change text of undo/redo menuitems according to stack change"""
+        """change text of undo/redo menuitems according to stack change
+
+        "num" argument is provided by the signal this slot is connected to
+        """
         win = self.parent()
         test = self.undoText()
         if test:
@@ -366,13 +379,13 @@ class UndoRedoStack(qtw.QUndoStack):
         else:
             win.redo_item.setText('Nothing to redo')
             win.redo_item.setDisabled(True)
-#
-# UndoCommand subclasses
-#
-class Add_PasteCommand(qtw.QUndoCommand):
 
+
+class AddPasteCommand(qtw.QUndoCommand):
+    """bedoeld om acties voor add en paste te combineren, kan mogelijk niet
+    """
     def __init__(self, win, root, under, description, titles=None, treeitem=None,
-            itemdata=None, viewdata=None):
+                 itemdata=None, viewdata=None):
         """treedata is data in the currentview and is structured as:
             (key, nested_list_of_keys)
            dictdata is the concerned entries in itemdict and is structured as:
@@ -392,9 +405,10 @@ class Add_PasteCommand(qtw.QUndoCommand):
 
 
 class AddCommand(qtw.QUndoCommand):
-
+    """Nieuwe notitie toevoegen
+    """
     def __init__(self, win, root, under, new_title, extra_titles,
-            description = 'Add'):
+                 description='Add'):
         # root is self.parent.root in geval van "nieuw item onder root"
         # anders is deze None en moet deze bepaald worden op self.win.item
         log('in AddCommand.__init__')
@@ -406,22 +420,26 @@ class AddCommand(qtw.QUndoCommand):
         if under:
             self.pos = -1
         else:
-            self.pos = self.win.tree._getitemparentpos(self.win.activeitem)[1] + 1
+            self.pos = self.win.tree.getitemparentpos(self.win.activeitem)[1] + 1
         self.new_title = new_title
         self.extra_titles = extra_titles
         self.first_edit = not self.win.project_dirty
         super().__init__(description)
 
     def redo(self):
+        """actie uitvoeren
+        """
         log('in AddCommand.redo')
         log("root, under zijn {} ({}) en {}".format(self.root, self.root.text(0),
-            self.under))
-        self.data = self.win._do_additem(self.root, self.under, self.pos,
-            self.new_title, self.extra_titles)
+                                                    self.under))
+        self.data = self.win.do_additem(self.root, self.under, self.pos,
+                                        self.new_title, self.extra_titles)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #             en kan ik deze dus ook niet terugstoppen
 
     def undo(self):
+        """actie ongedaan maken
+        """
         log('in AddCommand.undo')
         newkey, extra_keys, new_item, subitem = self.data
         # TODO: als ik wil dat de eventuele tekstinhoud onthouden wordt
@@ -435,7 +453,7 @@ class AddCommand(qtw.QUndoCommand):
         cut_from_itemdict = [(newkey, self.win.itemdict[newkey])]
         for key in extra_keys:
             cut_from_itemdict.append((key, self.win.itemdict[key]))
-        self.win.tree._removeitem(new_item, cut_from_itemdict)
+        self.win.tree.removeitem(new_item, cut_from_itemdict)
         for idx, view in enumerate(self.win.views):
             if idx != self.win.opts["ActiveView"]:
                 view.pop()
@@ -444,8 +462,10 @@ class AddCommand(qtw.QUndoCommand):
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #  de tekst(en) meegeven in removeitem helpt daar niet bij
 
-class PasteCommand(qtw.QUndoCommand):
 
+class PasteCommand(qtw.QUndoCommand):
+    """Notitie toevoegen vanuit copy buffer
+    """
     def __init__(self, win, before, below, item, description="Paste"):
         self.win = win          # treewidget
         if below:
@@ -460,28 +480,29 @@ class PasteCommand(qtw.QUndoCommand):
         log("init {} {}".format(description, self.item))
         super().__init__(description)
         ## self.parent = item.parent()
-        self.key = int(self.item.text(1)) # on the root item this can be the editor
-            # contents, but we can't paste the root so we don't have to deal with that
+        self.key = int(self.item.text(1))  # on the root item this can be the editor
+        # contents, but we can't paste the root so we don't have to deal with that
         self.title = str(self.item.text(0))
         self.first_edit = not self.win.project_dirty
         self.replaced = None    # in case item is replaced while redoing
 
     def redo(self):
-
+        """actie uitvoeren
+        """
         # deze buffers worden hier gebruikt; printen om dat te controleren
         ## print(self.win.copied_item, # het bovenste item om in de tree te plakken
             ## self.win.cut_from_itemdict, # de betrokken entries in de itemdict
             ## self.win.add_node_on_paste) # geeft aan of er nieuwe keys in de dictianary moeten
             ## # worden gebruikt
         log("in paste.redo")
-        self.views = self.win.views # huidige stand onthouden tbv redo
+        self.views = self.win.views  # huidige stand onthouden tbv redo
 
         # items toevoegen aan itemdict (nieuwe keys of de eerder gebruikte)
         # items toevoegen aan visual tree
         # indien nodig het copied_item in eventuele andere views ook toevoegen
         # afmaken
-        self.used_keys, self.used_parent = self.win._do_pasteitem(self.before,
-            self.below, self.item)
+        self.used_keys, self.used_parent = self.win.do_pasteitem(self.before,
+                                                                 self.below, self.item)
 
         ## # kennelijk wordt self.win.copied_item wel veranderd en wel van
         ## #    ('drijfsijzen', '14', []) in ('drijfsijzen', 15, [])
@@ -508,12 +529,14 @@ class PasteCommand(qtw.QUndoCommand):
         ## self.win.tree.expandItem(self.added)
 
     def undo(self):
+        """actie ongedaan maken
         "essentially 'cut' Command"
+        """
         # items weer uit itemdict verwijderen
         log("in paste.undo")
         for key in self.used_keys:
             self.win.itemdict.pop(key)
-        # items weer uit de visual tree halen   / _removeitem
+        # items weer uit de visual tree halen   / removeitem
         parent, pos = self.used_parent
         ## print(parent, pos)
         if pos == -1:
@@ -532,6 +555,8 @@ class PasteCommand(qtw.QUndoCommand):
 
 
 class CopyCommand(qtw.QUndoCommand):
+    """Notitie in copy buffer halen
+    """
     def __init__(self, win, cut, retain, item, description=""):
         if cut:
             if retain:
@@ -544,8 +569,8 @@ class CopyCommand(qtw.QUndoCommand):
         self.undodata = None
         self.win = win      # treewidget
         self.item = item    # where we are now
-        self.key = int(self.item.text(1)) # on the root item this can be the editor
-            # contents, but we can't copy the root so we don't have to deal with that
+        self.key = int(self.item.text(1))  # on the root item this can be the editor
+        # contents, but we can't copy the root so we don't have to deal with that
         self.title = str(self.item.text(0))
         self.first_edit = not self.win.project_dirty
         log("init {} {} {}".format(description, self.key, self.item))
@@ -553,12 +578,14 @@ class CopyCommand(qtw.QUndoCommand):
         self.retain = retain
 
     def redo(self):
+        """actie uitvoeren
+        """
         data = self.win.itemdict[self.key]
         log('in copy.redo for item {} with key {} and data {}'.format(self.item,
-            self.key, data))
+                                                                      self.key, data))
         self.oldstate = self.win.opts["ActiveItem"], self.win.views
-        log('before (re)do: oldstate is {} {} {}'.format(self.win.activeitem,
-            self.win.opts["ActiveItem"], self.win.views))
+        log('before (re)do: oldstate is {} {} {}'.format(
+            self.win.activeitem, self.win.opts["ActiveItem"], self.win.views))
         ## def get_children(current):
             ## count = current.childCount()
             ## if count == 0:
@@ -569,10 +596,12 @@ class CopyCommand(qtw.QUndoCommand):
                     ## get_children(current)
         ## state['current'] = current.text(0), current.text[1], get_children(current)
         ## print('state is', state)
-        self.newstate = self.win._do_copyaction(self.cut, self.retain, self.item)
+        self.newstate = self.win.do_copyaction(self.cut, self.retain, self.item)
         log(' after (re)do: newstate is {}'.format(self.newstate))
 
     def undo(self):
+        """actie ongedaan maken
+        """
         log('Undo copy for {} with key'.format(self.item, self.key))
         ## # self.cut_el = None
         ## if self.cut:
@@ -590,24 +619,22 @@ class CopyCommand(qtw.QUndoCommand):
             for key, value in cut_from_itemdict:
                 self.win.itemdict[key] = value
             parent, pos = oldloc
-            newitem = putsubtree(self.win.tree, parent, *copied_items, pos=pos-1)
+            newitem = putsubtree(self.win.tree, parent, *copied_items, pos=pos - 1)
             self.win.activeitem = self.item = newitem
 
         ## self.win.copied_item = state['copied_item']
         ## self.win.cut_from_itemdict = state['cut_from_itemdict']
         ## self.win.add_node_on_paste = state['add_node']
         self.win.opts["ActiveItem"], self.win.views = self.oldstate
-        log(' after undo: restored old state to {} {} {}'.format(self.win.activeitem,
-            self.win.opts["ActiveItem"], self.win.views))
+        log(' after undo: restored old state to {} {} {}'.format(
+            self.win.activeitem, self.win.opts["ActiveItem"], self.win.views))
 
         if self.first_edit:
             self.win.set_project_dirty(False)
         self.win.statusbar.showMessage('{} undone'.format(self.text()))
-            ## self.win.tree.setCurrentItem(self.item)
+        ## self.win.tree.setCurrentItem(self.item)
 
-#
-# main window components
-#
+
 class TreePanel(qtw.QTreeWidget):
     "Tree structure depicting the notes organization"
     def __init__(self, parent):
@@ -630,9 +657,9 @@ class TreePanel(qtw.QTreeWidget):
         en die van de nieuwe wordt erin opgezocht en getoond"""
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.check_active()
-        h = self.currentItem()
-        log('current item is now {} {}'.format(h, h.text(0)))
-        self.parent.activate_item(h)
+        item = self.currentItem()
+        log('current item is now {} {}'.format(item, item.text(0)))
+        self.parent.activate_item(item)
         self.parent.set_title()
 
     def dropEvent(self, event):
@@ -642,7 +669,7 @@ class TreePanel(qtw.QTreeWidget):
         deze methode breidt de Treewidget methode uit met wat visuele zaken
         """
         dragitem = self.selectedItems()[0]
-        dragparent = dragitem.parent()
+        ## dragparent = dragitem.parent()
         dropitem = self.itemAt(event.pos())
         if not dropitem:
             ## event.ignore()
@@ -667,7 +694,7 @@ class TreePanel(qtw.QTreeWidget):
         xc, yc = event.x(), event.y()
         item = self.itemAt(xc, yc)
         if item:
-            self.oldparent, self.oldpos = self._getitemparentpos(item)
+            self.oldparent, self.oldpos = self.getitemparentpos(item)
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -695,11 +722,12 @@ class TreePanel(qtw.QTreeWidget):
         super().keyReleaseEvent(event)
 
     def create_popupmenu(self, item):
+        "also for showing a context menu"
         menu = qtw.QMenu()
         for action in self.parent.notemenu.actions():
-            act = menu.addAction(action)
+            menu.addAction(action)
             if item == self.parent.root and action.text() in ('&Add', '&Delete',
-                    '&Forward', '&Back'):
+                                                              '&Forward', '&Back'):
                 action.setEnabled(False)
         menu.addSeparator()
         for action in self.parent.treemenu.actions():
@@ -710,13 +738,13 @@ class TreePanel(qtw.QTreeWidget):
         if item == self.parent.root:
             for action in self.parent.notemenu.actions():
                 if item == self.parent.root and action.text() in ('&Add', '&Delete',
-                        '&Forward', '&Back'):
+                                                                  '&Forward', '&Back'):
                     action.setEnabled(True)
             for action in self.parent.treemenu.actions():
                 action.setEnabled(True)
 
     def add_to_parent(self, itemkey, titel, parent, pos=-1):
-        """
+        """add item to tree at a given location
         """
         new = qtw.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
@@ -730,44 +758,48 @@ class TreePanel(qtw.QTreeWidget):
         ## new.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
         new.setText(1, str(itemkey))
         new.setToolTip(0, titel.rstrip())
-        log('adding child {} ({}) to parent {} ({}) at pos {}'.format(new,
-            new.text(0), parent, parent.text(0), pos))
+        log('adding child {} ({}) to parent {} ({}) at pos {}'.format(
+            new, new.text(0), parent, parent.text(0), pos))
         if pos == -1:
             parent.addChild(new)
         else:
             parent.insertChild(pos, new)
         return new
 
-    def _getitemdata(self, item):
-        return item.text(0), str(item.text(1)) # kan integer zijn
+    def getitemdata(self, item):
+        "titel + data in de visual tree ophalen"
+        return item.text(0), str(item.text(1))  # kan integer zijn
 
-    def _getitemtitle(self, item):
-        "titel in de visual tree ophalen"
+    def getitemtitle(self, item):
+        "alleen titel in de visual tree ophalen"
         return item.text(0)
 
-    def _getitemkey(self, item):
+    def getitemkey(self, item):
         "sleutel voor de itemdict ophalen"
         value = item.text(1)
         try:
             value = int(value)
-        except ValueError: # root item heeft tekst in plaats van itemdict key
+        except ValueError:  # root item heeft tekst in plaats van itemdict key
             pass
         return value
 
-    def _setitemtitle(self, item, title):
+    def setitemtitle(self, item, title):
+        "titel (en tooltip instellen)"
         item.setText(0, title)
         item.setToolTip(0, title)
 
-    def _setitemtext(self, item, text):
+    def setitemtext(self, item, text):
         """Meant to set the text for the root item (goes in same place as the keys
         for the other items)
         """
         item.setText(1, text)
 
-    def _getitemkids(self, item):
+    def getitemkids(self, item):
+        "children van item ophalen"
         return [item.child(num) for num in range(item.childCount())]
 
-    def _getitemparentpos(self, item):
+    def getitemparentpos(self, item):
+        "positie van parent bepalen"
         root = item.parent()
         if root:
             pos = root.indexOfChild(item)
@@ -775,12 +807,13 @@ class TreePanel(qtw.QTreeWidget):
             pos = -1
         return root, pos
 
-    def _getselecteditem(self):
+    def getselecteditem(self):
+        "return first selected item"
         return self.selectedItems()[0]
 
-    def _removeitem(self, item, cut_from_itemdict):
+    def removeitem(self, item, cut_from_itemdict):
         "removes current treeitem and returns the previous one"
-        log('in _removeitem {} {}'.format(item, cut_from_itemdict))
+        log('in removeitem {} {}'.format(item, cut_from_itemdict))
         parent = item.parent()               # gui-dependent
         pos = parent.indexOfChild(item)
         oldloc = (parent, pos)
@@ -790,7 +823,7 @@ class TreePanel(qtw.QTreeWidget):
             prev = parent
             if prev == self.parent.root:
                 prev = parent.child(pos + 1)
-        self.parent._popitems(item, cut_from_itemdict)
+        self.parent.popitems(item, cut_from_itemdict)
         ## parent.takeChild(pos)
         # bij een undo van een add moeten met " \ " toegevoegde items ook verwijderd worden
         to_remove = [(parent, pos)]
@@ -798,16 +831,15 @@ class TreePanel(qtw.QTreeWidget):
             log('{} {} {}'.format(item, item.childCount(), item.child(0)))
             if item.childCount() == 0:
                 break
-            to_remove.append((item, 0)) # er is er altijd maar één
+            to_remove.append((item, 0))  # er is er altijd maar één
             item = item.child(0)
         for parent, pos in reversed(to_remove):
             parent.takeChild(pos)
-        #
         return oldloc, prev
+
 
 class EditorPanel(qtw.QTextEdit):
     "Rich text editor displaying the selected note"
-
     def __init__(self, parent):
         self.parent = parent
         super().__init__()
@@ -820,12 +852,14 @@ class EditorPanel(qtw.QTextEdit):
         self.setTabStopWidth(tabsize(font.pointSize()))
 
     def canInsertFromMimeData(self, source):
+        "reimplemented"
         if source.hasImage:
             return True
         else:
             return super().canInsertFromMimeData(source)
 
     def insertFromMimeData(self, source):
+        "reimplemented"
         if source.hasImage():
             image = source.imageData()
             if sys.version < '3':
@@ -835,19 +869,19 @@ class EditorPanel(qtw.QTextEdit):
             num = self.parent.opts['ImageCount']
             num += 1
             self.parent.opts['ImageCount'] = num
-            urlname = '{}_{:05}.png'.format(self.parent.project_file,  num)
-            ok = image.save(urlname)
-            urlname = os.path.basename(urlname) # make name "relative"
+            urlname = '{}_{:05}.png'.format(self.parent.project_file, num)
+            image.save(urlname)
+            urlname = os.path.basename(urlname)  # make name "relative"
             document.addResource(gui.QTextDocument.ImageResource,
-                core.QUrl(urlname), image)
+                                 core.QUrl(urlname), image)
             cursor.insertImage(urlname)
         else:
             super().insertFromMimeData(source)
 
     def set_contents(self, data):
         "load contents into editor"
-        data = data.replace('img src="',
-            'img src="{}/'.format(os.path.dirname(self.parent.project_file)))
+        data = data.replace('img src="', 'img src="{}/'.format(
+            os.path.dirname(self.parent.project_file)))
         self.setHtml(data)
         fmt = gui.QTextCharFormat()
         self.charformat_changed(fmt)
@@ -857,11 +891,11 @@ class EditorPanel(qtw.QTextEdit):
         "return contents from editor"
         # update plain text in tree item to facilitate search
         self.parent.tree.currentItem().setData(0, core.Qt.UserRole,
-            self.toPlainText())
+                                               self.toPlainText())
         return self.toHtml().replace('img src="{}/'.format(os.path.dirname(
             self.parent.project_file)), 'img src="')
 
-    def text_bold(self, event=None):
+    def text_bold(self):  # , event=None):
         "selectie vet maken"
         if not self.hasFocus():
             return
@@ -872,7 +906,7 @@ class EditorPanel(qtw.QTextEdit):
             fmt.setFontWeight(gui.QFont.Normal)
         self.mergeCurrentCharFormat(fmt)
 
-    def text_italic(self, event=None):
+    def text_italic(self):  # , event=None):
         "selectie schuin schrijven"
         if not self.hasFocus():
             return
@@ -880,7 +914,7 @@ class EditorPanel(qtw.QTextEdit):
         fmt.setFontItalic(self.parent.actiondict['&Italic'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
-    def text_underline(self, event=None):
+    def text_underline(self):  # , event=None):
         "selectie onderstrepen"
         if not self.hasFocus():
             return
@@ -888,7 +922,7 @@ class EditorPanel(qtw.QTextEdit):
         fmt.setFontUnderline(self.parent.actiondict['&Underline'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
-    def text_strikethrough(self, event=None):
+    def text_strikethrough(self):  # , event=None):
         "selectie doorstrepen"
         if not self.hasFocus():
             return
@@ -896,7 +930,7 @@ class EditorPanel(qtw.QTextEdit):
         fmt.setFontStrikeOut(self.parent.actiondict['Strike&through'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
-    def align_left(self, event=None):
+    def align_left(self):  # , event=None):
         "alinea links uitlijnen"
         if not self.hasFocus():
             return
@@ -905,7 +939,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.actiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignLeft | core.Qt.AlignAbsolute)
 
-    def align_center(self, event=None):
+    def align_center(self):  # , event=None):
         "alinea centreren"
         if not self.hasFocus():
             return
@@ -914,7 +948,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.actiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignHCenter)
 
-    def align_right(self, event=None):
+    def align_right(self):  # , event=None):
         "alinea rechts uitlijnen"
         if not self.hasFocus():
             return
@@ -923,7 +957,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.actiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignRight | core.Qt.AlignAbsolute)
 
-    def text_justify(self, event=None):
+    def text_justify(self):  # , event=None):
         "alinea aan weerszijden uitlijnen"
         if not self.hasFocus():
             return
@@ -932,7 +966,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.actiondict["Align &Right"].setChecked(False)
         self.setAlignment(core.Qt.AlignJustify)
 
-    def indent_more(self, event=None):
+    def indent_more(self):  # , event=None):
         "alinea verder laten inspringen"
         if not self.hasFocus():
             return
@@ -945,7 +979,7 @@ class EditorPanel(qtw.QTextEdit):
         log('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
         # maar hier is geen merge methode voor, lijkt het...
 
-    def indent_less(self, event=None):
+    def indent_less(self):  # , event=None):
         "alinea minder ver laten inspringen"
         if not self.hasFocus():
             return
@@ -955,7 +989,7 @@ class EditorPanel(qtw.QTextEdit):
         if wid > 100:
             fmt.setIndent(wid - 100)
 
-    def text_font(self, event=None):
+    def text_font(self):  # , event=None):
         "lettertype en/of -grootte instellen"
         if not self.hasFocus():
             return
@@ -970,17 +1004,19 @@ class EditorPanel(qtw.QTextEdit):
     def text_family(self, family):
         "lettertype instellen"
         fmt = gui.QTextCharFormat()
-        fmt.setFontFamily(family);
+        fmt.setFontFamily(family)
         self.mergeCurrentCharFormat(fmt)
         self.setFocus()
 
-    def enlarge_text(self, event=None):
+    def enlarge_text(self):  # , event=None):
+        "tekst groter maken"
         size = self.parent.combo_size.currentText()
         indx = self.parent.fontsizes.index(size)
         if indx < len(self.parent.fontsizes) - 1:
             self.text_size(self.parent.fontsizes[indx + 1])
 
-    def shrink_text(self, event=None):
+    def shrink_text(self):  # , event=None):
+        "tekst kleiner maken"
         size = self.parent.combo_size.currentText()
         indx = self.parent.fontsizes.index(size)
         if indx > 0:
@@ -996,7 +1032,7 @@ class EditorPanel(qtw.QTextEdit):
             self.mergeCurrentCharFormat(fmt)
             self.setFocus()
 
-    def text_color(self, event=None):
+    def text_color(self):  # , event=None):
         "tekstkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -1013,7 +1049,7 @@ class EditorPanel(qtw.QTextEdit):
         pix.fill(col)
         self.parent.setcolor_action.setIcon(gui.QIcon(pix))
 
-    def set_text_color(self, event=None):
+    def set_text_color(self):  # , event=None):
         "tekstkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -1023,7 +1059,7 @@ class EditorPanel(qtw.QTextEdit):
         fmt.setForeground(col)
         self.mergeCurrentCharFormat(fmt)
 
-    def background_color(self, event=None):
+    def background_color(self):  # , event=None):
         "achtergrondkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -1040,7 +1076,7 @@ class EditorPanel(qtw.QTextEdit):
         pix.fill(col)
         self.parent.setbackgroundcolor_action.setIcon(gui.QIcon(pix))
 
-    def set_background_color(self, event=None):
+    def set_background_color(self):  # , event=None):
         "achtergrondkleur instellen"
         if not self.hasFocus():
             self.parent.show_message("Can't do this outside text field", 'Doctree')
@@ -1052,11 +1088,11 @@ class EditorPanel(qtw.QTextEdit):
 
     def charformat_changed(self, format):
         "wordt aangeroepen als het tekstformat gewijzigd is"
-        self.font_changed(format.font());
+        self.font_changed(format.font())
         self.color_changed(format.foreground().color())
         backg = format.background()
-        if int(backg.style()) == 0: # nul betelkent transparant
-            bgcol = core.Qt.white # eigenlijk standaardkleur, niet per se wit
+        if int(backg.style()) == 0:  # nul betelkent transparant
+            bgcol = core.Qt.white  # eigenlijk standaardkleur, niet per se wit
         else:
             bgcol = backg.color()
         self.background_changed(bgcol)
@@ -1122,32 +1158,35 @@ class EditorPanel(qtw.QTextEdit):
         cursor.mergeCharFormat(format)
         super().mergeCurrentCharFormat(format)
 
-    def _check_dirty(self):
+    def check_dirty(self):
         "check for modifications"
         return self.document().isModified()
 
-    def _mark_dirty(self, value):
+    def mark_dirty(self, value):
         "manually turn modified flag on/off (mainly intended for off)"
         self.document().setModified(value)
 
-    def _openup(self, value):
+    def openup(self, value):
         "make text accessible (or not)"
         self.setReadOnly(not value)
+
     def focusInEvent(self, *args):
+        "reimplemented to correctly set application title"
         self.parent.in_editor = True
         self.parent.set_title()
         super().focusInEvent(*args)
 
     def focusOutEvent(self, *args):
+        "reimplemented to correctly set application title"
         self.parent.in_editor = False
         self.parent.set_title()
         super().focusOutEvent(*args)
 
 
 class MainWindow(qtw.QMainWindow, Mixin):
-    """Hoofdscherm van de applicatie"""
-
-    def __init__(self, parent=None, fnaam=""):
+    """Hoofdscherm van de applicatie
+    """
+    def __init__(self):  # , parent=None, fnaam=""):
         ## gui.QMainWindow.__init__(self)
         ## Mixin.__init__(self)
         super().__init__()
@@ -1163,7 +1202,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.statusbar.showMessage('Ready')
 
         self.opts = init_opts()
-        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1]) # 800, 500)
+        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])  # 800, 500)
         self.title = 'DocTree'
         self.in_editor = False
         self.setWindowTitle(self.title)
@@ -1195,7 +1234,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.srchflags = gui.QTextDocument.FindFlags()
         self.srchlist = self.srchwrap = False
 
-    def change_pane(self, event=None):
+    def change_pane(self):  # , event=None):
         "wissel tussen tree en editor"
         if self.tree.hasFocus():
             self.editor.setFocus()
@@ -1208,7 +1247,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         for item, data in menudata:
             menu = menubar.addMenu(item)
             toolbar_added = False
-            if item == menudata[2][0]: # "&View":
+            if item == menudata[2][0]:  # "&View":
                 self.viewmenu = menu
             elif item == menudata[1][0]:
                 self.notemenu = menu
@@ -1221,10 +1260,10 @@ class MainWindow(qtw.QMainWindow, Mixin):
                 label, handler, shortcut, icon, info = menudef
                 if icon:
                     action = qtw.QAction(gui.QIcon(os.path.join(HERE, icon)), label,
-                        self)
+                                         self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
-                        toolbar.setIconSize(core.QSize(16,16))
+                        toolbar.setIconSize(core.QSize(16, 16))
                         toolbar_added = True
                     toolbar.addAction(action)
                 else:
@@ -1251,14 +1290,13 @@ class MainWindow(qtw.QMainWindow, Mixin):
                         info = ''
                 if info:
                     action.setStatusTip(info)
-                ## self.connect(action, core.SIGNAL('triggered()'), handler)
-                # action.triggered.connect(handler) werkt hier niet
-                action.triggered.connect(handler) # voor qt5 toch hopenlijk wel
+                action.triggered.connect(handler)
                 if label:
                     menu.addAction(action)
                     self.actiondict[label] = action
 
     def create_stylestoolbar(self):
+        "build toolbar with buttons to change styles"
         toolbar = self.addToolBar('styles')
         self.combo_font = qtw.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
@@ -1306,11 +1344,13 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.setbackgroundcolor_action = action
 
     def show_message(self, text, title=''):
+        "set title and message"
         if not title:
             title = self.title
         qtw.QMessageBox.information(self, title, text)
 
     def show_statusmessage(self, text):
+        "show message in status bar"
         self.statusbar.showMessage(text)
 
     def set_title(self):
@@ -1326,6 +1366,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             text))
 
     def getfilename(self, title, start, save=False):
+        "routine for selection of filename"
         filter = "Pickle files (*.pck)"
         if save:
             filename = qtw.QFileDialog.getSaveFileName(self, title, start, filter)
@@ -1334,8 +1375,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ok = True if filename[0] else False
         return ok, filename[0]
 
-    def new(self, evt=None):
-        if not Mixin.new(self, evt):
+    def new(self):
+        "set up a new document collection"
+        if not Mixin.new(self):
             return
         self.opts["Version"] = "Qt"
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
@@ -1354,7 +1396,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.root.setText(0, self.opts["RootTitle"])
         self.root.setText(1, self.opts["RootData"])
         self.tree.addTopLevelItem(self.root)
-        self.activeitem = item_to_activate = self.root
+        self.activeitem = self.root  # item_to_activate =
         self.editor.set_contents(self.opts["RootData"])
         self.editor.setReadOnly(False)
         self.tree.setFocus()
@@ -1372,14 +1414,14 @@ class MainWindow(qtw.QMainWindow, Mixin):
         # bij wisselen van pagina wordt de inhoud indien nodig opgeslagen en weten we
         # of er wat veranderd is. Bij afsluiten hoeft dat nog niet gebeurd te zijn
         # maar willen we toch weten of er iets gewijzigd is
-        need_to_save = self.editor._check_dirty() if always_check else False
+        need_to_save = self.editor.check_dirty() if always_check else False
         if save_is_needed or need_to_save:
             if self.editor.hasFocus():
                 self.check_active()
-            retval = qtw.QMessageBox.question(self, "DocTree",
-                "Data changed - save current file before continuing?",
+            retval = qtw.QMessageBox.question(
+                self, "DocTree", "Data changed - save current file before continuing?",
                 qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-                defaultButton = qtw.QMessageBox.Yes)
+                defaultButton=qtw.QMessageBox.Yes)
             if retval == qtw.QMessageBox.Yes:
                 self.save(meld=meld)
             if retval == qtw.QMessageBox.Cancel:
@@ -1394,9 +1436,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.splitter.restoreState(self.opts['SashPosition'])
         except TypeError:
             pass
-        self.activeitem = item_to_activate = None
+        self.activeitem = None  # item_to_activate =
         self._rebuild_root()
-        self.activeitem = item_to_activate = self.root
+        self.activeitem = self.root  # item_to_activate =
         self.undo_stack.clear()
         self.editor.set_contents(self.opts["RootData"])
         menuitem_list = [x for x in self.viewmenu.actions()]
@@ -1417,50 +1459,56 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.in_editor = False
 
     def _finish_read(self, item_to_activate):
+        "finalize open action"
         self.root.setExpanded(True)
-        try:
-            if item_to_activate != self.activeitem:
-                self.tree.setCurrentItem(item_to_activate)
-        except TypeError:
-            pass
+        ## try:
+        if item_to_activate != self.activeitem:
+            self.tree.setCurrentItem(item_to_activate)
+        ## except TypeError:
+            ## pass
 
     def _finish_add(self, parent, item):
+        "finalize add action"
         parent.setExpanded(True)
         self.tree.setCurrentItem(item)
         if item != self.root:
             self.editor.setFocus()
 
     def _finish_copy(self, prev):
-        self.tree.setCurrentItem(prev) # gui-dependent
+        "finalize copy action"
+        self.tree.setCurrentItem(prev)  # gui-dependent
 
     def _finish_paste(self, current):
+        "finalize paste action"
         self.tree.setCurrentItem(current)
         current.setExpanded(True)
 
     def _finish_rename(self, item, item_to_expand):
+        "finalize rename action"
         item_to_expand.setExpanded(True)
         self.tree.setCurrentItem(item)
         ## if item != self.root:
             ## self.editor.setFocus()
 
     def _ok_to_reload(self):
+        "ask for confirmation (specific)"
         retval = qtw.QMessageBox.question(self, "DocTree", "OK to reload?",
-            qtw.QMessageBox.Ok | qtw.QMessageBox.Cancel,
-            defaultButton = gui.QMessageBox.Ok)
+                                          qtw.QMessageBox.Ok | qtw.QMessageBox.Cancel,
+                                          defaultButton=qtw.QMessageBox.Ok)
         return True if retval == qtw.QMessageBox.Ok else False
 
     def write(self, meld=True):
-        self.opts["ScreenSize"] = self.width(), self.height() # tuple(self.size())
+        "start write action"
+        self.opts["ScreenSize"] = self.width(), self.height()  # tuple(self.size())
         self.opts["SashPosition"] = self.splitter.saveState()
         Mixin.write(self, meld)
 
-    def hide_me(self, event=None):
+    def hide_me(self):  # , event=None):
         """applicatie verbergen"""
         ## self.confirm(setting="AskBeforeHide", textitem="hide_text")
         hide_text = "\n".join((
             "DocTree gaat nu slapen in de System tray",
-            "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"
-                ))
+            "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"))
         self.confirm(setting="AskBeforeHide", textitem=hide_text)
         self.tray_icon.show()
         self.hide()
@@ -1475,7 +1523,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.show()
             self.tray_icon.hide()
 
-    def afsl(self, event=None):
+    def afsl(self):  # , event=None):
         """applicatie afsluiten"""
         self.close()
 
@@ -1488,9 +1536,10 @@ class MainWindow(qtw.QMainWindow, Mixin):
             event.accept()
 
     def viewportEvent(self, event):
+        "reimplemented to make sure contents are saved?"
         if event.Type == core.QEvent.ToolTip:
             item = self.tree.currentItem()
-            qtw.QToolTip.ShowText(event.pos, item.toolTip().text(), item)
+            qtw.QToolTip.showText(event.pos, item.toolTip().text(), item)
 
     def _update_newview(self, new_view):
         "view menu bijwerken n.a.v. toevoeging nieuwe view"
@@ -1514,18 +1563,20 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.tree.addTopLevelItem(self.root)
 
     def _get_name(self, caption, title, oldname):
+        "ask for (new) name"
         newname = oldname
         data, ok = qtw.QInputDialog.getText(self, title, caption,
-            qtw.QLineEdit.Normal, oldname)
+                                            qtw.QLineEdit.Normal, oldname)
         if ok:
             newname = str(data)
         return ok, newname
 
     def _add_view_to_menu(self, newname):
+        "update action text"
         action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
         action.setText('{} {}'.format(str(action.text()).split()[0], newname))
 
-    def _finish_add_view(self, event=None):
+    def _finish_add_view(self):  # , event=None):
         "handles Menu > View > New view"
         self.tree.setCurrentItem(self._tree_item)
 
@@ -1581,15 +1632,17 @@ class MainWindow(qtw.QMainWindow, Mixin):
             else:
                 if menuitem.isChecked():
                     menuitem.setChecked(False)
-        return str(newview).split(None,1)[1]
+        return str(newview).split(None, 1)[1]
 
     def _finish_select_view(self, tree_item):
+        "finalize select view action"
         self.tree.setCurrentItem(tree_item)
 
     def _confirm(self, title, text):
+        "ask for confirmation (generic)"
         retval = qtw.QMessageBox.question(self, title, text,
-            qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-            defaultButton = qtw.QMessageBox.Yes)
+                                          qtw.QMessageBox.Yes | qtw.QMessageBox.No,
+                                          defaultButton=qtw.QMessageBox.Yes)
         return True if retval == qtw.QMessageBox.Yes else False
 
     def _update_removedview(self):
@@ -1601,13 +1654,14 @@ class MainWindow(qtw.QMainWindow, Mixin):
             if removed:
                 num, naam = str(menuitem.text()).split(None, 1)
                 menuitem.setText('&{} {}'.format(int(num[1:]) - 1, naam))
-            if str(menuitem.text()).split(None,1)[1] == viewname:
+            if str(menuitem.text()).split(None, 1)[1] == viewname:  # FIXME: viewname  is?
                 self.viewmenu.removeAction(menuitem)
                 removed = True
         if self.opts["ActiveView"] == 0:
             menuitem_list[7].setChecked(True)
 
     def _finish_remove_view(self, item):
+        "finalize action"
         self.tree.setCurrentItem(item)
 
     ## def _rename_root(self, event=None):
@@ -1618,6 +1672,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def _expand(self, recursive=False):
         "expandeer tree vanaf huidige item"
         def expand_all(item):
+            "do it recursively"
             for ix in range(item.childCount()):
                 sub = item.child(ix)
                 sub.setExpanded(True)
@@ -1630,6 +1685,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def _collapse(self, recursive=False):
         "collapse huidige item en daaronder"
         def collapse_all(item):
+            "do it recursively"
             for ix in range(item.childCount()):
                 sub = item.child(ix)
                 collapse_all(sub)
@@ -1648,6 +1704,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
                 self._reorder_items(tag, recursive)
 
     def _set_next_item(self, any_level=False):
+        "for go to next"
         if any_level and self.activeitem.childCount() > 0:
             item = self.activeitem.child(0)
             self.tree.setCurrentItem(item)
@@ -1669,7 +1726,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
                         return True
 
     def _set_prev_item(self, any_level=False):
+        "for go to previous"
         def get_prev_child_if_any(item):
+            "search recursively"
             test = item.childCount()
             if test > 0:
                 item = get_prev_child_if_any(item.child(test - 1))
@@ -1691,23 +1750,24 @@ class MainWindow(qtw.QMainWindow, Mixin):
                 return True
 
     def confirm(self, setting='', textitem=''):
+        "ask for confirmation (specific)"
         if self.opts[setting]:
-            dlg = CheckDialog(self, 'Apropos',
-                ## message=languages[self.opts["language"]][textitem],
-                message=textitem,
-                option=setting)
+            dlg = CheckDialog(self, 'Apropos', message=textitem, option=setting)
             dlg.exec_()
             # opslaan zonder vragen (en zonder backuppen?)
             _write(self.project_file, self.opts, self.views, self.itemdict)
 
-    def tree_undo(self, event=None):
+    def tree_undo(self):  # , event=None):
+        "start undo action"
         self.undo_stack.undo()
 
-    def tree_redo(self, event=None):
+    def tree_redo(self):  # , event=None):
+        "start redo action"
         self.undo_stack.redo()
 
-    def add_item(self, event=None, root=None, under=True):
-        """nieuw item toevoegen (default: onder het geselecteerde)"""
+    def _add_item(self, root=None, under=True):
+        """nieuw item toevoegen (default: onder het geselecteerde)
+        """
         log("in qt version's add_item")
         test = self._check_addable()
         if test:
@@ -1717,13 +1777,12 @@ class MainWindow(qtw.QMainWindow, Mixin):
             command = AddCommand(self, root, under, new_title, extra_titles)
             self.undo_stack.push(command)
 
-
-    def copy_item(self, evt=None, cut=False, retain=True, to_other_file=None):
+    def _copy_item(self, cut=False, retain=True, to_other_file=None):
         """start copy/cut/delete action
 
         parameters: cut: remove item from tree (True for cut, delete and move)
                     retain: remember item for pasting (True for cut and copy)
-                    other_file:
+                    to_other_file: name of file to paste note in after removing
         """
         test = self._check_copyable(cut, retain, to_other_file)
         if test:
@@ -1732,10 +1791,10 @@ class MainWindow(qtw.QMainWindow, Mixin):
             command = CopyCommand(self, cut, retain, current)
             self.undo_stack.push(command)
 
-
-    def paste_item(self, evt=None, before=True, below=False):
-        "start paste actie"
-        test = self._check_pasteable(before, below)
+    def _paste_item(self, before=True, below=False):
+        """start paste actie
+        """
+        test = self._check_pasteable(below)  # before,
         if test:
             current = test
             ## self._do_pasteitem(before, below, current)
@@ -1743,6 +1802,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.undo_stack.push(command)
 
     def _find_in(self, haystack):
+        "search in plain text version of text"
         doc = gui.QTextDocument()
         doc.setPlainText(haystack)
         ok = doc.find(self.srchtext, options=self.srchflags)
@@ -1770,7 +1830,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             title = treeitem.text(0)
             text = treeitem.data(0, core.Qt.UserRole)
             if self.srchtype & 1 and self._find_in(title):
-                result.append((loc, 'title',self._root_title, title))
+                result.append((loc, 'title', self._root_title, title))
             if self.srchtype & 2 and self._find_in(text):
                 result.append((loc, 'text', self._root_title, title))
             test = self._search_from(treeitem, loc)
@@ -1779,10 +1839,12 @@ class MainWindow(qtw.QMainWindow, Mixin):
         return result
 
     def search(self, mode=0):
+        """start search action
+        """
         print('starting new search, srchlist =', self.srchlist)
         if self.srchlist:
             self.show_message('Cannot start new search while results screen is '
-                'showing')
+                              'showing')
             return
         dlg = SearchDialog(self, mode=mode)
         if dlg.exec_() != qtw.QDialog.Accepted:
@@ -1795,7 +1857,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             else:
                 self.show_message('Search string not found')
             return
-        if self.srchtype not in (1, 2, 3): # failsafe
+        if self.srchtype not in (1, 2, 3):  # failsafe
             self.show_message('Wrong search type')
             return
         self.search_results = self._search_from(self.root)
@@ -1811,12 +1873,15 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.go_to_result()
 
     def search_texts(self):
+        "search in all texts"
         self.search(mode=2)
 
     def search_titles(self):
+        "search in all titles"
         self.search(mode=1)
 
     def find_next(self):
+        "search forward"
         if not self.srchtext:
             return
         if self.srchtype:
@@ -1824,22 +1889,24 @@ class MainWindow(qtw.QMainWindow, Mixin):
             self.go_to_result()
         else:
             if self.editor.find(self.srchtext, self.srchflags & (
-                    gui.QTextDocument.FindCaseSensitively	|
+                    gui.QTextDocument.FindCaseSensitively |
                     gui.QTextDocument.FindWholeWords)):
                 self.editor.ensureCursorVisible()
 
     def find_prev(self):
+        "search backward"
         if not self.srchtext:
             return
         if self.srchtype:
             self.srchno -= 1
             self.go_to_result()
         else:
-            if self.editor.find(self.srchtext, self.srchflags |
-                    gui.QTextDocument.FindBackward):
+            if self.editor.find(self.srchtext,
+                                self.srchflags | gui.QTextDocument.FindBackward):
                 self.editor.ensureCursorVisible()
 
     def go_to_result(self):
+        "view search result"
         msg = ''
         if self.srchno >= len(self.search_results):
             if self.srchwrap:
@@ -1867,10 +1934,11 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
 
 def main(fnaam):
+    "entry point"
     app = qtw.QApplication(sys.argv)
     if fnaam == '':
         fnaam = 'data/qt_tree.pck'
-    main = MainWindow(fnaam=fnaam)
+    main = MainWindow()  # fnaam=fnaam)
     app.setWindowIcon(main.nt_icon)
     main.show()
     main.project_file = fnaam
