@@ -1645,7 +1645,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
                                           defaultButton=qtw.QMessageBox.Yes)
         return True if retval == qtw.QMessageBox.Yes else False
 
-    def _update_removedview(self):
+    def _update_removedview(self, viewname):
         "view menu bijwerken n.a.v. verwijderen view"
         menuitem_list = [x for x in self.viewmenu.actions()]
         menuitem_list[self.opts["ActiveView"] + 7].setChecked(True)
@@ -1654,7 +1654,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
             if removed:
                 num, naam = str(menuitem.text()).split(None, 1)
                 menuitem.setText('&{} {}'.format(int(num[1:]) - 1, naam))
-            if str(menuitem.text()).split(None, 1)[1] == viewname:  # FIXME: viewname  is?
+            if str(menuitem.text()).split(None, 1)[1] == viewname:
                 self.viewmenu.removeAction(menuitem)
                 removed = True
         if self.opts["ActiveView"] == 0:

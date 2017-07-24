@@ -653,7 +653,7 @@ class Mixin(object):
         self.views.pop(self.opts["ActiveView"])
         if self.opts["ActiveView"] > 0:
             self.opts["ActiveView"] -= 1
-        self._update_removedview()
+        self._update_removedview(viewname)
         self._rebuild_root()
         self.set_project_dirty(True)
         ## self.set_title()
