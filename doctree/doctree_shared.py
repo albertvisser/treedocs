@@ -2,6 +2,7 @@
 """DocTree gui-onafhankelijk gedeelte
 """
 import os
+import pathlib
 import sys
 try:
     import cPickle as pck  # Python 2
@@ -16,8 +17,8 @@ import zipfile as zip
 import logging
 ## import datetime as dt
 import bs4 as bs
-HERE = os.path.abspath(os.path.dirname(__file__))
-logging.basicConfig(filename=os.path.join(HERE, 'logs', 'doctree.log'),
+HERE = pathlib.Path(__file__).parent.resolve()
+logging.basicConfig(filename=str(HERE / 'logs' / 'doctree.log'),
                     level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 
@@ -121,13 +122,13 @@ def _write(filename, opts, views, itemdict, extra_images=None):
 
     images contained are saved in a separate zipfile"""
     nt_data = {0: opts, 1: views, 2: itemdict}
-    zipfile = os.path.splitext(filename)[0] + '.zip'
+    zipfile = filename.with_suffix('.zip')
     try:
-        shutil.copyfile(filename, filename + ".bak")
-        shutil.copyfile(zipfile, zipfile + ".bak")
+        shutil.copyfile(str(filename), str(filename) + ".bak")
+        shutil.copyfile(str(zipfile), str(zipfile) + ".bak")
     except IOError as err:
         print(err)
-    with open(filename, "wb") as f_out:
+    with filename.open("wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
 
     if extra_images is None:
@@ -142,12 +143,13 @@ def _write(filename, opts, views, itemdict, extra_images=None):
         _filenames = extra_images
         mode = "a"
     # add extra images to the zipfile
-    path = os.path.dirname((filename))  # eventueel eerst absoluut maken
+    path = filename.parent  # eventueel eerst absoluut maken
     zipped = []
-    with zip.ZipFile(zipfile, mode) as _out:
+    with zip.ZipFile(str(zipfile), mode) as _out:
         for name in _filenames:
-            if name.startswith(filename):
-                _out.write(os.path.join(path, name), arcname=os.path.basename(name))
+            if name.startswith(str(filename)):
+                ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
+                _out.write(str(path / name), arcname=pathlib.Path(name).name)
                 zipped.append(name)
     return zipped
 
@@ -348,29 +350,30 @@ class Mixin(object):
         "afhandelen Menu > Open / Ctrl-O"
         if not self.save_needed():
             return
-        dirname = os.path.dirname(self.project_file)
+        dirname = str(self.project_file)
         ok, filename = self.getfilename("DocTree - choose file to open", dirname)
         if not ok:
             return
-        self.project_file = str(filename)
+        self.project_file = pathlib.Path(filename)
         err = self.read()
         if err:
             self.show_message(title="Error", text=err)
-        self.show_statusmessage('{} gelezen'.format(self.project_file))
+        else:
+            self.show_statusmessage('{} gelezen'.format(str(self.project_file)))
 
     def new(self):
         "Afhandelen Menu - Init / Ctrl-I"
         if not self.save_needed():
             return False
-        dirname = os.path.dirname(self.project_file)
+        dirname = str(self.project_file.parent)
         ok, filename = self.getfilename("DocTree - enter name for new file",
                                         dirname, save=True)
         if not ok:
             return
-        filename = str(filename)
-        test = os.path.splitext(filename)
-        if len(test) == 1 or test[1] != '.pck':
-            filename += '.pck'
+        filename = pathlib.Path(filename)
+        test = filename.suffix
+        if test != '.pck':
+            filename = filename.with_suffix('.pck')
         self.project_file = filename
         self.views = [[]]
         self.viewcount = 1
@@ -431,27 +434,24 @@ class Mixin(object):
 
         # determine the name of the file to read and read + unpickle it if possible,
         # otherwise cancel
-        fname = other_file or self.project_file
-        if not fname:
+        infile = other_file or self.project_file
+        if not infile:
             return
         try:
-            f_in = open(fname, "rb")
+            f_in = infile.open("rb")
         except IOError:
-            return "couldn't open {}".format(fname)
-        try:
-            nt_data = pck.load(f_in)
-        except EOFError:
-            mld = "couldn't load data from {}".format(fname)
-        finally:
-            f_in.close()
-        if mld:
-            return mld
+            return "couldn't open {}".format(str(infile))
+        with f_in:
+            try:
+                nt_data = pck.load(f_in)
+            except EOFError:
+                return "couldn't load data from {}".format(str(infile))
 
         # read/init/check settings if possible, otherwise cancel
         ## print(nt_data[0])
         test = nt_data[0].get("Application", None)
         if test and test != 'DocTree':
-            return "{} is not a valid Doctree data file".format(fname)
+            return "{} is not a valid Doctree data file".format(str(infile))
 
         # read views
         try:
@@ -478,11 +478,12 @@ class Mixin(object):
         self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
 
         # if possible, build a list of referred-to image files
-        path = os.path.dirname((self.project_file))
+        ## path = os.path.dirname((self.project_file))
+        path = str(self.project_file.parent)
         self._filenames = []
         err = FileNotFoundError if sys.version >= '3.3' else OSError
         try:
-            with zip.ZipFile(os.path.splitext(self.project_file)[0] + '.zip') as _in:
+            with zip.ZipFile(str(self.project_file.with_suffix('.zip'))) as _in:
                 _in.extractall(path=path)
                 self._filenames = _in.namelist()
         except err:
@@ -506,7 +507,7 @@ class Mixin(object):
             return
         ## if self._ok_to_reload():
         self.read()
-        self.show_statusmessage('{} herlezen'.format(self.project_file))
+        self.show_statusmessage('{} herlezen'.format(str(self.project_file)))
 
     def _ok_to_reload(self):
         "placeholder"
@@ -518,7 +519,7 @@ class Mixin(object):
             self.write(meld=meld)
         else:
             self.saveas()
-        self.show_statusmessage('{} opgeslagen'.format(self.project_file))
+        self.show_statusmessage('{} opgeslagen'.format(str(self.project_file)))
 
     def write(self, meld=True):
         """settings en tree data in een structuur omzetten en opslaan"""
@@ -528,18 +529,18 @@ class Mixin(object):
                                  self.itemdict)
         self.set_project_dirty(False)
         if meld:
-            save_text = self.project_file + " is opgeslagen"
+            save_text = str(self.project_file) + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
 
     def saveas(self):
         """afhandelen Menu > Save As"""
-        dirname = os.path.dirname(self.project_file)
+        dirname = str(self.project_file)
         ok, filename = self.getfilename("DocTree - save file as:", dirname, save=True)
         if ok:
-            filename = str(filename)
-            test = os.path.splitext(filename)
-            if len(test) == 1 or test[1] != '.pck':
-                filename += '.pck'
+            filename = pathlib.Path(filename)
+            test = filename.suffix
+            if test != '.pck':
+                filename = filename.with_suffix('.pck')
             self.project_file = filename
             self.write()
             self.set_title()
@@ -1017,7 +1018,7 @@ class Mixin(object):
 
         # 1. ask which file to move to (from here you can still cancel the action)
 
-        dirname = os.path.dirname(self.project_file)
+        dirname = str(self.project_file.parent)
         ok, filename = self.getfilename("DocTree - choose file to move the item to",
                                         dirname)
         if not ok:
@@ -1025,8 +1026,8 @@ class Mixin(object):
 
         # 2. read the file
 
-        other_file = str(filename)
-        if not os.path.exists(other_file):
+        other_file = pathlib.Path(filename)
+        if not other_file.exists():
             opts = init_opts()
             opts['Version'] = self.opts.get('Version', None)
             views, viewcount, itemdict = [[]], 1, {}
@@ -1056,7 +1057,7 @@ class Mixin(object):
 
         # 5. write back the updated structure
 
-        _write(filename, opts, views, itemdict, extra_images)
+        _write(other_file, opts, views, itemdict, extra_images)
 
     def _expand(self, recursive=False):
         "placeholder"

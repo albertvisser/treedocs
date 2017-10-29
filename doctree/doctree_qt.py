@@ -2,6 +2,7 @@
 """
 
 import os
+import pathlib
 import sys
 
 import PyQt5.QtWidgets as qtw
@@ -9,7 +10,7 @@ import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 
 from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
-HERE = os.path.dirname(__file__)
+HERE = pathlib.Path(__file__).parent
 
 
 def tabsize(pointsize):
@@ -755,7 +756,7 @@ class TreePanel(qtw.QTreeWidget):
         rawtext = doc.toPlainText()
         new.setData(0, core.Qt.UserRole, rawtext)
         #
-        ## new.setIcon(0, gui.QIcon(os.path.join(HERE, 'icons/empty.png')))
+        ## new.setIcon(0, gui.QIcon(str(HERE / 'icons/empty.png')))
         new.setText(1, str(itemkey))
         new.setToolTip(0, titel.rstrip())
         log('adding child {} ({}) to parent {} ({}) at pos {}'.format(
@@ -869,19 +870,21 @@ class EditorPanel(qtw.QTextEdit):
             num = self.parent.opts['ImageCount']
             num += 1
             self.parent.opts['ImageCount'] = num
-            urlname = '{}_{:05}.png'.format(self.parent.project_file, num)
-            image.save(urlname)
-            urlname = os.path.basename(urlname)  # make name "relative"
+            ## urlname = '{}_{:05}.png'.format(str(self.parent.project_file), num)
+            img = '{}_{:05}.png'.format(self.parent.project_file.name, num)
+            url = self.parent.project_file.parent / img
+            image.save(str(url))
+            ## urlname = os.path.basename(urlname)  # make name "relative"
             document.addResource(gui.QTextDocument.ImageResource,
-                                 core.QUrl(urlname), image)
-            cursor.insertImage(urlname)
+                                 core.QUrl(url.name), image)
+            cursor.insertImage(url.name)
         else:
             super().insertFromMimeData(source)
 
     def set_contents(self, data):
         "load contents into editor"
         data = data.replace('img src="', 'img src="{}/'.format(
-            os.path.dirname(self.parent.project_file)))
+            str(self.parent.project_file.parent)))
         self.setHtml(data)
         fmt = gui.QTextCharFormat()
         self.charformat_changed(fmt)
@@ -892,8 +895,8 @@ class EditorPanel(qtw.QTextEdit):
         # update plain text in tree item to facilitate search
         self.parent.tree.currentItem().setData(0, core.Qt.UserRole,
                                                self.toPlainText())
-        return self.toHtml().replace('img src="{}/'.format(os.path.dirname(
-            self.parent.project_file)), 'img src="')
+        return self.toHtml().replace('img src="{}/'.format(
+            str(self.parent.project_file.parent)), 'img src="')
 
     def text_bold(self):  # , event=None):
         "selectie vet maken"
@@ -1192,7 +1195,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         super().__init__()
         offset = 40 if os.name != 'posix' else 10
         self.move(offset, offset)
-        self.nt_icon = gui.QIcon(os.path.join(HERE, "doctree.xpm"))
+        self.nt_icon = gui.QIcon(str(HERE / "doctree.xpm"))
         self.tray_icon = qtw.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
         self.tray_icon.activated.connect(self.revive)
@@ -1259,8 +1262,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if icon:
-                    action = qtw.QAction(gui.QIcon(os.path.join(HERE, icon)), label,
-                                         self)
+                    action = qtw.QAction(gui.QIcon(str(HERE / icon)), label, self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
                         toolbar.setIconSize(core.QSize(16, 16))
@@ -1361,7 +1363,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         else:
             text = 'view: {}'.format(self.opts["ViewNames"][self.opts['ActiveView']])
         self.setWindowTitle("{}{} ({}) - DocTree".format(
-            os.path.split(self.project_file)[1],
+            self.project_file.name,
             '*' if self.project_dirty else '',
             text))
 
@@ -1941,7 +1943,7 @@ def main(fnaam):
     main = MainWindow()  # fnaam=fnaam)
     app.setWindowIcon(main.nt_icon)
     main.show()
-    main.project_file = fnaam
+    main.project_file = pathlib.Path(fnaam)     # .resolve()
     err = main.read()
     if err:
         qtw.QMessageBox.information(main, "Error", err, qtw.QMessageBox.Ok)

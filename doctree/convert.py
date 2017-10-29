@@ -8,7 +8,7 @@ usage: [python] convert.py [<filename> [<method>]]
 <method> can be 'wx' or 'qt', if none is given 'qt' is used.
 """
 from __future__ import print_function
-import os
+import pathlib
 import sys
 import cPickle as pck
 ## import pprint
@@ -86,6 +86,7 @@ def convert(data):
     data[0]["ActiveView"] = 0
     data[1] = (data_list,)
     data[2] = items_list
+    return data
 
 
 def make_richtext(data, methode):
@@ -99,7 +100,7 @@ def make_richtext(data, methode):
         fnaam = omzetdict[methode]
     except KeyError:
         raise
-    with open(os.path.join(os.path.dirname(__file__), fnaam)) as f_in:
+    with (pathlib.Path(__file__).parent / fnaam).open() as f_in:
         template = f_in.read()
     print(data[0]['RootData'])
     data[0]['RootData'] = template.format(
@@ -122,21 +123,26 @@ def main():
             sys.exit()
     else:
         filenaam = "MyMan.ini"
+    old = pathlib.Path(filenaam).resolve()
     if len(sys.argv) > 2:
         methode = sys.argv[2]
     else:
         methode = 'qt'
-    with open(filenaam, "rb") as f_in:
+    with old.open("rb") as f_in:
         data = pck.load(f_in)
     if len(data) != 3:
         print('converting to multiple view format')
-        convert(data)
-        with open("_multi".join(os.path.splitext(filenaam)), "wb") as f_out:
+        data = convert(data)
+        ## with open("_multi".join(os.path.splitext(filenaam)), "wb") as f_out:
+            ## pck.dump(data, f_out)
+        new = old.parent / "_multi".join(old.stem, old.suffix)
+        with new.open("wb") as f_out:
             pck.dump(data, f_out)
     print('converting to rich text format')
     data = make_richtext(data, methode)
     ## pprint.pprint(data)
-    with open("_{}".format(methode).join(os.path.splitext(filenaam)), "wb") as f_out:
+    new = old.parent / "_{}".format(methode).join(old.stem, old.suffix)
+    with new.open("wb") as f_out:
         pck.dump(data, f_out)
 
 if __name__ == "__main__":

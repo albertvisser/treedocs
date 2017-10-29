@@ -1,6 +1,6 @@
 """DocTree utility program to present the data in a viewable form
 """
-import os.path
+import pathlib
 import pprint
 import pickle as pck
 import bs4 as bs
@@ -19,15 +19,15 @@ def filter_html(data):
         return ''
 
 
-def write_file(fname, title, data, as_html):
+def write_file(outfile, title, data, as_html):
     """
     schrijf `data` weg als "`title`.html of `title`.out"
     """
-    root, base = os.path.split(fname)
-    base, _ = os.path.splitext(base)
+    root = outfile.parent
+    base = outfile.stem
     ext = '.html' if as_html else '.out'
-    outfile = os.path.join(root, '_'.join((base, '_'.join(title.split()))) + ext)
-    with open(outfile, 'w') as _out:
+    outfile = root / '_'.join((base, '-'.join(title.split()) + ext))
+    with outfile.open('w') as _out:
         _out.write(data)
 
 
@@ -51,11 +51,12 @@ def main(fname, *, donot_filter_html=False, to_files=False):
     ## een tweede argument opgegeven is
     ## """
 
-    print(fname)
+    old = pathlib.Path(fname)
+    new = pathlib.Path(fname + '.out')
     print('donot-filter-html:', donot_filter_html)
     print('to-files:', to_files)
     # try to open the input file, if not present do not create output but fail
-    with open(fname, "rb") as f_in, open(fname + '.out', 'w') as _out:
+    with old.open("rb") as f_in, new.open('w') as _out:
 
         # get the input from the file
         nt_data = pck.load(f_in)
@@ -76,15 +77,15 @@ def main(fname, *, donot_filter_html=False, to_files=False):
                         pass
                     else:
                         options[opt] = filter_html(options[opt])
-                    write_file(fname, opt, options[opt], donot_filter_html)
+                    write_file(old, opt, options[opt], donot_filter_html)
                 else:
                     print('options:', file=_out)
                     pprint.pprint(options, stream=_out)
 
         # pprint the second element: the view(s) (lists of lists)
-        if not to_files:
-            print('views', file=_out)
-            pprint.pprint(nt_data[1], stream=_out)
+        ## if not to_files:
+        print('views', file=_out)
+        pprint.pprint(nt_data[1], stream=_out)
 
         # pprint the third element: a dictionary with node titles en texts
         if donot_filter_html:
@@ -93,7 +94,7 @@ def main(fname, *, donot_filter_html=False, to_files=False):
             itemdict = {x: (y[0], filter_html(y[1])) for x, y in nt_data[2].items()}
         if to_files:
             for key, value in itemdict.items():
-                write_file(fname, " ".join((str(key), value[0])), value[1],
+                write_file(old, " ".join((str(key), value[0])), value[1],
                            donot_filter_html)
         else:
             print('itemdict', file=_out)
