@@ -1381,6 +1381,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         "set up a new document collection"
         if not Mixin.new(self):
             return
+        self.opts = init_opts()
         self.opts["Version"] = "Qt"
         self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         menuitem_list = [x for x in self.viewmenu.actions()]
@@ -1401,6 +1402,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.activeitem = self.root  # item_to_activate =
         self.editor.set_contents(self.opts["RootData"])
         self.editor.setReadOnly(False)
+        print('In new - Notify is', self.opts['NotifyOnSave'])
         self.tree.setFocus()
 
     def save_needed(self, meld=True, always_check=True):
@@ -1501,6 +1503,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
     def write(self, meld=True):
         "start write action"
+        print('in write - need to notify is', meld)
         self.opts["ScreenSize"] = self.width(), self.height()  # tuple(self.size())
         self.opts["SashPosition"] = self.splitter.saveState()
         Mixin.write(self, meld)

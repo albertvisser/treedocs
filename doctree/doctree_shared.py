@@ -516,6 +516,7 @@ class Mixin(object):
     def save(self, meld=True):
         """afhandelen Menu > save"""
         if self.project_file:
+            print('in save: need to notify is', meld)
             self.write(meld=meld)
         else:
             self.saveas()
@@ -528,7 +529,9 @@ class Mixin(object):
         self._filenames = _write(self.project_file, self.opts, self.views,
                                  self.itemdict)
         self.set_project_dirty(False)
+        print('in write - need to notify is', meld)
         if meld:
+            print('In save - notify is', self.settings['NotifyOnSave'])
             save_text = str(self.project_file) + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
 
