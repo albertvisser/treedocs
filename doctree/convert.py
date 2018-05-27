@@ -1,6 +1,5 @@
 #! /usr/bin/env python
-"""
-DocTree data file conversion program
+"""DocTree data file conversion program
 usage: [python] convert.py [<filename> [<method>]]
 
 <filename> is a pre-richedit doctree file, can even be a pre-views one.

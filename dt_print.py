@@ -6,9 +6,10 @@ from doctree.doctree_2print import main
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__, epilog="output files "
-                                    "are created in the same directory as the "
-                                    "input file and end with .out")
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     epilog="output files are created "
+                                     "in the same directory as the input file "
+                                     "and end with .out")
     parser.add_argument('fname', help="name of DocTree file")
     parser.add_argument('-H', '--html', dest='as_html', action='store_true',
                         help='leave contents as stored instead of parsed into '

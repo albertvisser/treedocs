@@ -12,7 +12,7 @@ else:
     str = unicode
 import shutil
 from datetime import datetime
-import zipfile as zip
+import zipfile as zpf
 ## import pprint
 import logging
 ## import datetime as dt
@@ -145,7 +145,7 @@ def _write(filename, opts, views, itemdict, extra_images=None):
     # add extra images to the zipfile
     path = filename.parent  # eventueel eerst absoluut maken
     zipped = []
-    with zip.ZipFile(str(zipfile), mode) as _out:
+    with zpf.ZipFile(str(zipfile), mode) as _out:
         for name in _filenames:
             if name.startswith(str(filename)):
                 ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
@@ -430,7 +430,6 @@ class Mixin(object):
         if not other_file:
             self.has_treedata = False
         self.opts = init_opts()
-        mld = ''
 
         # determine the name of the file to read and read + unpickle it if possible,
         # otherwise cancel
@@ -483,7 +482,7 @@ class Mixin(object):
         self._filenames = []
         err = FileNotFoundError if sys.version >= '3.3' else OSError
         try:
-            with zip.ZipFile(str(self.project_file.with_suffix('.zip'))) as _in:
+            with zpf.ZipFile(str(self.project_file.with_suffix('.zip'))) as _in:
                 _in.extractall(path=path)
                 self._filenames = _in.namelist()
         except err:

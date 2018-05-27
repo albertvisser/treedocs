@@ -278,17 +278,17 @@ class ResultsDialog(qtw.QDialog):
             self.result_list.addTopLevelItem(new)
         oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
         for ix, item in enumerate(self.parent.search_results):
-            loc, type, root, title = item
+            loc, newtype, root, title = item
             if loc != oldloc:
                 if oldloc is not None:
                     add_item_to_list()
                 in_title = 0
                 in_text = 0
-            if type == 'title':
+            if newtype == 'title':
                 in_title += 1
-            elif type == 'text':
+            elif newtype == 'text':
                 in_text += 1
-            oldloc, oldtype, oldroot, oldtitle = loc, type, root, title
+            oldloc, oldtype, oldroot, oldtitle = loc, newtype, root, title
             oldix = ix
         add_item_to_list()
 
@@ -403,6 +403,7 @@ class AddPasteCommand(qtw.QUndoCommand):
         # tuples) en een indicatie of het om nieuwe of
         # bestaande dict items gaat (self.add_items_on_paste).
         # deze laatste betekent dat de keys wel of niet hergebruikt kunnen worden
+        super().__init__(description)
 
 
 class AddCommand(qtw.QUndoCommand):
@@ -1089,12 +1090,12 @@ class EditorPanel(qtw.QTextEdit):
         fmt.setBackground(col)
         self.mergeCurrentCharFormat(fmt)
 
-    def charformat_changed(self, format):
+    def charformat_changed(self, fmt):
         "wordt aangeroepen als het tekstformat gewijzigd is"
-        self.font_changed(format.font())
-        self.color_changed(format.foreground().color())
-        backg = format.background()
-        if int(backg.style()) == 0:  # nul betelkent transparant
+        self.font_changed(fmt.font())
+        self.color_changed(fmt.foreground().color())
+        backg = fmt.background()
+        if int(backg.style()) == 0:  # nul betekent transparant
             bgcol = core.Qt.white  # eigenlijk standaardkleur, niet per se wit
         else:
             bgcol = backg.color()
@@ -1153,13 +1154,13 @@ class EditorPanel(qtw.QTextEdit):
         elif align & core.Qt.AlignJustify:
             self.parent.actiondict["&Justify"].setChecked(True)
 
-    def mergeCurrentCharFormat(self, format):
+    def mergeCurrentCharFormat(self, fmt):
         "de geselecteerde tekst op de juiste manier weergeven"
         cursor = self.textCursor()
         if not cursor.hasSelection():
             cursor.select(gui.QTextCursor.WordUnderCursor)
-        cursor.mergeCharFormat(format)
-        super().mergeCurrentCharFormat(format)
+        cursor.mergeCharFormat(fmt)
+        super().mergeCurrentCharFormat(fmt)
 
     def check_dirty(self):
         "check for modifications"
