@@ -803,7 +803,7 @@ class TreePanel(qtw.QTreeWidget):
         return [item.child(num) for num in range(item.childCount())]
 
     def getitemparentpos(self, item):
-        "positie van parent bepalen"
+        "parent en positie van item onder parent bepalen"
         root = item.parent()
         if root:
             pos = root.indexOfChild(item)
