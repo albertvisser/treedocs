@@ -18,6 +18,8 @@ import logging
 ## import datetime as dt
 import bs4 as bs
 HERE = pathlib.Path(__file__).parent.resolve()
+HIDE_TEXT = "\n".join(("DocTree gaat nu slapen in de System tray",
+                       "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"))
 logging.basicConfig(filename=str(HERE / 'logs' / 'doctree.log'),
                     level=logging.DEBUG, format='%(asctime)s %(message)s')
 
@@ -126,8 +128,8 @@ def _write(filename, opts, views, itemdict, extra_images=None):
     try:
         shutil.copyfile(str(filename), str(filename) + ".bak")
         shutil.copyfile(str(zipfile), str(zipfile) + ".bak")
-    except IOError as err:
-        print(err)
+    except FileNotFoundError:
+        pass
     with filename.open("wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
 
@@ -135,7 +137,7 @@ def _write(filename, opts, views, itemdict, extra_images=None):
         # scan de itemdict af op image files en zet ze in een list
         _filenames = []
         for _, data in nt_data[2].values():
-            names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
+            names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
             _filenames.extend(names)
         ## fname = os.path.basename(filename)
         mode = "w"
@@ -176,6 +178,8 @@ class Mixin(object):
         self.copied_item, self.cut_from_itemdict = (), []
 
     def _get_menu_data(self):
+        """Menu options definitions
+        """
         return (
             ("&Main", (
                 ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png',
@@ -361,15 +365,20 @@ class Mixin(object):
         else:
             self.show_statusmessage('{} gelezen'.format(str(self.project_file)))
 
-    def new(self):
+    def new(self, filename=''):
         "Afhandelen Menu - Init / Ctrl-I"
-        if not self.save_needed():
-            return False
-        dirname = str(self.project_file.parent)
-        ok, filename = self.getfilename("DocTree - enter name for new file",
-                                        dirname, save=True)
-        if not ok:
-            return
+        ## print('in new:', filename)
+        if not filename:
+            if not self.save_needed():
+                return False
+            try:
+                dirname = str(self.project_file.parent)
+            except AttributeError:
+                dirname = str(HERE)
+            ok, filename = self.getfilename("DocTree - enter name for new file",
+                                            dirname, save=True)
+            if not ok:
+                return False
         filename = pathlib.Path(filename)
         test = filename.suffix
         if test != '.pck':
@@ -435,7 +444,7 @@ class Mixin(object):
         # otherwise cancel
         infile = other_file or self.project_file
         if not infile:
-            return
+            return 'no file name given'
         try:
             f_in = infile.open("rb")
         except IOError:
@@ -495,6 +504,7 @@ class Mixin(object):
         ## self.set_title()
         self.set_project_dirty(False)
         self._finish_read(item_to_activate)
+        return ''
 
     def _read(self):
         "placeholder"
@@ -505,7 +515,7 @@ class Mixin(object):
         if not self.save_needed():
             return
         ## if self._ok_to_reload():
-        self.read()
+        self.read()     # no need to check te result, should be ok when rereading?
         self.show_statusmessage('{} herlezen'.format(str(self.project_file)))
 
     def _ok_to_reload(self):
@@ -515,7 +525,6 @@ class Mixin(object):
     def save(self, meld=True):
         """afhandelen Menu > save"""
         if self.project_file:
-            print('in save: need to notify is', meld)
             self.write(meld=meld)
         else:
             self.saveas()
@@ -528,9 +537,8 @@ class Mixin(object):
         self._filenames = _write(self.project_file, self.opts, self.views,
                                  self.itemdict)
         self.set_project_dirty(False)
-        print('in write - need to notify is', meld)
         if meld:
-            print('In save - notify is', self.settings['NotifyOnSave'])
+            ## print('In save - notify is', self.opts['NotifyOnSave'])
             save_text = str(self.project_file) + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
 
@@ -582,10 +590,10 @@ class Mixin(object):
         for key in sorted(self.itemdict.keys()):
             newtree.append((key, []))
         self.views.append(newtree)
-        self._tree_item = self.viewtotree()
+        tree_item = self.viewtotree()
         ## self.set_title()
         self.set_project_dirty(True)
-        self._finish_add_view()
+        self._finish_add_view(tree_item)
 
     def _set_activeitem_for_view(self):
         "placeholder"
@@ -693,7 +701,8 @@ class Mixin(object):
         test = self._check_addable()
         if test:
             new_title, extra_titles = test
-            pos = -1  # doesn't matter for now
+            pos = -1  # doesn't matter for now - will be determined in do_additem
+            ## log('under is {}, pos is {}'.format(under, pos))
             self.do_additem(root, under, pos, new_title, extra_titles)
 
     def _check_addable(self):
@@ -712,7 +721,7 @@ class Mixin(object):
     def do_additem(self, root, under, origpos, new_title, extra_titles):
         """toevoegen nieuw item
         """
-        log('in shared.do_additem')
+        log('*** in shared.do_additem ***')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
         while newkey in self.itemdict:
@@ -721,24 +730,29 @@ class Mixin(object):
         self.itemdict[newkey] = (new_title, "")
         # voeg nieuw item toe aan visual tree
         # bepaal eerst de parent voor het nieuwe item
-        log('root is {} ({}), under is {}, origpos is {}'.format(root, root.text(0),
-                                                                 under, origpos))
+        if not root:
+            root = self.activeitem or self.root
+            log('no root provided, using either active ({}) or root ({})'.format(
+                self.activeitem, self.root))
+        text = self.tree.getitemtitle(root)
+        log('root is {} ({}), under is {}, origpos is {}'.format(root, text, under, origpos))
         if under:
-            ## if root is None:
-                ## root = self.activeitem or self.root
-            parent = root or self.activeitem or self.root
+            parent = root
             pos = -1
         else:
             ## root, pos = getitemparentpos(self.activeitem)
             parent, pos = self.tree.getitemparentpos(root)
             log("na getitemparentpos: root, pos is {}, {}".format(parent, pos))
+            log('comparing to origpos: {}'.format(origpos))
             if origpos == -1:
                 pos += 1    # we want to insert after, not before
-                if pos == parent.childCount():
+                if pos == len(self.tree.getitemkids(parent)):
                     pos = -1
             else:
                 pos = origpos
-        log('parent, pos is {} ({}), {}'.format(parent, parent.text(0), pos))
+        ## print(parent, parent.__dict__)
+        text = self.tree.getitemtitle(parent)
+        log('parent, pos is {} ({}), {}'.format(parent, text, pos))
         item = self.tree.add_to_parent(newkey, new_title, parent, pos)
         new_item = item
         # doe hetzelfde met het via \ toegevoegde item
@@ -811,8 +825,7 @@ class Mixin(object):
             go_on = self._confirm("DocTree", "Are you sure you want to remove this item?")
         if go_on:
             return current
-        else:
-            return go_on
+        return go_on
 
     def do_copyaction(self, cut, retain, current):  # to_other_file):
         "do the copying"
@@ -1045,7 +1058,7 @@ class Mixin(object):
 
         extra_images = []
         for _, data in [x[1] for x in self.cut_from_itemdict]:
-            names = [img['src'] for img in bs.BeautifulSoup(data).find_all('img')]
+            names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
             extra_images.extend(names)
 
         # 4. paste action on the other file
@@ -1097,7 +1110,7 @@ class Mixin(object):
             else:
                 new_title, extra_title = '(untitled)', []
             return new_title, extra_title
-        return
+        return None
 
     def order_top(self):
         """order items directly under the top level"""
@@ -1146,10 +1159,14 @@ class Mixin(object):
 
     def check_active(self, message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
+        log('*** in shared.check_active ***')
+        text  = self.tree.getitemtitle(self.activeitem)
+        log('active item is {} ({})'.format(self.activeitem, text))
         if self.activeitem:
             if self.editor.check_dirty():
                 if message:
                     self.show_message(message, 'Doctree')
+                log('contents is {}'.format(self.tree.getitemdata(self.activeitem)))
                 ref = self.tree.getitemkey(self.activeitem)
                 content = str(self.editor.get_contents())
                 try:
