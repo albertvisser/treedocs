@@ -9,6 +9,7 @@ import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 
+import doctree.doctree_shared as shared
 from doctree.doctree_shared import Mixin, init_opts, _write, putsubtree, log
 HERE = pathlib.Path(__file__).parent
 
@@ -415,6 +416,7 @@ class AddCommand(qtw.QUndoCommand):
         # anders is deze None en moet deze bepaald worden op self.win.item
         log('in AddCommand.__init__')
         self.win = win
+        # bepalen root en pos gebeurt eigenlijk in do_additem maar ik heb ze hier al nodig
         self.root = root if root is not None else self.win.activeitem
         if root == self.win.root:
             description += " top level item"
@@ -816,8 +818,9 @@ class TreePanel(qtw.QTreeWidget):
     def removeitem(self, item, cut_from_itemdict):
         "removes current treeitem and returns the previous one"
         log('in removeitem {} {}'.format(item, cut_from_itemdict))
-        parent = item.parent()               # gui-dependent
-        pos = parent.indexOfChild(item)
+        ## parent = item.parent()               # gui-dependent
+        ## pos = parent.indexOfChild(item)
+        parent, pos = self.getitemparentpos(item)
         oldloc = (parent, pos)
         if pos - 1 >= 0:
             prev = parent.child(pos - 1)
@@ -857,8 +860,7 @@ class EditorPanel(qtw.QTextEdit):
         "reimplemented"
         if source.hasImage:
             return True
-        else:
-            return super().canInsertFromMimeData(source)
+        return super().canInsertFromMimeData(source)
 
     def insertFromMimeData(self, source):
         "reimplemented"
@@ -1512,10 +1514,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def hide_me(self):  # , event=None):
         """applicatie verbergen"""
         ## self.confirm(setting="AskBeforeHide", textitem="hide_text")
-        hide_text = "\n".join((
-            "DocTree gaat nu slapen in de System tray",
-            "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"))
-        self.confirm(setting="AskBeforeHide", textitem=hide_text)
+        self.confirm(setting="AskBeforeHide", textitem=shared.HIDE_TEXT)
         self.tray_icon.show()
         self.hide()
 
@@ -1582,9 +1581,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
         action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
         action.setText('{} {}'.format(str(action.text()).split()[0], newname))
 
-    def _finish_add_view(self):  # , event=None):
+    def _finish_add_view(self, tree_item):  # , event=None):
         "handles Menu > View > New view"
-        self.tree.setCurrentItem(self._tree_item)
+        self.tree.setCurrentItem(tree_item)
 
     def next_view(self, prev=False):
         """cycle to next view if available (default direction / forward)"""
@@ -1675,6 +1674,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ## Mixin.rename_root(self, event)
         ## self.root.setText(0, self.opts['RootTitle'])
 
+    def _set_activeitem_for_view(self):
+        "pylint klaagt erover dat deze niet geherimplementeerd is"
+
     def _expand(self, recursive=False):
         "expandeer tree vanaf huidige item"
         def expand_all(item):
@@ -1730,6 +1732,7 @@ class MainWindow(qtw.QMainWindow, Mixin):
                         item = gp.child(pos + 1)
                         self.tree.setCurrentItem(item)
                         return True
+        return False
 
     def _set_prev_item(self, any_level=False):
         "for go to previous"
@@ -1746,10 +1749,9 @@ class MainWindow(qtw.QMainWindow, Mixin):
                 if pos == 0:
                     self.tree.setCurrentItem(parent)
                     return True
-                else:
-                    item = get_prev_child_if_any(parent.child(pos - 1))
-                    self.tree.setCurrentItem(item)
-                    return True
+                item = get_prev_child_if_any(parent.child(pos - 1))
+                self.tree.setCurrentItem(item)
+                return True
             elif pos > 0:
                 item = parent.child(pos - 1)
                 self.tree.setCurrentItem(item)
