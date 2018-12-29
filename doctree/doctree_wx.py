@@ -4,9 +4,8 @@
 
 import os
 import datetime as dt
-# import StringIO as io
 import pathlib
-# import io
+## import io
 import tempfile
 
 import wx
@@ -203,19 +202,23 @@ class EditorPanel(rt.RichTextCtrl):
         log("*** in set_contents: ***")
         log(data)
         self.Clear()
+        data = str(data)
         ## self.SetValue(data)
         if data.startswith("<?xml"):
             ## out = io.StringIO()                  -- out moet een OutputStream subclass zijn?
             ##                                                  bv StringOutputStream maar die zijn er nog niet?
+            ## out = io.BytesIO()
             handler = rt.RichTextXMLHandler()
             _buffer = self.GetBuffer()
             _buffer.AddHandler(handler)
-            with tempfile.TemporaryFile() as out:
+            with tempfile.NamedTemporaryFile(mode='w+') as out:
                 out.write(data)
                 ## out.seek(0)
-                handler.LoadFile(_buffer, out)
+                handler.LoadFile(_buffer, out.name)
+            ## out.write(data)
+            ## out.seek(0)
+            ## handler.LoadFile(_buffer, out)
             ## handler.ImportXML(_buffer, data)
-            # of moet dit zijn ok = _buffer.LoadFile(_out) ?
         else:
             self.SetValue(data)  # WriteText(data)
         self.Refresh()
@@ -225,15 +228,19 @@ class EditorPanel(rt.RichTextCtrl):
         ## content = self.GetValue()
         ## out = io.StringIO()                  -- out moet een OutputStream subclass zijn?
         ##                                                  bv StringOutputStream maar die zijn er nog niet?
+        ## out = io.BytesIO()
         handler = rt.RichTextXMLHandler()
         _buffer = self.GetBuffer()
         ## print(type(_buffer), type(out))
-        with tempfile.TemporaryFile() as out:
-            handler.SaveFile(_buffer, out)
+        with tempfile.NamedTemporaryFile(mode='w+') as out:
+            handler.SaveFile(_buffer, out.name)
             ## handler.ExportXML(_buffer, content)
             ## # of moet dit zijn ok = _buffer.SaveFile(_out) ?
             ## out.seek(0)
             content = out.read()
+        ## handler.SaveFile(_buffer, out)
+        ## out.seek(0)
+        ## content = out.read()
         log("*** in get_contents: ***")
         log(content)
         return content
@@ -450,6 +457,7 @@ class MainWindow(wx.Frame, shared.Mixin):
         self.statbar = self.CreateStatusBar()
 
         tbar = wx.ToolBar(self, -1)
+        self.SetToolBar(tbar)  # - is blijkbaar niet nodig
         menuBar = wx.MenuBar()
         self.SetMenuBar(menuBar)
 
@@ -463,12 +471,12 @@ class MainWindow(wx.Frame, shared.Mixin):
         self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.editor = EditorPanel(self.splitter, -1)
-        self.editor.Enable(0)
+        self.editor.Enable(False)
         self.editor.new_content = True
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.create_menu(menuBar, self._get_menu_data())
-        ## self.create_toolbar(tbar) # frm)
+        self.create_toolbar(tbar) # frm)
 
         self.splitter.SplitVertically(self.tree, self.editor)
         self.splitter.SetSashPosition(self.opts['SashPosition'], True)
@@ -489,6 +497,7 @@ class MainWindow(wx.Frame, shared.Mixin):
         self.Layout()
         ## self.tree.SetFocus()
         self.Show(True)
+        ## print('end of init')
 
     def _get_menu_data(self):
         """Menu option definitions
@@ -538,7 +547,7 @@ class MainWindow(wx.Frame, shared.Mixin):
                            ("&Paste\tCtrl+V", self.forward_event, self.forward_event, wx.ID_PASTE,
                             "", None),
                            ## ("&Delete\tDel", self.forward_event, self.forward_event, wx.ID_CLEAR, "",
-                           ##  None),
+                            ## None),
                            ("", None, None),
                            ("Select A&ll\tCtrl+A", self.forward_event, self.forward_event,
                             wx.ID_SELECTALL, "", None), ), ),
@@ -569,159 +578,6 @@ class MainWindow(wx.Frame, shared.Mixin):
                              ("&Font...", self.editor.text_font, 'Set/change font'), ), ),
                 ("&Help", (("&About", self.info_page, 'About this application'),
                            ("&Keys\tF1", self.help_page, 'Keyboard shortcuts'), ), ), )
-
-    def forward_event(self, evt):
-        """The RichTextCtrl can handle menu and update events for undo, redo,
-        cut, copy, paste, delete, and select all, so just forward the event to it
-        """
-        self.editor.ProcessEvent(evt)
-
-    def change_pane(self, event=None):
-        "wissel tussen tree en editor - niet geïmplementeerd in deze versie"
-        ## if self.tree.hasFocus():
-            ## self.editor.setFocus()
-        ## elif self.editor.hasFocus():
-            ## self.check_active()
-            ## self.tree.setFocus()
-
-    def create_menu(self, menuBar, menudata):
-        """bouw het menu op"""
-        self.keydef_to_method = {}
-        for item, data in menudata:
-            menu_label = item
-            submenu = wx.Menu()
-            if item == "&View":
-                self.viewmenu = submenu
-            for menudef in data:
-                label = ''
-                if len(menudef) == 3:
-                    label, handler, info = menudef
-                    if label != "":
-                        menu_item = wx.MenuItem(submenu, -1, label, info)
-                        self.Bind(wx.EVT_MENU, handler, menu_item)
-                        submenu.Append(menu_item)
-                    else:
-                        submenu.AppendSeparator()
-                elif len(menudef) == 6:
-                    label, handler, updateUI, _id, info, _type = menudef
-                    if label != "":
-                        if _type is None:
-                            menu_item = wx.MenuItem(submenu, _id, label, info)
-                        else:
-                            menu_item = wx.MenuItem(submenu, _id, label, info, _type)
-                        self.Bind(wx.EVT_MENU, handler, menu_item)
-                        submenu.Append(menu_item)
-                        if updateUI is not None:
-                            self.Bind(wx.EVT_UPDATE_UI, updateUI, menu_item)
-            menuBar.Append(submenu, menu_label)
-
-    def create_toolbar(self, tbar):  # , parent)
-        "bouw de toolbar op"
-        for action in ((wx.ID_CUT, "edit-cut.png", "Cut", None, None),
-                       (wx.ID_COPY, "edit-copy.png", "Copy", None, None),
-                       (wx.ID_PASTE, "edit-paste.png", "Paste", None, None),
-                       (),
-                       (wx.ID_UNDO, "edit-undo.png", "Undo", None, None),
-                       (wx.ID_REDO, "edit-redo.png", "Redo", None, None),
-                       (),
-                       (None, "format-text-bold.png", "Bold", self.editor.text_bold,
-                        self.editor.update_bold),
-                       (None, "format-text-italic.png", "Italic",
-                        self.editor.text_italic, self.editor.update_italic),
-                       (None, "format-text-underline.png", "Underline",
-                        self.editor.text_underline, self.editor.update_underline),
-                       (None, "format-justify-left.png", "Align Left",
-                        self.editor.align_left, self.editor.update_alignleft),
-                       (None, "format-justify-center.png", "Center",
-                        self.editor.align_center, self.editor.update_center),
-                       (None, "format-justtify-right.png", "Align Right",
-                        self.editor.align_right, self.editor.update_alignright),
-                       (),
-                       (None, "format-indent-less.png", "Indent Less",
-                        self.editor.indent_less, None),
-                       (None, "formt-indent-more.png", "Indent More",
-                        self.editor.indent_more, None),
-                       (),
-                       (None, "gnome-settings-font.png", "Font",
-                        self.editor.text_font, None),
-                       (None, "gnome-settings-font.png", "Font Colour",
-                        self.editor.text_color, None)):
-            if not action:
-                tbar.AddSeparator()
-                continue
-            actionid, iconame, shorthelp, handler, update_ui = action
-            if actionid is None:
-                handler = update_ui = self.forward_event
-            is_toggle = True if actionid == -1 else False
-            icon = wx.Icon(os.path.join(HERE, "icons", iconame), wx.BITMAP_TYPE_PNG)
-            item = tbar.AddTool(actionid, icon, isToggle=is_toggle, shortHelpString=shorthelp)
-            self.Bind(wx.EVT_TOOL, handler, item)
-            if update_ui is not None:
-                self.Bind(wx.EVT_UPDATE_UI, update_ui, item)
-
-        tbar.Realize()
-
-    def on_key(self, event):
-        """afhandeling toetscombinaties"""
-        skip = True
-        keycode = event.GetKeyCode()
-        mods = event.GetModifiers()
-        win = event.GetEventObject()
-        if keycode == wx.WXK_ESCAPE:
-            self.close()
-        if keycode == wx.WXK_TAB and win == self.editor:
-            if self.editor.IsModified():
-                key = self.tree.GetItemData(self.activeitem)
-                try:
-                    titel = self.itemdict[key][0]
-                except KeyError:
-                    print("on_key (tab): KeyError, waarschijnlijk op root")
-                    if key:
-                        self.tree.SetItemData(self.root, key)
-                else:
-                    self.itemdict[key] = (titel, self.editor.get_contents())
-            self.tree.SetFocus()
-            skip = False
-        if event and skip:
-            event.Skip()
-
-    def OnSelChanged(self, event=None):
-        """zorgen dat het eerder actieve item onthouden wordt, daarna het geselecteerde
-        tot nieuw actief item benoemen"""
-        x = event.GetItem()
-        ## log("onselchanged aangeroepen op '{}'".format(self.tree.GetItemText(x)))
-        self.check_active()
-        self.activate_item(x)
-        event.Skip()
-
-    def show_message(self, text, title):
-        "show a message in a box with a title"
-        # FIXME: is this really needed as a dispatch method?
-        wx.MessageBox(text, title, parent=self)
-
-    def show_statusmessage(self, text):
-        "show a message in the status bar"
-        # FIXME: is this really needed as a dispatch method?
-        self.statbar.SetStatusText(text)
-
-    def set_title(self):
-        "standaard manier van window titel instellen"
-        viewn = self.opts["ViewNames"][self.opts['ActiveView']]
-        self.SetTitle("DocTree - {} (view: {})".format(os.path.basename(self.project_file), viewn))
-
-    def getfilename(self, title, start, save=False):
-        "routine for selection of filename"
-        filter = "Pickle files (*.pck)|*.pck"
-        start = os.path.dirname(start)
-        if save:
-            dlg = wx.FileDialog(self, title, start, '', filter, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        else:
-            dlg = wx.FileDialog(self, title, start, '', filter, wx.FD_OPEN)
-        ok, filename = False, ''
-        if dlg.ShowModal() == wx.ID_OK:
-            ok = True
-            filename = os.path.join(dlg.GetDirectory(), dlg.GetFilename())
-        return ok, filename
 
     def new(self, event=None, fname=''):
         "set up a new document collection"
@@ -771,21 +627,72 @@ class MainWindow(wx.Frame, shared.Mixin):
         "swallow event parameter"
         shared.Mixin.rename_root(self)
 
+    def hide_me(self, event=None):
+        """applicatie verbergen"""
+        if self.opts["AskBeforeHide"]:
+            dlg = CheckDialog(self, -1, 'DocTree')
+            dlg.ShowModal()
+            if dlg.check_box.GetValue():
+                self.opts["AskBeforeHide"] = False
+            dlg.Destroy()
+        self.tbi = wx.adv.TaskBarIcon()
+        self.tbi.SetIcon(self.nt_icon, "Click to revive DocTree")
+        wx.adv.EVT_TASKBAR_LEFT_UP(self.tbi, self.revive)
+        wx.adv.EVT_TASKBAR_RIGHT_UP(self.tbi, self.revive)
+        self.Hide()
+
+    def revive(self, event=None):
+        """applicatie weer zichtbaar maken"""
+        self.Show()
+        self.tbi.Destroy()
+
+    def close(self, event=None):
+        """quit application from menu"""
+        self.Close()
+
+    def afsl(self, event=None):
+        """applicatie afsluiten"""
+        if not self.save_needed(meld=False):
+            return
+        if event:
+            event.Skip()
+
     def add_item(self, evt=None):
         "swallow event parameter"
         shared.Mixin.add_item(self)
+
+    def root_item(self, evt=None):
+        "FIXME: to be implemented"
 
     def insert_item(self, evt=None):
         "swallow event parameter"
         shared.Mixin.insert_item(self)
 
+    def cut_item(self, evt=None):
+        "FIXME: to be implemented"
+
     def delete_item(self, evt=None):
         "swallow event parameter"
         shared.Mixin.delete_item(self)
 
+    def copy_item(self, evt=None):
+        "FIXME: to be implemented"
+
+    def paste_item(self, evt=None):
+        "FIXME: to be implemented"
+
+    def paste_item_after(self, evt=None):
+        "FIXME: to be implemented"
+
+    def paste_item_below(self, evt=None):
+        "FIXME: to be implemented"
+
     def rename_item(self, evt=None):
         "swallow event parameter"
         shared.Mixin.rename_item(self)
+
+    def move_to_file(self, evt=None):
+        "FIXME: to be implemented"
 
     def order_top(self, evt=None):
         "swallow event parameter"
@@ -810,6 +717,14 @@ class MainWindow(wx.Frame, shared.Mixin):
     def prev_note(self, evt=None):
         "swallow event parameter"
         shared.Mixin.prev_note(self)
+
+    def next_note_any(self, evt=None):
+        "swallow event parameter"
+        shared.Mixin.next_note_any(self)
+
+    def prev_note_any(self, evt=None):
+        "swallow event parameter"
+        shared.Mixin.prev_note_any(self)
 
     def add_view(self, evt=None):
         "swallow event parameter"
@@ -860,12 +775,31 @@ class MainWindow(wx.Frame, shared.Mixin):
         ## self.tree.addTopLevelItem(self.root)
         self.activeitem = self.root
         tree_item = self.viewtotree()
-        self.set_title()
+        self.set_windowtitle()
         self.tree.SelectItem(tree_item)
 
     def prev_view(self, evt=None):
         "swallow event parameter"
         shared.Mixin.prev_view(self)
+
+    def tree_undo(self):
+        "FIXME: to be implemented"
+
+    def tree_redo(self):
+        "FIXME: to be implemented"
+
+    def expand_item(self):
+        "FIXME: to be implemented"
+
+    def collapse_item(self):
+        "FIXME: to be implemented"
+
+    def expand_all(self):
+        "FIXME: to be implemented"
+
+    def collapse_all(self):
+        "FIXME: to be implemented"
+
 
     def info_page(self, evt=None):
         "swallow event parameter"
@@ -874,6 +808,116 @@ class MainWindow(wx.Frame, shared.Mixin):
     def help_page(self, evt=None):
         "swallow event parameter"
         shared.Mixin.help_page(self)
+
+    def create_menu(self, menuBar, menudata):
+        """bouw het menu op"""
+        self.keydef_to_method = {}
+        for item, data in menudata:
+            menu_label = item
+            submenu = wx.Menu()
+            if item == "&View":
+                self.viewmenu = submenu
+            for menudef in data:
+                label = ''
+                if len(menudef) == 3:
+                    label, handler, info = menudef
+                    if label != "":
+                        menu_item = wx.MenuItem(submenu, -1, label, info)
+                        self.Bind(wx.EVT_MENU, handler, menu_item)
+                        submenu.Append(menu_item)
+                    else:
+                        submenu.AppendSeparator()
+                elif len(menudef) == 6:
+                    label, handler, updateUI, _id, info, _type = menudef
+                    if label != "":
+                        if _type is None:
+                            menu_item = wx.MenuItem(submenu, _id, label, info)
+                        else:
+                            menu_item = wx.MenuItem(submenu, _id, label, info, _type)
+                        self.Bind(wx.EVT_MENU, handler, menu_item)
+                        submenu.Append(menu_item)
+                        if updateUI is not None:
+                            self.Bind(wx.EVT_UPDATE_UI, updateUI, menu_item)
+            menuBar.Append(submenu, menu_label)
+
+    def create_toolbar(self, tbar):  # , parent)
+        "bouw de toolbar op"
+        for action in ((wx.ID_CUT, "edit-cut.png", "Cut", None, None),
+                       (wx.ID_COPY, "edit-copy.png", "Copy", None, None),
+                       (wx.ID_PASTE, "edit-paste.png", "Paste", None, None),
+                       (),
+                       (wx.ID_UNDO, "edit-undo.png", "Undo", None, None),
+                       (wx.ID_REDO, "edit-redo.png", "Redo", None, None),
+                       (),
+                       (-1, "format-text-bold.png", "Bold", self.editor.text_bold,
+                        self.editor.update_bold),
+                       (-1, "format-text-italic.png", "Italic",
+                        self.editor.text_italic, self.editor.update_italic),
+                       (-1, "format-text-underline.png", "Underline",
+                        self.editor.text_underline, self.editor.update_underline),
+                       (-1, "format-justify-left.png", "Align Left",
+                        self.editor.align_left, self.editor.update_alignleft),
+                       (-1, "format-justify-center.png", "Center",
+                        self.editor.align_center, self.editor.update_center),
+                       (-1, "format-justify-right.png", "Align Right",
+                        self.editor.align_right, self.editor.update_alignright),
+                       (),
+                       (-1, "format-indent-less.png", "Indent Less",
+                        self.editor.indent_less, None),
+                       (-1, "format-indent-more.png", "Indent More",
+                        self.editor.indent_more, None),
+                       (),
+                       (-1, "gnome-settings-font.png", "Font",
+                        self.editor.text_font, None),
+                       (-1, "gnome-settings-font.png", "Font Colour",
+                        self.editor.text_color, None)):
+            if not action:
+                tbar.AddSeparator()
+                continue
+            actionid, iconame, shorthelp, handler, update_ui = action
+            tooltype = wx.ITEM_NORMAL
+            if handler is None:
+                handler = update_ui = self.forward_event
+            elif update_ui is not None:
+                tooltype = wx.ITEM_CHECK
+            bmp = wx.Bitmap(os.path.join(HERE, "icons", iconame), type=wx.BITMAP_TYPE_PNG)
+            label = os.path.splitext(os.path.basename(iconame))[0]
+            item = tbar.AddTool(actionid, label, bmp, shortHelp=shorthelp, kind=tooltype)
+
+            self.Bind(wx.EVT_TOOL, handler, item)
+            if update_ui is not None:
+                self.Bind(wx.EVT_UPDATE_UI, update_ui, item)
+
+        print('realizing toolbar')
+        tbar.Realize()
+        print('toolbar realized')
+
+    def getfilename(self, title, start, save=False):
+        "routine for selection of filename"
+        filter = "Pickle files (*.pck)|*.pck"
+        start = os.path.dirname(start)
+        if save:
+            dlg = wx.FileDialog(self, title, start, '', filter, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        else:
+            dlg = wx.FileDialog(self, title, start, '', filter, wx.FD_OPEN)
+        ok, filename = False, ''
+        if dlg.ShowModal() == wx.ID_OK:
+            ok = True
+            filename = os.path.join(dlg.GetDirectory(), dlg.GetFilename())
+        return ok, filename
+
+    def show_message(self, text, title):
+        "show a message in a box with a title"
+        wx.MessageBox(text, title, parent=self)
+
+    def show_statusmessage(self, text):
+        "show a message in the status bar"
+        self.statbar.SetStatusText(text)
+
+    def set_windowtitle(self):
+        "standaard manier van window titel instellen"
+        viewn = self.opts["ViewNames"][self.opts['ActiveView']]
+        self.SetTitle("DocTree - {} (view: {})".format(os.path.basename(self.project_file), viewn))
 
     def save_needed(self, meld=True, always_check=True):
         """vraag of het bestand opgeslagen moet worden als er iets aan de
@@ -904,6 +948,21 @@ class MainWindow(wx.Frame, shared.Mixin):
                     return False
         ## dlg.Destroy()
         return True
+
+    def ok_to_reload(self):
+        "ask for confirmation (specific)"
+        dlg = wx.MessageDialog(self, 'OK to reload?', 'DocTree', wx.OK | wx.CANCEL)
+        result = dlg.ShowModal()
+        dlg.Destroy()
+        return True if result == wx.ID_OK else False
+
+    def _confirm(self, title, text):
+        "ask for confirmation (generic)"
+        # "handles Menu > View > Delete current view"
+        dlg = wx.MessageDialog(self, text, title, wx.YES_NO)
+        hlp = dlg.ShowModal()
+        dlg.Destroy()
+        return True if hlp == wx.ID_YES else False
 
     def _read(self):
         """GUI-specifieke zaken binnen Mixin.read()"
@@ -939,6 +998,12 @@ class MainWindow(wx.Frame, shared.Mixin):
             self.tree.SelectItem(item_to_activate)
         self.tree.SetFocus()
 
+    def write(self, meld=True):
+        "start write action"
+        self.opts["ScreenSize"] = tuple(self.GetSize())
+        self.opts["SashPosition"] = self.splitter.GetSashPosition()
+        shared.Mixin.write(self, meld=meld)
+
     def _finish_add(self, parent, item):
         "finalize add action"
         self.tree.Expand(parent)
@@ -960,59 +1025,13 @@ class MainWindow(wx.Frame, shared.Mixin):
         self.tree.Expand(item_to_expand)
         self.tree.SelectItem(item)
 
-    def ok_to_reload(self):
-        "ask for confirmation (specific)"
-        dlg = wx.MessageDialog(self, 'OK to reload?', 'DocTree', wx.OK | wx.CANCEL)
-        result = dlg.ShowModal()
-        dlg.Destroy()
-        return True if result == wx.ID_OK else False
-
-    def write(self, meld=True):
-        "start write action"
-        self.opts["ScreenSize"] = tuple(self.GetSize())
-        self.opts["SashPosition"] = self.splitter.GetSashPosition()
-        shared.Mixin.write(self, meld=meld)
-
-    def hide_me(self, event=None):
-        """applicatie verbergen"""
-        if self.opts["AskBeforeHide"]:
-            dlg = CheckDialog(self, -1, 'DocTree')
-            dlg.ShowModal()
-            if dlg.check_box.GetValue():
-                self.opts["AskBeforeHide"] = False
-            dlg.Destroy()
-        self.tbi = wx.adv.TaskBarIcon()
-        self.tbi.SetIcon(self.nt_icon, "Click to revive DocTree")
-        wx.adv.EVT_TASKBAR_LEFT_UP(self.tbi, self.revive)
-        wx.adv.EVT_TASKBAR_RIGHT_UP(self.tbi, self.revive)
-        self.Hide()
-
-    def revive(self, event=None):
-        """applicatie weer zichtbaar maken"""
-        self.Show()
-        self.tbi.Destroy()
-
-    def close(self, event=None):
-        """quit application from menu"""
-        self.Close()
-
-    def afsl(self, event=None):
-        """applicatie afsluiten"""
-        if not self.save_needed(meld=False):
-            return
-        if event:
-            event.Skip()
-
-    def _update_newview(self, new_view):
-        "view menu bijwerken n.a.v. toevoeging nieuwe view"
-        menuitem_list = list(self.viewmenu.GetMenuItems())
-        for idx, menuitem in enumerate(menuitem_list[4:]):
-            if idx == self.opts["ActiveView"]:
-                menuitem.Check(False)
-        menu_item = wx.MenuItem(self.viewmenu, -1, new_view, "switch to this view", wx.ITEM_CHECK)
-        self.Bind(wx.EVT_MENU, self.select_view, menu_item)
-        self.viewmenu.Append(menu_item)
-        menu_item.Check()
+    def _get_name(self, caption, title, oldname):
+        "ask for (new) name"
+        newname = oldname
+        with wx.TextEntryDialog(self, caption, title, oldname) as dlg:
+            ok = dlg.ShowModal() == wx.ID_OK
+            newname = dlg.GetValue()
+        return ok, newname
 
     def _rebuild_root(self):
         "tree leegmaken en root opnieuw neerzetten"
@@ -1024,13 +1043,19 @@ class MainWindow(wx.Frame, shared.Mixin):
         self.tree.SetItemText(self.root, self.opts["RootTitle"].rstrip())
         self.tree.SetItemData(self.root, self.opts["RootData"])
 
-    def _get_name(self, caption, title, oldname):
-        "ask for (new) name"
-        newname = oldname
-        with wx.TextEntryDialog(self, caption, title, oldname) as dlg:
-            ok = dlg.ShowModal() == wx.ID_OK
-            newname = dlg.GetValue()
-        return ok, newname
+    def _set_activeitem_for_view(self):
+        "pylint klaagt erover dat deze niet geherimplementeerd is"
+
+    def _update_newview(self, new_view):
+        "view menu bijwerken n.a.v. toevoeging nieuwe view"
+        menuitem_list = list(self.viewmenu.GetMenuItems())
+        for idx, menuitem in enumerate(menuitem_list[4:]):
+            if idx == self.opts["ActiveView"]:
+                menuitem.Check(False)
+        menu_item = wx.MenuItem(self.viewmenu, -1, new_view, "switch to this view", wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.select_view, menu_item)
+        self.viewmenu.Append(menu_item)
+        menu_item.Check()
 
     def _add_view_to_menu(self, newname):
         "update menuitem text"
@@ -1067,25 +1092,6 @@ class MainWindow(wx.Frame, shared.Mixin):
         "finalize select view action"
         self.tree.SelectItem(tree_item)
 
-    def _expand(self, recursive=False):
-        "expandeer tree vanaf huidige item"
-        # nog niet geïmplementeerd?
-
-    def _collapse(self, recursive=False):
-        "collapse huidige item en daaronder"
-        # nog niet geïmplementeerd?
-
-    def _set_activeitem_for_view(self):
-        "pylint klaagt erover dat deze niet geherimplementeerd is"
-
-    def _confirm(self, title, text):
-        "ask for confirmation (generic)"
-        # "handles Menu > View > Delete current view"
-        dlg = wx.MessageDialog(self, text, title, wx.YES_NO)
-        hlp = dlg.ShowModal()
-        dlg.Destroy()
-        return True if hlp == wx.ID_YES else False
-
     def _update_removedview(self, viewname):
         "view menu bijwerken n.a.v. verwijderen view"
         menuitem_list = self.viewmenu.GetMenuItems()
@@ -1100,6 +1106,14 @@ class MainWindow(wx.Frame, shared.Mixin):
     def _finish_remove_view(self, item):
         "finalize action"
         self.tree.SelectItem(item)
+
+    def _expand(self, recursive=False):
+        "expandeer tree vanaf huidige item"
+        # nog niet geïmplementeerd?
+
+    def _collapse(self, recursive=False):
+        "collapse huidige item en daaronder"
+        # nog niet geïmplementeerd?
 
     def _reorder_items(self, root, recursive=False):
         "(re)order_items"
@@ -1124,6 +1138,55 @@ class MainWindow(wx.Frame, shared.Mixin):
         if item.IsOk():
             self.tree.SelectItem(item)
         return item.IsOk()
+
+
+    def forward_event(self, evt):
+        """The RichTextCtrl can handle menu and update events for undo, redo,
+        cut, copy, paste, delete, and select all, so just forward the event to it
+        """
+        ## print('forwarding', evt, 'to editor')
+        self.editor.ProcessEvent(evt)
+
+    def change_pane(self, event=None):
+        "wissel tussen tree en editor - niet geïmplementeerd in deze versie"
+        ## if self.tree.hasFocus():
+            ## self.editor.setFocus()
+        ## elif self.editor.hasFocus():
+            ## self.check_active()
+            ## self.tree.setFocus()
+
+    def on_key(self, event):
+        """afhandeling toetscombinaties"""
+        skip = True
+        keycode = event.GetKeyCode()
+        mods = event.GetModifiers()
+        win = event.GetEventObject()
+        if keycode == wx.WXK_ESCAPE:
+            self.close()
+        if keycode == wx.WXK_TAB and win == self.editor:
+            if self.editor.IsModified():
+                key = self.tree.GetItemData(self.activeitem)
+                try:
+                    titel = self.itemdict[key][0]
+                except KeyError:
+                    print("on_key (tab): KeyError, waarschijnlijk op root")
+                    if key:
+                        self.tree.SetItemData(self.root, key)
+                else:
+                    self.itemdict[key] = (titel, self.editor.get_contents())
+            self.tree.SetFocus()
+            skip = False
+        if event and skip:
+            event.Skip()
+
+    def OnSelChanged(self, event=None):
+        """zorgen dat het eerder actieve item onthouden wordt, daarna het geselecteerde
+        tot nieuw actief item benoemen"""
+        x = event.GetItem()
+        ## log("onselchanged aangeroepen op '{}'".format(self.tree.GetItemText(x)))
+        self.check_active()
+        self.activate_item(x)
+        event.Skip()
 
 
 def main(fname=''):
