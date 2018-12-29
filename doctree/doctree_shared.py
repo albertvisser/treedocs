@@ -329,42 +329,7 @@ class Mixin(object):
                 ("&About", self.info_page, '', '', 'About this application'),
                 ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'))))
 
-    def show_message(self, text='', title=''):
-        "voor elke gui variant apart te implementeren"
-        print('{}: {}'.format(title, text))
-
-    def show_statusbar_message(self, text):
-        "voor elke gui variant apart te implementeren"
-        print('status: {}'.format(text))
-
-    def change_pane(self):
-        "wissel tussen tree en editor"
-        raise NotImplementedError
-
-    def set_project_dirty(self, value):
-        "indicate that there have been changes"
-        self.project_dirty = value
-        self.set_title()
-
-    def set_title(self):
-        """standaard titel updaten"""
-        raise NotImplementedError
-
-    def open(self):
-        "afhandelen Menu > Open / Ctrl-O"
-        if not self.save_needed():
-            return
-        dirname = str(self.project_file)
-        ok, filename = self.getfilename("DocTree - choose file to open", dirname)
-        if not ok:
-            return
-        self.project_file = pathlib.Path(filename)
-        err = self.read()
-        if err:
-            self.show_message(title="Error", text=err)
-        else:
-            self.show_statusmessage('{} gelezen'.format(str(self.project_file)))
-
+# menu callbacks
     def new(self, filename=''):
         "Afhandelen Menu - Init / Ctrl-I"
         ## print('in new:', filename)
@@ -390,125 +355,24 @@ class Mixin(object):
         self._filenames = []
         self.opts = init_opts()
         self.has_treedata = True
-        self.set_title()
+        self.set_windowtitle()
         self.set_project_dirty(False)
         return True
 
-    def save_needed(self):
-        """check if anything has changed"""
-        return self.has_treedata and self.project_dirty
-
-    def treetoview(self):
-        """zet de visuele tree om in een tree om op te slaan"""
-        def lees_item(item):
-            """recursieve functie om de data in een pickle-bare structuur om te zetten"""
-            textref = self.tree.getitemkey(item)
-            if item == self.activeitem:
-                self.opts["ActiveItem"][self.opts["ActiveView"]] = textref
-            kids = [lees_item(x) for x in self.tree.getitemkids(item)]
-            return textref, kids
-        data = [lees_item(x) for x in self.tree.getitemkids(self.root)]
-        return data
-
-    def viewtotree(self):
-        """zet de geselecteerde view om in een visuele tree"""
-        def maak_item(parent, key, children=None):
-            """recursieve functie om de TreeCtrl op te bouwen vanuit de opgeslagen data"""
-            item_to_activate = None
-            if children is None:
-                children = []
-            titel = self.itemdict[key][0]
-            tree_item = self.tree.add_to_parent(key, titel, parent)
-            if key == self.opts["ActiveItem"][self.opts['ActiveView']]:
-                item_to_activate = tree_item
-            for child in children:
-                _, y = maak_item(tree_item, *child)
-                if y is not None:
-                    item_to_activate = y
-            return key, item_to_activate
-        item_to_activate = None
-        current_view = self.views[self.opts['ActiveView']]
-        for item in current_view:
-            _, y = maak_item(self.root, *item)
-            if y is not None:
-                item_to_activate = y
-        return item_to_activate
-
-    def read(self, other_file=''):
-        """settings dictionary lezen, opgeslagen data omzetten naar tree"""
-        if not other_file:
-            self.has_treedata = False
-        self.opts = init_opts()
-
-        # determine the name of the file to read and read + unpickle it if possible,
-        # otherwise cancel
-        infile = other_file or self.project_file
-        if not infile:
-            return 'no file name given'
-        try:
-            f_in = infile.open("rb")
-        except IOError:
-            return "couldn't open {}".format(str(infile))
-        with f_in:
-            try:
-                nt_data = pck.load(f_in)
-            except EOFError:
-                return "couldn't load data from {}".format(str(infile))
-
-        # read/init/check settings if possible, otherwise cancel
-        ## print(nt_data[0])
-        test = nt_data[0].get("Application", None)
-        if test and test != 'DocTree':
-            return "{} is not a valid Doctree data file".format(str(infile))
-
-        # read views
-        try:
-            views = list(nt_data[1])
-        except KeyError:
-            views = [[]]
-        viewcount = len(views)
-
-        # read itemdict
-        try:
-            itemdict = nt_data[2]
-        except KeyError:
-            itemdict = {}
-
-        # exit if meant for file to copy stuff to
-        if other_file:
-            return nt_data[0], views, viewcount, itemdict
-
-        # make settings, views and itemdict into attributes
-        for key, value in nt_data[0].items():
-            if key == 'RootData' and value is None:
-                value = ""
-            self.opts[key] = value
-        self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
-
-        # if possible, build a list of referred-to image files
-        ## path = os.path.dirname((self.project_file))
-        path = str(self.project_file.parent)
-        self._filenames = []
-        err = FileNotFoundError if sys.version >= '3.3' else OSError
-        try:
-            with zpf.ZipFile(str(self.project_file.with_suffix('.zip'))) as _in:
-                _in.extractall(path=path)
-                self._filenames = _in.namelist()
-        except err:
-            pass
-
-        # finish up (set up necessary attributes etc)
-        self._read()  # do gui-specific stuff
-        item_to_activate = self.viewtotree()
-        self.has_treedata = True
-        ## self.set_title()
-        self.set_project_dirty(False)
-        self._finish_read(item_to_activate)
-        return ''
-
-    def _read(self):
-        "placeholder"
-        raise NotImplementedError
+    def open(self):
+        "afhandelen Menu > Open / Ctrl-O"
+        if not self.save_needed():
+            return
+        dirname = str(self.project_file)
+        ok, filename = self.getfilename("DocTree - choose file to open", dirname)
+        if not ok:
+            return
+        self.project_file = pathlib.Path(filename)
+        err = self.read()
+        if err:
+            self.show_message(title="Error", text=err)
+        else:
+            self.show_statusmessage('{} gelezen'.format(str(self.project_file)))
 
     def reread(self):
         """afhandelen Menu > Reload (Ctrl-R)"""
@@ -518,10 +382,6 @@ class Mixin(object):
         self.read()     # no need to check te result, should be ok when rereading?
         self.show_statusmessage('{} herlezen'.format(str(self.project_file)))
 
-    def _ok_to_reload(self):
-        "placeholder"
-        return NotImplementedError
-
     def save(self, meld=True):
         """afhandelen Menu > save"""
         if self.project_file:
@@ -529,18 +389,6 @@ class Mixin(object):
         else:
             self.saveas()
         self.show_statusmessage('{} opgeslagen'.format(str(self.project_file)))
-
-    def write(self, meld=True):
-        """settings en tree data in een structuur omzetten en opslaan"""
-        self.check_active()
-        self.views[self.opts["ActiveView"]] = self.treetoview()
-        self._filenames = _write(self.project_file, self.opts, self.views,
-                                 self.itemdict)
-        self.set_project_dirty(False)
-        if meld:
-            ## print('In save - notify is', self.opts['NotifyOnSave'])
-            save_text = str(self.project_file) + " is opgeslagen"
-            self.confirm(setting="NotifyOnSave", textitem=save_text)
 
     def saveas(self):
         """afhandelen Menu > Save As"""
@@ -553,132 +401,7 @@ class Mixin(object):
                 filename = filename.with_suffix('.pck')
             self.project_file = filename
             self.write()
-            self.set_title()
-
-    def hide_me(self):
-        """applicatie verbergen"""
-        raise NotImplementedError
-
-    def revive(self):
-        """applicatie weer zichtbaar maken"""
-        raise NotImplementedError
-
-    def afsl(self):
-        "remove temporary files on exit (as they have been zipped)"
-        for name in self._filenames:
-            try:
-                os.remove(name)
-            except FileNotFoundError:
-                pass
-
-    def add_view(self):
-        "handles Menu > View > New view"
-        self.check_active()
-        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree.getitemdata(
-            self.activeitem)
-        self.views[self.opts["ActiveView"]] = self.treetoview()
-        self.viewcount += 1
-        new_view = "New View #{}".format(self.viewcount)
-        self.opts["ViewNames"].append(new_view)
-        active = self.opts["ActiveItem"][self.opts["ActiveView"]]
-        self.opts["ActiveItem"].append(active)
-        self._update_newview(new_view)
-        self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
-        self._rebuild_root()
-        self.activeitem = self.root
-        newtree = []
-        for key in sorted(self.itemdict.keys()):
-            newtree.append((key, []))
-        self.views.append(newtree)
-        tree_item = self.viewtotree()
-        ## self.set_title()
-        self.set_project_dirty(True)
-        self._finish_add_view(tree_item)
-
-    def _set_activeitem_for_view(self):
-        "placeholder"
-        raise NotImplementedError
-
-    def _update_newview(self, new_view):
-        "view menu bijwerken n.a.v. toevoeging nieuwe view"
-        raise NotImplementedError
-
-    def _rebuild_root(self):
-        "tree leegmaken en root opnieuw neerzetten"
-        raise NotImplementedError
-
-    def rename_view(self):
-        "handles Menu > View > Rename current view"
-        oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
-        ok, newname = self._get_name('Geef een nieuwe naam voor de huidige view',
-                                     'DocTree', oldname)
-        if ok and newname != oldname:
-            self._add_view_to_menu(newname)
-            self.opts["ViewNames"][self.opts["ActiveView"]] = newname
-            self.set_project_dirty(True)
-            ## self.set_title()
-
-    def _get_name(self, caption, title, oldname):
-        "placeholder"
-        raise NotImplementedError
-
-    def _add_view_to_menu(self, newname):
-        "placeholder"
-        raise NotImplementedError
-
-    def next_view(self, prev=False):  # voorlopig even overgeslagen
-        """cycle to next view if available (default direction / forward)"""
-        raise NotImplementedError
-
-    def prev_view(self):
-        """cycle to previous view (alternate direction / backward)"""
-        self.next_view(prev=True)
-
-    def select_view(self):
-        "handles Menu > View > <view name>"
-        self.check_active()
-        self.views[self.opts["ActiveView"]] = self.treetoview()
-        newviewtext = self._update_selectedview()
-        self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
-        self._rebuild_root()
-        tree_item = self.viewtotree()
-        self.set_title()
-        self._finish_select_view(tree_item)
-
-    def _update_selectedview(self):
-        "view menu bijwerken n.a.v. wijzigen view naam"
-        raise NotImplementedError
-
-    def remove_view(self):
-        "handles Menu > View > Delete current view"
-        if self.viewcount == 1:
-            self.show_message('Doctree', "Can't delete the last (only) view")
-            return
-        ok = self._confirm("DocTree", "Are you sure you want to remove this view?")
-        if not ok:
-            return
-        self.viewcount -= 1
-        viewname = self.opts["ViewNames"][self.opts["ActiveView"]]
-        self.opts["ViewNames"].remove(viewname)
-        self.opts["ActiveItem"].pop(self.opts["ActiveView"])
-        self.views.pop(self.opts["ActiveView"])
-        if self.opts["ActiveView"] > 0:
-            self.opts["ActiveView"] -= 1
-        self._update_removedview(viewname)
-        self._rebuild_root()
-        self.set_project_dirty(True)
-        ## self.set_title()
-        self._finish_remove_view(self.viewtotree())
-
-    def _confirm(self, title, text):
-        "get confirmation"
-        ok = input('{}: {} (y/N)'.format(title, text))
-        ok = True if ok.upper() == 'Y' else False
-        return ok
-
-    def _update_removedview(self):
-        "view menu bijwerken n.a.v. verwijderen view"
-        raise NotImplementedError
+            self.set_windowtitle()
 
     def rename_root(self):
         """afhandelen Menu > Rename Root (Shift-Ctrl-F2"""
@@ -689,94 +412,20 @@ class Mixin(object):
             self.opts['RootTitle'] = data
             self.tree.setitemtitle(self.root, data)
 
+    def hide_me(self):
+        """applicatie verbergen"""
+        raise NotImplementedError
+
+    def revive(self):
+        """applicatie weer zichtbaar maken"""
+        raise NotImplementedError
+
     def add_item(self):
         """nieuw item toevoegen (default: onder het geselecteerde)
 
         separate entry point for menu callback
         """
         self._add_item()
-
-    def _add_item(self, root=None, under=True):
-        "nieuw item toevoegen"
-        test = self._check_addable()
-        if test:
-            new_title, extra_titles = test
-            pos = -1  # doesn't matter for now - will be determined in do_additem
-            ## log('under is {}, pos is {}'.format(under, pos))
-            self.do_additem(root, under, pos, new_title, extra_titles)
-
-    def _check_addable(self):
-        """bepaal een titel voor het nieuwe (en eventueel onderliggende) item
-        """
-        title = "Geef een titel op voor het nieuwe item"
-        text = datetime.today().strftime("%d-%m-%Y %H:%M:%S")
-        new = self.ask_title(title, text)
-        if not new:
-            return False
-        new_title, extra_titles = new
-        # stel de inhoud van het item onder de cursor veilig
-        self.check_active()
-        return new_title, extra_titles
-
-    def do_additem(self, root, under, origpos, new_title, extra_titles):
-        """toevoegen nieuw item
-        """
-        log('*** in shared.do_additem ***')
-        # bepaal nieuwe key in itemdict
-        newkey = len(self.itemdict)
-        while newkey in self.itemdict:
-            newkey += 1
-        # voeg nieuw item toe aan itemdict
-        self.itemdict[newkey] = (new_title, "")
-        # voeg nieuw item toe aan visual tree
-        # bepaal eerst de parent voor het nieuwe item
-        if not root:
-            root = self.activeitem or self.root
-            log('no root provided, using either active ({}) or root ({})'.format(
-                self.activeitem, self.root))
-        text = self.tree.getitemtitle(root)
-        log('root is {} ({}), under is {}, origpos is {}'.format(root, text, under, origpos))
-        if under:
-            parent = root
-            pos = -1
-        else:
-            ## root, pos = getitemparentpos(self.activeitem)
-            parent, pos = self.tree.getitemparentpos(root)
-            log("na getitemparentpos: root, pos is {}, {}".format(parent, pos))
-            log('comparing to origpos: {}'.format(origpos))
-            if origpos == -1:
-                pos += 1    # we want to insert after, not before
-                if pos == len(self.tree.getitemkids(parent)):
-                    pos = -1
-            else:
-                pos = origpos
-        ## print(parent, parent.__dict__)
-        text = self.tree.getitemtitle(parent)
-        log('parent, pos is {} ({}), {}'.format(parent, text, pos))
-        item = self.tree.add_to_parent(newkey, new_title, parent, pos)
-        new_item = item
-        # doe hetzelfde met het via \ toegevoegde item
-        extra_keys = []
-        subkey = newkey
-        while extra_titles:
-            subkey += 1
-            self.itemdict[subkey] = (extra_titles[0], "")
-            item = self.tree.add_to_parent(subkey, extra_titles[0], item)
-            extra_keys.append(subkey)
-            extra_titles = extra_titles[1:]
-        # voeg de items ook toe aan de niet zichtbare views
-        subitem = []
-        for subkey in reversed(extra_keys):
-            subitem = [(subkey, subitem)]
-        for idx, view in enumerate(self.views):
-            if idx != self.opts["ActiveView"]:
-                view.append((newkey, subitem))
-        # data is gewijzigd
-        self.set_project_dirty(True)
-        # afmaken
-        self._finish_add(parent, item)
-        # resultaat t.b.v. undo/redo mechanisme
-        return newkey, extra_keys, new_item, subitem
 
     def root_item(self):
         """nieuw item toevoegen onder root"""
@@ -798,99 +447,6 @@ class Mixin(object):
         "copy: retain item in tree and in memory"
         self._copy_item()
 
-    def _copy_item(self, cut=False, retain=True, to_other_file=None):
-        """start copy/cut/delete action
-
-        parameters: cut: remove item from tree (True for cut, delete and move)
-                    retain: remember item for pasting (True for cut and copy)
-                    other_file:
-        """
-        test = self._check_copyable(cut, retain, to_other_file)
-        if test:
-            current = test
-            self.do_copyaction(cut, retain, current)  # to_other_file)
-
-    def _check_copyable(self, cut, retain, to_other_file):
-        "can we copy from here?"
-        if to_other_file:
-            current = to_other_file
-        else:
-            current = self.tree.getselecteditem()
-            if current == self.root:
-                self.show_message("Can't do this with root", "DocTree")
-                return False
-        # are-you-sure message + cancel this action if applicable
-        go_on = True
-        if cut and not retain and not to_other_file:
-            go_on = self._confirm("DocTree", "Are you sure you want to remove this item?")
-        if go_on:
-            return current
-        return go_on
-
-    def do_copyaction(self, cut, retain, current):  # to_other_file):
-        "do the copying"
-        # create a copy buffer
-        # self.cut_from_itemdict = []
-        copied_item, itemlist = getsubtree(self.tree, current)
-        cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
-        oldloc = None  # alleen interessant bij undo van cut/delete
-        if retain:
-            self.copied_item = copied_item
-            self.cut_from_itemdict = cut_from_itemdict
-            self.add_node_on_paste = True
-        if cut:
-            # remove item (and subitems) from tree and itemdict
-            # they're buffered in (self.)cut_from_itemdict because we still need them
-            self.add_node_on_paste = False
-            oldloc, prev = self.tree.removeitem(current, cut_from_itemdict)
-            self.activeitem = None
-
-            # remove item(s) from view(s)
-            removed = [x[0] for x in cut_from_itemdict]
-            for ix, item in enumerate(self.opts["ActiveItem"]):
-                if item in removed:
-                    self.opts["ActiveItem"][ix] = self.tree.getitemkey(prev)
-            for ix, view in enumerate(self.views):
-                if ix != self.opts["ActiveView"]:
-                    self._updateview(view, removed)
-
-            # finish up
-            self.set_project_dirty(True)
-            self._finish_copy(prev)  # do gui-specific stuff
-
-        return copied_item, oldloc, cut_from_itemdict
-
-    def popitems(self, current, itemlist):
-        """recursieve routine om de structuur uit de itemdict en de
-        niet-actieve views te verwijderen
-        """
-        ref = self.tree.getitemkey(current)
-        ## try:
-        self.itemdict.pop(ref)
-        ## except KeyError:
-            ## pass
-        ## else:
-        for kid in self.tree.getitemkids(current):
-            self.popitems(kid, itemlist)
-
-    def _updateview(self, view, removed):
-        "recursieve routine om de view bij te werken"
-        klaar = False
-        for idx, item in reversed(list(enumerate(view))):
-            itemref, subview = item
-            if itemref in removed:
-                self._updateview(subview, removed)
-                if not subview:
-                    view.pop(idx)
-                else:
-                    view[idx] = subview[0]
-                klaar = True
-            else:
-                klaar = self._updateview(subview, removed)
-            ## if klaar:
-                ## break
-        return klaar
-
     def paste_item(self):
         "paste before"
         self._paste_item()
@@ -902,71 +458,6 @@ class Mixin(object):
     def paste_item_below(self):
         "paste below instead of before"
         self._paste_item(below=True)
-
-    def _paste_item(self, before=True, below=False):
-        "start paste actie"
-        test = self._check_pasteable(below)  # before,
-        if test:
-            current = test
-            self.do_pasteitem(before, below, current)
-
-    def _check_pasteable(self, below):  # , before
-        "can we paste here?"
-        current = self.tree.getselecteditem()
-        # als het geselecteerde item het top item is moet het automatisch below worden
-        # maar dan wel als eerste  - of het moet niet mogen
-        if current == self.root and not below:
-            self.show_message('Kan alleen *onder* de root kopiëren', 'DocTree')
-            return False
-        if not self.copied_item:
-            self.show_message('Nothing to paste', 'DocTree')
-            return False
-        return current
-
-    def do_pasteitem(self, before, below, current):
-        "do the pasting"
-        # items toevoegen aan itemdict
-        if not self.add_node_on_paste:
-            pasted_item = self.copied_item
-            used_keys = self.add_items_back()
-        else:
-            pasted_item, self.itemdict, used_keys = add_newitems(
-                self.copied_item, self.cut_from_itemdict, self.itemdict)
-        # items toevoegen aan visual tree
-        if below:
-            putsubtree(self.tree, current, *pasted_item)
-            used_parent = (current, -1)
-        else:
-            add_to, pos = self.tree.getitemparentpos(current)
-            if not before:
-                pos += 1
-            putsubtree(self.tree, add_to, *pasted_item, pos=pos)
-            used_parent = (add_to, pos)
-        # indien nodig het copied_item in eventuele andere views ook toevoegen
-        if self.add_node_on_paste:
-            for ix, view in enumerate(self.views):
-                if ix != self.opts["ActiveView"]:
-                    add_item_to_view(pasted_item, view)
-        else:
-            self.add_node_on_paste = True   # for the next time
-
-        ## self.copied_item = pasted_item
-        self.set_project_dirty(True)
-        self._finish_paste(current)
-        return used_keys, used_parent
-
-    def add_items_back(self):
-        """ de/het verwijderde itemdict item(s) weer onder dezelfde key opvoeren
-        """
-        keys = []
-        for key, item in self.cut_from_itemdict:
-            keys.append(key)
-            ## title, text = item
-            self.itemdict[key] = item  # (title, text)
-        # alternatief:
-        #   self.itemdict.update({key: item for key, item in self.cut_from_itemdict})
-        #   keys = [key for key, item in self.cut_from_itemdict]
-        return keys
 
     def rename_item(self):
         """titel van item wijzigen"""
@@ -1074,44 +565,6 @@ class Mixin(object):
 
         _write(other_file, opts, views, itemdict, extra_images)
 
-    def _expand(self, recursive=False):
-        "placeholder"
-        raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
-
-    def _collapse(self, recursive=False):
-        "placeholder"
-        raise NotImplementedError('collapse {}'.format('all' if recursive else 'item'))
-
-    def expand_item(self):
-        "expand one level"
-        self._expand()
-
-    def collapse_item(self):
-        "collapse one level"
-        self._collapse()
-
-    def expand_all(self):
-        "expand all levels"
-        self._expand(recursive=True)
-
-    def collapse_all(self):
-        "collapse all levels"
-        self._collapse(recursive=True)
-
-    def ask_title(self, _title, _text):
-        """vraag titel voor item (ingesloten backslashes gelden als
-        scheidingstekens voor titels van onderliggende items)
-        """
-        ok, data = self._get_name(_title, 'DocTree', _text)
-        if ok:
-            if data:
-                test = data.split(" \\ ")
-                new_title, extra_title = test[0], test[1:]
-            else:
-                new_title, extra_title = '(untitled)', []
-            return new_title, extra_title
-        return None
-
     def order_top(self):
         """order items directly under the top level"""
         self.reorder_items(self.root)
@@ -1119,15 +572,6 @@ class Mixin(object):
     def order_all(self):
         """order items under top level and below"""
         self.reorder_items(self.root, recursive=True)
-
-    def reorder_items(self, root, recursive=False):
-        "(re)order_items"
-        self._reorder_items(root, recursive)
-        self.set_project_dirty(True)
-
-    def _reorder_items(self, root, recursive=False):
-        "(re)order_items"
-        raise NotImplementedError
 
     def order_this(self):
         """order items directly under current level"""
@@ -1156,6 +600,211 @@ class Mixin(object):
         """move to previous item"""
         if not self._set_prev_item(any_level=True):
             self.show_message("Geen vorig item", "DocTree")
+
+    def add_view(self):
+        "handles Menu > View > New view"
+        self.check_active()
+        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.tree.getitemdata(
+            self.activeitem)
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        self.viewcount += 1
+        new_view = "New View #{}".format(self.viewcount)
+        self.opts["ViewNames"].append(new_view)
+        active = self.opts["ActiveItem"][self.opts["ActiveView"]]
+        self.opts["ActiveItem"].append(active)
+        self._update_newview(new_view)
+        self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
+        self._rebuild_root()
+        self.activeitem = self.root
+        newtree = []
+        for key in sorted(self.itemdict.keys()):
+            newtree.append((key, []))
+        self.views.append(newtree)
+        tree_item = self.viewtotree()
+        self.set_project_dirty(True)
+        self._finish_add_view(tree_item)
+
+    def rename_view(self):
+        "handles Menu > View > Rename current view"
+        oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
+        ok, newname = self._get_name('Geef een nieuwe naam voor de huidige view',
+                                     'DocTree', oldname)
+        if ok and newname != oldname:
+            self._add_view_to_menu(newname)
+            self.opts["ViewNames"][self.opts["ActiveView"]] = newname
+            self.set_project_dirty(True)
+
+    def remove_view(self):
+        "handles Menu > View > Delete current view"
+        if self.viewcount == 1:
+            self.show_message('Doctree', "Can't delete the last (only) view")
+            return
+        ok = self._confirm("DocTree", "Are you sure you want to remove this view?")
+        if not ok:
+            return
+        self.viewcount -= 1
+        viewname = self.opts["ViewNames"][self.opts["ActiveView"]]
+        self.opts["ViewNames"].remove(viewname)
+        self.opts["ActiveItem"].pop(self.opts["ActiveView"])
+        self.views.pop(self.opts["ActiveView"])
+        if self.opts["ActiveView"] > 0:
+            self.opts["ActiveView"] -= 1
+        self._update_removedview(viewname)
+        self._rebuild_root()
+        self.set_project_dirty(True)
+        self._finish_remove_view(self.viewtotree())
+
+    def next_view(self, prev=False):
+        """cycle to next view if available (default direction / forward)"""
+        raise NotImplementedError
+
+    def prev_view(self):
+        """cycle to previous view (alternate direction / backward)"""
+        self.next_view(prev=True)
+
+    def tree_undo(self):
+        "placeholder"
+        pass
+
+    def tree_redo(self):
+        "placeholder"
+        pass
+    def expand_item(self):
+        "expand one level"
+        self._expand()
+
+    def collapse_item(self):
+        "collapse one level"
+        self._collapse()
+
+    def expand_all(self):
+        "expand all levels"
+        self._expand(recursive=True)
+
+    def collapse_all(self):
+        "collapse all levels"
+        self._collapse(recursive=True)
+
+# search menu niet gemplementeerd in  Mixin
+    def info_page(self):
+        """help -> about"""
+        info = ["DocTree door Albert Visser",
+                "Uitgebreid electronisch notitieblokje",
+                "PyQt versie"]
+        self.show_message("\n".join(info), "DocTree")
+
+    def help_page(self):
+        """help -> keys"""
+        info = ["Ctrl-N\t\t- nieuwe notitie onder huidige",
+                "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
+                "Insert\t\t- nieuwe notitie achter huidige",
+                "Ctrl-PgDn in editor of",
+                " CursorDown in tree\t- volgende notitie",
+                "Ctrl-PgUp in editor of",
+                " CursorUp in tree\t- vorige notitie",
+                "Ctrl-D of Delete in tree\t- verwijder notitie",
+                "Ctrl-S\t\t- alle notities opslaan",
+                "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
+                "Ctrl-R\t\t- alle notities opnieuw laden",
+                "Ctrl-O\t\t- ander bestand met notities laden",
+                "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
+                "Ctrl-Q, Esc\t\t- opslaan en sluiten",
+                "Ctrl-H\t\t- verbergen in system tray",
+                "",
+                "F1\t\t- deze (help)informatie",
+                "F2\t\t- wijzig notitie titel",
+                "Shift-F2\t\t- wijzig root titel",
+                "",
+                "See menu for editing keys"]
+        self.show_message("\n".join(info), "DocTree")
+
+
+# common
+    def show_message(self, text='', title=''):
+        "voor elke gui variant apart te implementeren"
+        print('{}: {}'.format(title, text))
+
+    def show_statusbar_message(self, text):
+        "voor elke gui variant apart te implementeren"
+        print('status: {}'.format(text))
+
+    def set_project_dirty(self, value):
+        "indicate that there have been changes"
+        self.project_dirty = value
+        self.set_windowtitle()
+
+    def set_windowtitle(self):
+        """standaard titel updaten"""
+        raise NotImplementedError
+
+    def save_needed(self):
+        """check if anything has changed"""
+        return self.has_treedata and self.project_dirty
+
+    def _ok_to_reload(self):
+        "placeholder"
+        return NotImplementedError
+
+    def ask_title(self, _title, _text):
+        """vraag titel voor item (ingesloten backslashes gelden als
+        scheidingstekens voor titels van onderliggende items)
+        """
+        ok, data = self._get_name(_title, 'DocTree', _text)
+        if ok:
+            if data:
+                test = data.split(" \\ ")
+                new_title, extra_title = test[0], test[1:]
+            else:
+                new_title, extra_title = '(untitled)', []
+            return new_title, extra_title
+        return None
+
+    def confirm(self, setting='', textitem=''):
+        "confirm action if necessary"
+        if self.opts[setting]:
+            print(textitem)
+
+    def _confirm(self, title, text):
+        "get confirmation"
+        ok = input('{}: {} (y/N)'.format(title, text))
+        ok = True if ok.upper() == 'Y' else False
+        return ok
+
+    def treetoview(self):
+        """zet de visuele tree om in een tree om op te slaan"""
+        def lees_item(item):
+            """recursieve functie om de data in een pickle-bare structuur om te zetten"""
+            textref = self.tree.getitemkey(item)
+            if item == self.activeitem:
+                self.opts["ActiveItem"][self.opts["ActiveView"]] = textref
+            kids = [lees_item(x) for x in self.tree.getitemkids(item)]
+            return textref, kids
+        data = [lees_item(x) for x in self.tree.getitemkids(self.root)]
+        return data
+
+    def viewtotree(self):
+        """zet de geselecteerde view om in een visuele tree"""
+        def maak_item(parent, key, children=None):
+            """recursieve functie om de TreeCtrl op te bouwen vanuit de opgeslagen data"""
+            item_to_activate = None
+            if children is None:
+                children = []
+            titel = self.itemdict[key][0]
+            tree_item = self.tree.add_to_parent(key, titel, parent)
+            if key == self.opts["ActiveItem"][self.opts['ActiveView']]:
+                item_to_activate = tree_item
+            for child in children:
+                _, y = maak_item(tree_item, *child)
+                if y is not None:
+                    item_to_activate = y
+            return key, item_to_activate
+        item_to_activate = None
+        current_view = self.views[self.opts['ActiveView']]
+        for item in current_view:
+            _, y = maak_item(self.root, *item)
+            if y is not None:
+                item_to_activate = y
+        return item_to_activate
 
     def check_active(self, message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
@@ -1192,47 +841,398 @@ class Mixin(object):
             self.editor.set_contents(tekst)  # , titel)
         self.editor.openup(True)
 
-    def info_page(self):
-        """help -> about"""
-        info = ["DocTree door Albert Visser",
-                "Uitgebreid electronisch notitieblokje",
-                "PyQt versie"]
-        self.show_message("\n".join(info), "DocTree")
+    def cleanup_files(self):
+        "remove temporary files on exit (as they have been zipped)"
+        for name in self._filenames:
+            try:
+                os.remove(name)
+            except FileNotFoundError:
+                pass
 
-    def help_page(self):
-        """help -> keys"""
-        info = ["Ctrl-N\t\t- nieuwe notitie onder huidige",
-                "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
-                "Insert\t\t- nieuwe notitie achter huidige",
-                "Ctrl-PgDn in editor of",
-                " CursorDown in tree\t- volgende notitie",
-                "Ctrl-PgUp in editor of",
-                " CursorUp in tree\t- vorige notitie",
-                "Ctrl-D of Delete in tree\t- verwijder notitie",
-                "Ctrl-S\t\t- alle notities opslaan",
-                "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
-                "Ctrl-R\t\t- alle notities opnieuw laden",
-                "Ctrl-O\t\t- ander bestand met notities laden",
-                "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
-                "Ctrl-Q, Esc\t\t- opslaan en sluiten",
-                "Ctrl-H\t\t- verbergen in system tray",
-                "",
-                "F1\t\t- deze (help)informatie",
-                "F2\t\t- wijzig notitie titel",
-                "Shift-F2\t\t- wijzig root titel",
-                "",
-                "See menu for editing keys"]
-        self.show_message("\n".join(info), "DocTree")
+    def read(self, other_file=''):
+        """settings dictionary lezen, opgeslagen data omzetten naar tree"""
+        if not other_file:
+            self.has_treedata = False
+        self.opts = init_opts()
 
-    def confirm(self, setting='', textitem=''):
-        "confirm action if necessary"
-        if self.opts[setting]:
-            print(textitem)
+        # determine the name of the file to read and read + unpickle it if possible,
+        # otherwise cancel
+        infile = other_file or self.project_file
+        if not infile:
+            return 'no file name given'
+        try:
+            f_in = infile.open("rb")
+        except IOError:
+            return "couldn't open {}".format(str(infile))
+        with f_in:
+            try:
+                nt_data = pck.load(f_in)
+            except EOFError:
+                return "couldn't load data from {}".format(str(infile))
 
-    def tree_undo(self):
+        # read/init/check settings if possible, otherwise cancel
+        ## print(nt_data[0])
+        test = nt_data[0].get("Application", None)
+        if test and test != 'DocTree':
+            return "{} is not a valid Doctree data file".format(str(infile))
+
+        # read views
+        try:
+            views = list(nt_data[1])
+        except KeyError:
+            views = [[]]
+        viewcount = len(views)
+
+        # read itemdict
+        try:
+            itemdict = nt_data[2]
+        except KeyError:
+            itemdict = {}
+
+        # exit if meant for file to copy stuff to
+        if other_file:
+            return nt_data[0], views, viewcount, itemdict
+
+        # make settings, views and itemdict into attributes
+        for key, value in nt_data[0].items():
+            if key == 'RootData' and value is None:
+                value = ""
+            self.opts[key] = value
+        self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
+
+        # if possible, build a list of referred-to image files
+        ## path = os.path.dirname((self.project_file))
+        path = str(self.project_file.parent)
+        self._filenames = []
+        err = FileNotFoundError if sys.version >= '3.3' else OSError
+        try:
+            with zpf.ZipFile(str(self.project_file.with_suffix('.zip'))) as _in:
+                _in.extractall(path=path)
+                self._filenames = _in.namelist()
+        except err:
+            pass
+
+        # finish up (set up necessary attributes etc)
+        self._read()  # do gui-specific stuff
+        item_to_activate = self.viewtotree()
+        self.has_treedata = True
+        self.set_project_dirty(False)
+        self._finish_read(item_to_activate)
+        return ''
+
+    def _read(self):
         "placeholder"
-        pass
+        raise NotImplementedError
 
-    def tree_redo(self):
+    def write(self, meld=True):
+        """settings en tree data in een structuur omzetten en opslaan"""
+        self.check_active()
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        self._filenames = _write(self.project_file, self.opts, self.views,
+                                 self.itemdict)
+        self.set_project_dirty(False)
+        if meld:
+            ## print('In save - notify is', self.opts['NotifyOnSave'])
+            save_text = str(self.project_file) + " is opgeslagen"
+            self.confirm(setting="NotifyOnSave", textitem=save_text)
+
+    def _add_item(self, root=None, under=True):
+        "nieuw item toevoegen"
+        test = self._check_addable()
+        if test:
+            new_title, extra_titles = test
+            pos = -1  # doesn't matter for now - will be determined in do_additem
+            ## log('under is {}, pos is {}'.format(under, pos))
+            self.do_additem(root, under, pos, new_title, extra_titles)
+
+    def _check_addable(self):
+        """bepaal een titel voor het nieuwe (en eventueel onderliggende) item
+        """
+        title = "Geef een titel op voor het nieuwe item"
+        text = datetime.today().strftime("%d-%m-%Y %H:%M:%S")
+        new = self.ask_title(title, text)
+        if not new:
+            return False
+        new_title, extra_titles = new
+        # stel de inhoud van het item onder de cursor veilig
+        self.check_active()
+        return new_title, extra_titles
+
+    def do_additem(self, root, under, origpos, new_title, extra_titles):
+        """toevoegen nieuw item
+        """
+        log('*** in shared.do_additem ***')
+        # bepaal nieuwe key in itemdict
+        newkey = len(self.itemdict)
+        while newkey in self.itemdict:
+            newkey += 1
+        # voeg nieuw item toe aan itemdict
+        self.itemdict[newkey] = (new_title, "")
+        # voeg nieuw item toe aan visual tree
+        # bepaal eerst de parent voor het nieuwe item
+        if not root:
+            root = self.activeitem or self.root
+            log('no root provided, using either active ({}) or root ({})'.format(
+                self.activeitem, self.root))
+        text = self.tree.getitemtitle(root)
+        log('root is {} ({}), under is {}, origpos is {}'.format(root, text, under, origpos))
+        if under:
+            parent = root
+            pos = -1
+        else:
+            ## root, pos = getitemparentpos(self.activeitem)
+            parent, pos = self.tree.getitemparentpos(root)
+            log("na getitemparentpos: root, pos is {}, {}".format(parent, pos))
+            log('comparing to origpos: {}'.format(origpos))
+            if origpos == -1:
+                pos += 1    # we want to insert after, not before
+                if pos == len(self.tree.getitemkids(parent)):
+                    pos = -1
+            else:
+                pos = origpos
+        ## print(parent, parent.__dict__)
+        text = self.tree.getitemtitle(parent)
+        log('parent, pos is {} ({}), {}'.format(parent, text, pos))
+        item = self.tree.add_to_parent(newkey, new_title, parent, pos)
+        new_item = item
+        # doe hetzelfde met het via \ toegevoegde item
+        extra_keys = []
+        subkey = newkey
+        while extra_titles:
+            subkey += 1
+            self.itemdict[subkey] = (extra_titles[0], "")
+            item = self.tree.add_to_parent(subkey, extra_titles[0], item)
+            extra_keys.append(subkey)
+            extra_titles = extra_titles[1:]
+        # voeg de items ook toe aan de niet zichtbare views
+        subitem = []
+        for subkey in reversed(extra_keys):
+            subitem = [(subkey, subitem)]
+        for idx, view in enumerate(self.views):
+            if idx != self.opts["ActiveView"]:
+                view.append((newkey, subitem))
+        # data is gewijzigd
+        self.set_project_dirty(True)
+        # afmaken
+        self._finish_add(parent, item)
+        # resultaat t.b.v. undo/redo mechanisme
+        return newkey, extra_keys, new_item, subitem
+
+    def _copy_item(self, cut=False, retain=True, to_other_file=None):
+        """start copy/cut/delete action
+
+        parameters: cut: remove item from tree (True for cut, delete and move)
+                    retain: remember item for pasting (True for cut and copy)
+                    other_file:
+        """
+        test = self._check_copyable(cut, retain, to_other_file)
+        if test:
+            current = test
+            self.do_copyaction(cut, retain, current)  # to_other_file)
+
+    def _check_copyable(self, cut, retain, to_other_file):
+        "can we copy from here?"
+        if to_other_file:
+            current = to_other_file
+        else:
+            current = self.tree.getselecteditem()
+            if current == self.root:
+                self.show_message("Can't do this with root", "DocTree")
+                return False
+        # are-you-sure message + cancel this action if applicable
+        go_on = True
+        if cut and not retain and not to_other_file:
+            go_on = self._confirm("DocTree", "Are you sure you want to remove this item?")
+        if go_on:
+            return current
+        return go_on
+
+    def do_copyaction(self, cut, retain, current):  # to_other_file):
+        "do the copying"
+        # create a copy buffer
+        # self.cut_from_itemdict = []
+        copied_item, itemlist = getsubtree(self.tree, current)
+        cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
+        oldloc = None  # alleen interessant bij undo van cut/delete
+        if retain:
+            self.copied_item = copied_item
+            self.cut_from_itemdict = cut_from_itemdict
+            self.add_node_on_paste = True
+        if cut:
+            # remove item (and subitems) from tree and itemdict
+            # they're buffered in (self.)cut_from_itemdict because we still need them
+            self.add_node_on_paste = False
+            oldloc, prev = self.tree.removeitem(current, cut_from_itemdict)
+            self.activeitem = None
+
+            # remove item(s) from view(s)
+            removed = [x[0] for x in cut_from_itemdict]
+            for ix, item in enumerate(self.opts["ActiveItem"]):
+                if item in removed:
+                    self.opts["ActiveItem"][ix] = self.tree.getitemkey(prev)
+            for ix, view in enumerate(self.views):
+                if ix != self.opts["ActiveView"]:
+                    self._updateview(view, removed)
+
+            # finish up
+            self.set_project_dirty(True)
+            self._finish_copy(prev)  # do gui-specific stuff
+
+        return copied_item, oldloc, cut_from_itemdict
+
+    def popitems(self, current, itemlist):
+        """recursieve routine om de structuur uit de itemdict en de
+        niet-actieve views te verwijderen
+        """
+        ref = self.tree.getitemkey(current)
+        ## try:
+        self.itemdict.pop(ref)
+        ## except KeyError:
+            ## pass
+        ## else:
+        for kid in self.tree.getitemkids(current):
+            self.popitems(kid, itemlist)
+
+    def _paste_item(self, before=True, below=False):
+        "start paste actie"
+        test = self._check_pasteable(below)  # before,
+        if test:
+            current = test
+            self.do_pasteitem(before, below, current)
+
+    def _check_pasteable(self, below):  # , before
+        "can we paste here?"
+        current = self.tree.getselecteditem()
+        # als het geselecteerde item het top item is moet het automatisch below worden
+        # maar dan wel als eerste  - of het moet niet mogen
+        if current == self.root and not below:
+            self.show_message('Kan alleen *onder* de root kopiëren', 'DocTree')
+            return False
+        if not self.copied_item:
+            self.show_message('Nothing to paste', 'DocTree')
+            return False
+        return current
+
+    def do_pasteitem(self, before, below, current):
+        "do the pasting"
+        # items toevoegen aan itemdict
+        if not self.add_node_on_paste:
+            pasted_item = self.copied_item
+            used_keys = self.add_items_back()
+        else:
+            pasted_item, self.itemdict, used_keys = add_newitems(
+                self.copied_item, self.cut_from_itemdict, self.itemdict)
+        # items toevoegen aan visual tree
+        if below:
+            putsubtree(self.tree, current, *pasted_item)
+            used_parent = (current, -1)
+        else:
+            add_to, pos = self.tree.getitemparentpos(current)
+            if not before:
+                pos += 1
+            putsubtree(self.tree, add_to, *pasted_item, pos=pos)
+            used_parent = (add_to, pos)
+        # indien nodig het copied_item in eventuele andere views ook toevoegen
+        if self.add_node_on_paste:
+            for ix, view in enumerate(self.views):
+                if ix != self.opts["ActiveView"]:
+                    add_item_to_view(pasted_item, view)
+        else:
+            self.add_node_on_paste = True   # for the next time
+
+        ## self.copied_item = pasted_item
+        self.set_project_dirty(True)
+        self._finish_paste(current)
+        return used_keys, used_parent
+
+    def add_items_back(self):
+        """ de/het verwijderde itemdict item(s) weer onder dezelfde key opvoeren
+        """
+        keys = []
+        for key, item in self.cut_from_itemdict:
+            keys.append(key)
+            ## title, text = item
+            self.itemdict[key] = item  # (title, text)
+        # alternatief:
+        #   self.itemdict.update({key: item for key, item in self.cut_from_itemdict})
+        #   keys = [key for key, item in self.cut_from_itemdict]
+        return keys
+
+    def _get_name(self, caption, title, oldname):
         "placeholder"
-        pass
+        raise NotImplementedError
+
+    def _rebuild_root(self):
+        "tree leegmaken en root opnieuw neerzetten"
+        raise NotImplementedError
+
+    def _set_activeitem_for_view(self):
+        "placeholder"
+        raise NotImplementedError
+
+    def _update_newview(self, new_view):
+        "view menu bijwerken n.a.v. toevoeging nieuwe view"
+        raise NotImplementedError
+
+    def _add_view_to_menu(self, newname):
+        "placeholder"
+        raise NotImplementedError
+
+    def select_view(self):
+        "handles Menu > View > <view name>"
+        self.check_active()
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        newviewtext = self._update_selectedview()
+        self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
+        self._rebuild_root()
+        tree_item = self.viewtotree()
+        self.set_windowtitle()
+        self._finish_select_view(tree_item)
+
+    def _update_selectedview(self):
+        "view menu bijwerken n.a.v. wijzigen view naam"
+        raise NotImplementedError
+
+    def _update_removedview(self):
+        "view menu bijwerken n.a.v. verwijderen view"
+        raise NotImplementedError
+
+    def _updateview(self, view, removed):
+        "recursieve routine om de view bij te werken"
+        klaar = False
+        for idx, item in reversed(list(enumerate(view))):
+            itemref, subview = item
+            if itemref in removed:
+                self._updateview(subview, removed)
+                if not subview:
+                    view.pop(idx)
+                else:
+                    view[idx] = subview[0]
+                klaar = True
+            else:
+                klaar = self._updateview(subview, removed)
+            ## if klaar:
+                ## break
+        return klaar
+
+    def _expand(self, recursive=False):
+        "placeholder"
+        raise NotImplementedError('expand {}'.format('all' if recursive else 'item'))
+
+    def _collapse(self, recursive=False):
+        "placeholder"
+        raise NotImplementedError('collapse {}'.format('all' if recursive else 'item'))
+
+    def reorder_items(self, root, recursive=False):
+        "(re)order_items"
+        self._reorder_items(root, recursive)
+        self.set_project_dirty(True)
+
+    def _reorder_items(self, root, recursive=False):
+        "(re)order_items"
+        raise NotImplementedError
+
+    def change_pane(self):
+        "wissel tussen tree en editor"
+        raise NotImplementedError
+

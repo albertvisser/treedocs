@@ -664,7 +664,7 @@ class TreePanel(qtw.QTreeWidget):
         item = self.currentItem()
         log('current item is now {} {}'.format(item, item.text(0)))
         self.parent.activate_item(item)
-        self.parent.set_title()
+        self.parent.set_windowtitle()
 
     def dropEvent(self, event):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
@@ -1179,13 +1179,13 @@ class EditorPanel(qtw.QTextEdit):
     def focusInEvent(self, *args):
         "reimplemented to correctly set application title"
         self.parent.in_editor = True
-        self.parent.set_title()
+        self.parent.set_windowtitle()
         super().focusInEvent(*args)
 
     def focusOutEvent(self, *args):
         "reimplemented to correctly set application title"
         self.parent.in_editor = False
-        self.parent.set_title()
+        self.parent.set_windowtitle()
         super().focusOutEvent(*args)
 
 
@@ -1240,13 +1240,174 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.srchflags = gui.QTextDocument.FindFlags()
         self.srchlist = self.srchwrap = False
 
-    def change_pane(self):  # , event=None):
-        "wissel tussen tree en editor"
-        if self.tree.hasFocus():
-            self.editor.setFocus()
-        elif self.editor.hasFocus():
-            self.check_active()
-            self.tree.setFocus()
+    def new(self):
+        "set up a new document collection"
+        if not Mixin.new(self):
+            return
+        self.opts = init_opts()
+        self.opts["Version"] = "Qt"
+        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
+        menuitem_list = [x for x in self.viewmenu.actions()]
+        for menuitem in menuitem_list[7:]:
+            self.viewmenu.removeAction(menuitem)
+        action = qtw.QAction('&1 Default', self)
+        action.setStatusTip("switch to this view")
+        action.setCheckable(True)
+        action.triggered.connect(self.select_view)
+        self.viewmenu.addAction(action)
+        action.setChecked(True)
+        self.undo_stack.clear()
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = qtw.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = self.root  # item_to_activate =
+        self.editor.set_contents(self.opts["RootData"])
+        self.editor.setReadOnly(False)
+        print('In new - Notify is', self.opts['NotifyOnSave'])
+        self.tree.setFocus()
+
+    ## def _rename_root(self, event=None):
+        ## assert self.opts['RootTitle'] == self.root.text(0)
+        ## Mixin.rename_root(self, event)
+        ## self.root.setText(0, self.opts['RootTitle'])
+
+    def hide_me(self):  # , event=None):
+        """applicatie verbergen"""
+        ## self.confirm(setting="AskBeforeHide", textitem="hide_text")
+        self.confirm(setting="AskBeforeHide", textitem=shared.HIDE_TEXT)
+        self.tray_icon.show()
+        self.hide()
+
+    def revive(self, event=None):
+        """applicatie weer zichtbaar maken"""
+        if event == qtw.QSystemTrayIcon.Unknown:
+            self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
+        elif event == qtw.QSystemTrayIcon.Context:
+            pass
+        else:
+            self.show()
+            self.tray_icon.hide()
+
+    def afsl(self):  # , event=None):
+        """applicatie afsluiten"""
+        self.close()
+
+    def next_view(self, prev=False):
+        """cycle to next view if available (default direction / forward)"""
+        if self.viewcount == 1:
+            self.show_message("This is the only view", 'Doctree')
+            return
+        self.check_active()
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        self.editor.clear()
+        menuitem_list = [x for x in self.viewmenu.actions()][7:]
+        if prev:
+            menuitem_list.reverse()
+        found_item = False
+        for menuitem in menuitem_list:
+            if menuitem.isChecked():
+                found_item = True
+                menuitem.setChecked(False)
+            elif found_item:
+                menuitem.setChecked(True)
+                found_item = False
+                break
+        if found_item:
+            menuitem_list[0].setChecked(True)
+        if prev:
+            self.opts["ActiveView"] -= 1
+            if self.opts["ActiveView"] < 0:
+                self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
+        else:
+            self.opts["ActiveView"] += 1
+            if self.opts["ActiveView"] >= len(self.opts["ViewNames"]):
+                self.opts["ActiveView"] = 0
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = qtw.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
+        self.activeitem = self.root
+        tree_item = self.viewtotree()
+        self.set_windowtitle()
+        self.tree.setCurrentItem(tree_item)
+
+    def tree_undo(self):  # , event=None):
+        "start undo action"
+        self.undo_stack.undo()
+
+    def tree_redo(self):  # , event=None):
+        "start redo action"
+        self.undo_stack.redo()
+
+    def search(self, mode=0):
+        """start search action
+        """
+        print('starting new search, srchlist =', self.srchlist)
+        if self.srchlist:
+            self.show_message('Cannot start new search while results screen is '
+                              'showing')
+            return
+        dlg = SearchDialog(self, mode=mode)
+        if dlg.exec_() != qtw.QDialog.Accepted:
+            return
+        if self.srchtype == 0:
+            self.editor.moveCursor(gui.QTextCursor.Start)
+            ok = self.editor.find(self.srchtext, self.srchflags)
+            if ok:
+                self.editor.ensureCursorVisible()
+            else:
+                self.show_message('Search string not found')
+            return
+        if self.srchtype not in (1, 2, 3):  # failsafe
+            self.show_message('Wrong search type')
+            return
+        self.search_results = self._search_from(self.root)
+        if not self.search_results:
+            self.srchlist = False
+            self.show_message('Search string not found')
+            return
+        if self.srchlist:
+            dlg = ResultsDialog(self)
+            dlg.show()
+        else:
+            self.srchno = 0
+            self.go_to_result()
+
+    def search_texts(self):
+        "search in all texts"
+        self.search(mode=2)
+
+    def search_titles(self):
+        "search in all titles"
+        self.search(mode=1)
+
+    def find_next(self):
+        "search forward"
+        if not self.srchtext:
+            return
+        if self.srchtype:
+            self.srchno += 1
+            self.go_to_result()
+        else:
+            if self.editor.find(self.srchtext, self.srchflags & (
+                    gui.QTextDocument.FindCaseSensitively |
+                    gui.QTextDocument.FindWholeWords)):
+                self.editor.ensureCursorVisible()
+
+    def find_prev(self):
+        "search backward"
+        if not self.srchtext:
+            return
+        if self.srchtype:
+            self.srchno -= 1
+            self.go_to_result()
+        else:
+            if self.editor.find(self.srchtext,
+                                self.srchflags | gui.QTextDocument.FindBackward):
+                self.editor.ensureCursorVisible()
 
     def create_menu(self, menubar, menudata):
         """bouw het menu en de meeste toolbars op"""
@@ -1348,28 +1509,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
         toolbar.addAction(action)
         self.setbackgroundcolor_action = action
 
-    def show_message(self, text, title=''):
-        "set title and message"
-        if not title:
-            title = self.title
-        qtw.QMessageBox.information(self, title, text)
-
-    def show_statusmessage(self, text):
-        "show message in status bar"
-        self.statusbar.showMessage(text)
-
-    def set_title(self):
-        """standaard titel updaten"""
-        if self.in_editor:
-            ## text = 'text: {}'.format(self.tree.currentItem().text(0))
-            text = 'title: {}'.format(self.activeitem.text(0))
-        else:
-            text = 'view: {}'.format(self.opts["ViewNames"][self.opts['ActiveView']])
-        self.setWindowTitle("{}{} ({}) - DocTree".format(
-            self.project_file.name,
-            '*' if self.project_dirty else '',
-            text))
-
     def getfilename(self, title, start, save=False):
         "routine for selection of filename"
         filter = "Pickle files (*.pck)"
@@ -1380,33 +1519,27 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ok = True if filename[0] else False
         return ok, filename[0]
 
-    def new(self):
-        "set up a new document collection"
-        if not Mixin.new(self):
-            return
-        self.opts = init_opts()
-        self.opts["Version"] = "Qt"
-        self.resize(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
-        menuitem_list = [x for x in self.viewmenu.actions()]
-        for menuitem in menuitem_list[7:]:
-            self.viewmenu.removeAction(menuitem)
-        action = qtw.QAction('&1 Default', self)
-        action.setStatusTip("switch to this view")
-        action.setCheckable(True)
-        action.triggered.connect(self.select_view)
-        self.viewmenu.addAction(action)
-        action.setChecked(True)
-        self.undo_stack.clear()
-        self.root = self.tree.takeTopLevelItem(0)
-        self.root = qtw.QTreeWidgetItem()
-        self.root.setText(0, self.opts["RootTitle"])
-        self.root.setText(1, self.opts["RootData"])
-        self.tree.addTopLevelItem(self.root)
-        self.activeitem = self.root  # item_to_activate =
-        self.editor.set_contents(self.opts["RootData"])
-        self.editor.setReadOnly(False)
-        print('In new - Notify is', self.opts['NotifyOnSave'])
-        self.tree.setFocus()
+    def show_message(self, text, title=''):
+        "set title and message"
+        if not title:
+            title = self.title
+        qtw.QMessageBox.information(self, title, text)
+
+    def show_statusmessage(self, text):
+        "show message in status bar"
+        self.statusbar.showMessage(text)
+
+    def set_windowtitle(self):
+        """standaard titel updaten"""
+        if self.in_editor:
+            ## text = 'text: {}'.format(self.tree.currentItem().text(0))
+            text = 'title: {}'.format(self.activeitem.text(0))
+        else:
+            text = 'view: {}'.format(self.opts["ViewNames"][self.opts['ActiveView']])
+        self.setWindowTitle("{}{} ({}) - DocTree".format(
+            self.project_file.name,
+            '*' if self.project_dirty else '',
+            text))
 
     def save_needed(self, meld=True, always_check=True):
         """vraag of het bestand opgeslagen moet worden als er iets aan de
@@ -1434,6 +1567,28 @@ class MainWindow(qtw.QMainWindow, Mixin):
             if retval == qtw.QMessageBox.Cancel:
                 return False
         return True
+
+    def _ok_to_reload(self):
+        "ask for confirmation (specific)"
+        retval = qtw.QMessageBox.question(self, "DocTree", "OK to reload?",
+                                          qtw.QMessageBox.Ok | qtw.QMessageBox.Cancel,
+                                          defaultButton=qtw.QMessageBox.Ok)
+        return True if retval == qtw.QMessageBox.Ok else False
+
+    def confirm(self, setting='', textitem=''):
+        "ask for confirmation (specific)"
+        if self.opts[setting]:
+            dlg = CheckDialog(self, 'Apropos', message=textitem, option=setting)
+            dlg.exec_()
+            # opslaan zonder vragen (en zonder backuppen?)
+            _write(self.project_file, self.opts, self.views, self.itemdict)
+
+    def _confirm(self, title, text):
+        "ask for confirmation (generic)"
+        retval = qtw.QMessageBox.question(self, title, text,
+                                          qtw.QMessageBox.Yes | qtw.QMessageBox.No,
+                                          defaultButton=qtw.QMessageBox.Yes)
+        return True if retval == qtw.QMessageBox.Yes else False
 
     def _read(self):
         "GUI-specifieke zaken binnen Mixin.read()"
@@ -1474,6 +1629,25 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ## except TypeError:
             ## pass
 
+    def write(self, meld=True):
+        "start write action"
+        print('in write - need to notify is', meld)
+        self.opts["ScreenSize"] = self.width(), self.height()  # tuple(self.size())
+        self.opts["SashPosition"] = self.splitter.saveState()
+        Mixin.write(self, meld)
+
+    def _add_item(self, root=None, under=True):
+        """nieuw item toevoegen (default: onder het geselecteerde)
+        """
+        log("in qt version's add_item")
+        test = self._check_addable()
+        if test:
+            log("adding item")
+            new_title, extra_titles = test
+            ## self._do_additem(root, under, new_title, extra_titles) # dit werkt
+            command = AddCommand(self, root, under, new_title, extra_titles)
+            self.undo_stack.push(command)
+
     def _finish_add(self, parent, item):
         "finalize add action"
         parent.setExpanded(True)
@@ -1481,9 +1655,33 @@ class MainWindow(qtw.QMainWindow, Mixin):
         if item != self.root:
             self.editor.setFocus()
 
+    def _copy_item(self, cut=False, retain=True, to_other_file=None):
+        """start copy/cut/delete action
+
+        parameters: cut: remove item from tree (True for cut, delete and move)
+                    retain: remember item for pasting (True for cut and copy)
+                    to_other_file: name of file to paste note in after removing
+        """
+        test = self._check_copyable(cut, retain, to_other_file)
+        if test:
+            current = test
+            ## self._do_copyaction(cut, retain, current) # to_other_file)
+            command = CopyCommand(self, cut, retain, current)
+            self.undo_stack.push(command)
+
     def _finish_copy(self, prev):
         "finalize copy action"
         self.tree.setCurrentItem(prev)  # gui-dependent
+
+    def _paste_item(self, before=True, below=False):
+        """start paste actie
+        """
+        test = self._check_pasteable(below)  # before,
+        if test:
+            current = test
+            ## self._do_pasteitem(before, below, current)
+            command = PasteCommand(self, before, below, current)
+            self.undo_stack.push(command)
 
     def _finish_paste(self, current):
         "finalize paste action"
@@ -1497,54 +1695,25 @@ class MainWindow(qtw.QMainWindow, Mixin):
         ## if item != self.root:
             ## self.editor.setFocus()
 
-    def _ok_to_reload(self):
-        "ask for confirmation (specific)"
-        retval = qtw.QMessageBox.question(self, "DocTree", "OK to reload?",
-                                          qtw.QMessageBox.Ok | qtw.QMessageBox.Cancel,
-                                          defaultButton=qtw.QMessageBox.Ok)
-        return True if retval == qtw.QMessageBox.Ok else False
+    def _get_name(self, caption, title, oldname):
+        "ask for (new) name"
+        newname = oldname
+        data, ok = qtw.QInputDialog.getText(self, title, caption,
+                                            qtw.QLineEdit.Normal, oldname)
+        if ok:
+            newname = str(data)
+        return ok, newname
 
-    def write(self, meld=True):
-        "start write action"
-        print('in write - need to notify is', meld)
-        self.opts["ScreenSize"] = self.width(), self.height()  # tuple(self.size())
-        self.opts["SashPosition"] = self.splitter.saveState()
-        Mixin.write(self, meld)
+    def _rebuild_root(self):
+        "tree leegmaken en root opnieuw neerzetten"
+        self.root = self.tree.takeTopLevelItem(0)
+        self.root = qtw.QTreeWidgetItem()
+        self.root.setText(0, self.opts["RootTitle"])
+        self.root.setText(1, self.opts["RootData"])
+        self.tree.addTopLevelItem(self.root)
 
-    def hide_me(self):  # , event=None):
-        """applicatie verbergen"""
-        ## self.confirm(setting="AskBeforeHide", textitem="hide_text")
-        self.confirm(setting="AskBeforeHide", textitem=shared.HIDE_TEXT)
-        self.tray_icon.show()
-        self.hide()
-
-    def revive(self, event=None):
-        """applicatie weer zichtbaar maken"""
-        if event == qtw.QSystemTrayIcon.Unknown:
-            self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
-        elif event == qtw.QSystemTrayIcon.Context:
-            pass
-        else:
-            self.show()
-            self.tray_icon.hide()
-
-    def afsl(self):  # , event=None):
-        """applicatie afsluiten"""
-        self.close()
-
-    def closeEvent(self, event):
-        """applicatie afsluiten"""
-        if not self.save_needed(meld=False):
-            event.ignore()
-        else:
-            Mixin.afsl(self)
-            event.accept()
-
-    def viewportEvent(self, event):
-        "reimplemented to make sure contents are saved?"
-        if event.Type == core.QEvent.ToolTip:
-            item = self.tree.currentItem()
-            qtw.QToolTip.showText(event.pos, item.toolTip().text(), item)
+    def _set_activeitem_for_view(self):
+        "pylint klaagt erover dat deze niet geherimplementeerd is"
 
     def _update_newview(self, new_view):
         "view menu bijwerken n.a.v. toevoeging nieuwe view"
@@ -1559,23 +1728,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
         self.viewmenu.addAction(action)
         action.setChecked(True)
 
-    def _rebuild_root(self):
-        "tree leegmaken en root opnieuw neerzetten"
-        self.root = self.tree.takeTopLevelItem(0)
-        self.root = qtw.QTreeWidgetItem()
-        self.root.setText(0, self.opts["RootTitle"])
-        self.root.setText(1, self.opts["RootData"])
-        self.tree.addTopLevelItem(self.root)
-
-    def _get_name(self, caption, title, oldname):
-        "ask for (new) name"
-        newname = oldname
-        data, ok = qtw.QInputDialog.getText(self, title, caption,
-                                            qtw.QLineEdit.Normal, oldname)
-        if ok:
-            newname = str(data)
-        return ok, newname
-
     def _add_view_to_menu(self, newname):
         "update action text"
         action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
@@ -1583,46 +1735,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
 
     def _finish_add_view(self, tree_item):  # , event=None):
         "handles Menu > View > New view"
-        self.tree.setCurrentItem(tree_item)
-
-    def next_view(self, prev=False):
-        """cycle to next view if available (default direction / forward)"""
-        if self.viewcount == 1:
-            self.show_message("This is the only view", 'Doctree')
-            return
-        self.check_active()
-        self.views[self.opts["ActiveView"]] = self.treetoview()
-        self.editor.clear()
-        menuitem_list = [x for x in self.viewmenu.actions()][7:]
-        if prev:
-            menuitem_list.reverse()
-        found_item = False
-        for menuitem in menuitem_list:
-            if menuitem.isChecked():
-                found_item = True
-                menuitem.setChecked(False)
-            elif found_item:
-                menuitem.setChecked(True)
-                found_item = False
-                break
-        if found_item:
-            menuitem_list[0].setChecked(True)
-        if prev:
-            self.opts["ActiveView"] -= 1
-            if self.opts["ActiveView"] < 0:
-                self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
-        else:
-            self.opts["ActiveView"] += 1
-            if self.opts["ActiveView"] >= len(self.opts["ViewNames"]):
-                self.opts["ActiveView"] = 0
-        self.root = self.tree.takeTopLevelItem(0)
-        self.root = qtw.QTreeWidgetItem()
-        self.root.setText(0, self.opts["RootTitle"])
-        self.root.setText(1, self.opts["RootData"])
-        self.tree.addTopLevelItem(self.root)
-        self.activeitem = self.root
-        tree_item = self.viewtotree()
-        self.set_title()
         self.tree.setCurrentItem(tree_item)
 
     def _update_selectedview(self):
@@ -1643,13 +1755,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
         "finalize select view action"
         self.tree.setCurrentItem(tree_item)
 
-    def _confirm(self, title, text):
-        "ask for confirmation (generic)"
-        retval = qtw.QMessageBox.question(self, title, text,
-                                          qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-                                          defaultButton=qtw.QMessageBox.Yes)
-        return True if retval == qtw.QMessageBox.Yes else False
-
     def _update_removedview(self, viewname):
         "view menu bijwerken n.a.v. verwijderen view"
         menuitem_list = [x for x in self.viewmenu.actions()]
@@ -1668,14 +1773,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
     def _finish_remove_view(self, item):
         "finalize action"
         self.tree.setCurrentItem(item)
-
-    ## def _rename_root(self, event=None):
-        ## assert self.opts['RootTitle'] == self.root.text(0)
-        ## Mixin.rename_root(self, event)
-        ## self.root.setText(0, self.opts['RootTitle'])
-
-    def _set_activeitem_for_view(self):
-        "pylint klaagt erover dat deze niet geherimplementeerd is"
 
     def _expand(self, recursive=False):
         "expandeer tree vanaf huidige item"
@@ -1757,58 +1854,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
                 self.tree.setCurrentItem(item)
                 return True
 
-    def confirm(self, setting='', textitem=''):
-        "ask for confirmation (specific)"
-        if self.opts[setting]:
-            dlg = CheckDialog(self, 'Apropos', message=textitem, option=setting)
-            dlg.exec_()
-            # opslaan zonder vragen (en zonder backuppen?)
-            _write(self.project_file, self.opts, self.views, self.itemdict)
-
-    def tree_undo(self):  # , event=None):
-        "start undo action"
-        self.undo_stack.undo()
-
-    def tree_redo(self):  # , event=None):
-        "start redo action"
-        self.undo_stack.redo()
-
-    def _add_item(self, root=None, under=True):
-        """nieuw item toevoegen (default: onder het geselecteerde)
-        """
-        log("in qt version's add_item")
-        test = self._check_addable()
-        if test:
-            log("adding item")
-            new_title, extra_titles = test
-            ## self._do_additem(root, under, new_title, extra_titles) # dit werkt
-            command = AddCommand(self, root, under, new_title, extra_titles)
-            self.undo_stack.push(command)
-
-    def _copy_item(self, cut=False, retain=True, to_other_file=None):
-        """start copy/cut/delete action
-
-        parameters: cut: remove item from tree (True for cut, delete and move)
-                    retain: remember item for pasting (True for cut and copy)
-                    to_other_file: name of file to paste note in after removing
-        """
-        test = self._check_copyable(cut, retain, to_other_file)
-        if test:
-            current = test
-            ## self._do_copyaction(cut, retain, current) # to_other_file)
-            command = CopyCommand(self, cut, retain, current)
-            self.undo_stack.push(command)
-
-    def _paste_item(self, before=True, below=False):
-        """start paste actie
-        """
-        test = self._check_pasteable(below)  # before,
-        if test:
-            current = test
-            ## self._do_pasteitem(before, below, current)
-            command = PasteCommand(self, before, below, current)
-            self.undo_stack.push(command)
-
     def _find_in(self, haystack):
         "search in plain text version of text"
         doc = gui.QTextDocument()
@@ -1846,73 +1891,6 @@ class MainWindow(qtw.QMainWindow, Mixin):
                 result.extend(test)
         return result
 
-    def search(self, mode=0):
-        """start search action
-        """
-        print('starting new search, srchlist =', self.srchlist)
-        if self.srchlist:
-            self.show_message('Cannot start new search while results screen is '
-                              'showing')
-            return
-        dlg = SearchDialog(self, mode=mode)
-        if dlg.exec_() != qtw.QDialog.Accepted:
-            return
-        if self.srchtype == 0:
-            self.editor.moveCursor(gui.QTextCursor.Start)
-            ok = self.editor.find(self.srchtext, self.srchflags)
-            if ok:
-                self.editor.ensureCursorVisible()
-            else:
-                self.show_message('Search string not found')
-            return
-        if self.srchtype not in (1, 2, 3):  # failsafe
-            self.show_message('Wrong search type')
-            return
-        self.search_results = self._search_from(self.root)
-        if not self.search_results:
-            self.srchlist = False
-            self.show_message('Search string not found')
-            return
-        if self.srchlist:
-            dlg = ResultsDialog(self)
-            dlg.show()
-        else:
-            self.srchno = 0
-            self.go_to_result()
-
-    def search_texts(self):
-        "search in all texts"
-        self.search(mode=2)
-
-    def search_titles(self):
-        "search in all titles"
-        self.search(mode=1)
-
-    def find_next(self):
-        "search forward"
-        if not self.srchtext:
-            return
-        if self.srchtype:
-            self.srchno += 1
-            self.go_to_result()
-        else:
-            if self.editor.find(self.srchtext, self.srchflags & (
-                    gui.QTextDocument.FindCaseSensitively |
-                    gui.QTextDocument.FindWholeWords)):
-                self.editor.ensureCursorVisible()
-
-    def find_prev(self):
-        "search backward"
-        if not self.srchtext:
-            return
-        if self.srchtype:
-            self.srchno -= 1
-            self.go_to_result()
-        else:
-            if self.editor.find(self.srchtext,
-                                self.srchflags | gui.QTextDocument.FindBackward):
-                self.editor.ensureCursorVisible()
-
     def go_to_result(self):
         "view search result"
         msg = ''
@@ -1939,6 +1917,29 @@ class MainWindow(qtw.QMainWindow, Mixin):
             ok = self.editor.find(self.srchtext, self.srchflags)
             if ok:
                 self.editor.ensureCursorVisible()
+
+    def change_pane(self):  # , event=None):
+        "wissel tussen tree en editor"
+        if self.tree.hasFocus():
+            self.editor.setFocus()
+        elif self.editor.hasFocus():
+            self.check_active()
+            self.tree.setFocus()
+
+# reimplemented from wxPython
+    def closeEvent(self, event):
+        """applicatie afsluiten"""
+        if not self.save_needed(meld=False):
+            event.ignore()
+        else:
+            self.cleanup_files()
+            event.accept()
+
+    def viewportEvent(self, event):
+        "reimplemented to make sure contents are saved?"
+        if event.Type == core.QEvent.ToolTip:
+            item = self.tree.currentItem()
+            qtw.QToolTip.showText(event.pos, item.toolTip().text(), item)
 
 
 def main(fnaam):
