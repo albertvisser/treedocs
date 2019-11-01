@@ -20,8 +20,13 @@ import bs4 as bs
 HERE = pathlib.Path(__file__).parent.resolve()
 HIDE_TEXT = "\n".join(("DocTree gaat nu slapen in de System tray",
                        "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"))
-logging.basicConfig(filename=str(HERE / 'logs' / 'doctree.log'),
-                    level=logging.DEBUG, format='%(asctime)s %(message)s')
+LOGFILE = HERE / 'logs' / 'doctree.log'
+WANT_LOGGING = 'DEBUG' in os.environ and os.environ['DEBUG'] != "0"
+if WANT_LOGGING:
+    LOGFILE.parent.mkdir(exist_ok=True)
+    LOGFILE.touch(exist_ok=True)
+    logging.basicConfig(filename=str(LOGFILE),
+                        level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 
 def init_opts():
@@ -35,7 +40,7 @@ def init_opts():
 
 def log(message):
     "write message to logfile"
-    if 'DEBUG' in os.environ and os.environ['DEBUG'] != "0":
+    if WANT_LOGGING:
         logging.info(message)
 
 
