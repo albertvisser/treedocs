@@ -9,6 +9,7 @@ import pathlib
 import tempfile
 
 import wx
+import wx.adv
 import wx.lib.mixins.treemixin as treemix
 import wx.richtext as rt
 
@@ -69,6 +70,27 @@ class CheckDialog(wx.Dialog):
         sizer0.Fit(pnl)
         sizer0.SetSizeHints(pnl)
         pnl.Layout()
+
+
+class TaskbarIcon(wx.adv.TaskBarIcon):
+    "icon in the taskbar"
+    id_revive = wx.NewId()
+    ## id_close = wx.NewId()
+
+    def __init__(self, parent):
+        # super().__init__(wx.adv.TBI_DOCK)
+        wx.adv.TaskBarIcon.__init__(self)
+        self.SetIcon(parent.app_icon, "Click to revive DocTree")
+        self.Bind(wx.adv.EVT_TASKBAR_LEFT_DCLICK, parent.revive)
+        self.Bind(wx.EVT_MENU, parent.revive, id=self.id_revive)
+        ## self.Bind(wx.EVT_MENU, parent.close, id=self.id_close)
+
+    def CreatePopupMenu(self):
+        """reimplemented"""
+        menu = wx.Menu()
+        menu.Append(self.id_revive, 'Revive Doctree')
+        ## menu.Append(self.id_close, 'Close DocTree')
+        return menu
 
 
 class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
@@ -452,8 +474,8 @@ class MainWindow(wx.Frame, shared.Mixin):
         wx.Frame.__init__(self, parent, _id, title, size=self.opts['ScreenSize'],
                           style=wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         shared.Mixin.__init__(self)
-        self.nt_icon = wx.Icon(os.path.join(HERE, "doctree.ico"), wx.BITMAP_TYPE_ICO)
-        self.SetIcon(self.nt_icon)
+        self.app_icon = wx.Icon(os.path.join(HERE, "doctree.ico"), wx.BITMAP_TYPE_ICO)
+        self.SetIcon(self.app_icon)
         self.statbar = self.CreateStatusBar()
 
         tbar = wx.ToolBar(self, -1)
@@ -635,10 +657,11 @@ class MainWindow(wx.Frame, shared.Mixin):
             if dlg.check_box.GetValue():
                 self.opts["AskBeforeHide"] = False
             dlg.Destroy()
-        self.tbi = wx.adv.TaskBarIcon()
-        self.tbi.SetIcon(self.nt_icon, "Click to revive DocTree")
-        wx.adv.EVT_TASKBAR_LEFT_UP(self.tbi, self.revive)
-        wx.adv.EVT_TASKBAR_RIGHT_UP(self.tbi, self.revive)
+        ## self.tbi = wx.adv.TaskBarIcon()
+        self.tbi = TaskbarIcon(self)
+        ## self.tbi.SetIcon(self.app_icon, "Click to revive DocTree")
+        ## wx.adv.EVT_TASKBAR_LEFT_UP(self.tbi, self.revive)
+        ## wx.adv.EVT_TASKBAR_RIGHT_UP(self.tbi, self.revive)
         self.Hide()
 
     def revive(self, event=None):
