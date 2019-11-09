@@ -1945,8 +1945,8 @@ class MainWindow(qtw.QMainWindow, Mixin):
 def main(fnaam):
     "entry point"
     app = qtw.QApplication(sys.argv)
-    if fnaam == '':
-        fnaam = 'data/qt_tree.pck'
+    # if fnaam == '':
+    #     fnaam = 'data/qt_tree.pck'
     main = MainWindow()  # fnaam=fnaam)
     app.setWindowIcon(main.nt_icon)
     main.show()

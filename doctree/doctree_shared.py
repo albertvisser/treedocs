@@ -674,6 +674,7 @@ class Mixin(object):
     def tree_redo(self):
         "placeholder"
         pass
+
     def expand_item(self):
         "expand one level"
         self._expand()
@@ -814,9 +815,9 @@ class Mixin(object):
     def check_active(self, message=None):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         log('*** in shared.check_active ***')
-        text  = self.tree.getitemtitle(self.activeitem)
-        log('active item is {} ({})'.format(self.activeitem, text))
         if self.activeitem:
+            text  = self.tree.getitemtitle(self.activeitem)
+            log('active item is {} ({})'.format(self.activeitem, text))
             if self.editor.check_dirty():
                 if message:
                     self.show_message(message, 'Doctree')
