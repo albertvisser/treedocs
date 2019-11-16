@@ -1217,20 +1217,20 @@ def main(fname=''):
     app = wx.App()  # redirect=True, filename="doctree_wx.log")
     log(dt.datetime.today().strftime("%d-%m-%Y %H:%M:%S").join(("------------------",
                                                                 "------------------")))
-    frame = MainWindow(None, -1, "DocTree - " + fname)
-    app.SetTopWindow(frame)
+    main = MainWindow(None, -1, "DocTree - " + fname)
+    app.SetTopWindow(main)
     if fname:
-        frame.project_file = pathlib.Path(fname).resolve()
-        if not os.path.exists(fname):
+        main.project_file = pathlib.Path(fname).resolve()
+        if not main.project_file.exists():
             mld = fname + ' does not exist, do you want to create it?'
-            with wx.MessageDialog(frame, mld, 'DocTree', wx.OK | wx.CANCEL) as dlg:
+            with wx.MessageDialog(main, mld, 'DocTree', wx.OK | wx.CANCEL) as dlg:
                 result = dlg.ShowModal()
                 if result == wx.ID_OK:
                     log('in main: {}'.format(fname))
-                    frame.new(fname=fname)
-                    frame.set_project_dirty(True)
+                    main.new(fname=fname)
+                    main.set_project_dirty(True)
         else:
-            err = frame.read()
+            err = main.read()
             if err:
                 wx.MessageBox(err, "Error")
     app.MainLoop()
