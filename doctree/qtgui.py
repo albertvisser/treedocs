@@ -1704,7 +1704,7 @@ class MainGui(qtw.QMainWindow):
 
     def add_view_to_menu(self, newname):
         "update action text"
-        action = self.viewmenu.actions()[self.opts["ActiveView"] + 7]
+        action = self.viewmenu.actions()[self.master.opts["ActiveView"] + 7]
         action.setText('{} {}'.format(str(action.text()).split()[0], newname))
 
     def check_next_viewmenu_option(prev=False):

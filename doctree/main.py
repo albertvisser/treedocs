@@ -988,7 +988,7 @@ class MainWindow():
         self.gui.rebuild_root()
         tree_item = self.viewtotree()
         self.set_window_title()
-        self.gui.treeset_item_selected(tree_item)
+        self.gui.tree.set_item_selected(tree_item)
 
     def search(self, *args, mode=0):
         """start search action
