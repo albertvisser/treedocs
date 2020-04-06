@@ -23,19 +23,18 @@ Another little extra is that you can copy pictures into the texts.
 Usage
 -----
 
-cd to the top directory, and run ``python(3) dt_start.pyw``.
+cd to the top directory, and run ``python(3) start.py``.
 If you know which file you are working with, you can add its name as an extra
 parameter.
 
-The GUI toolkit used is controlled in doctree.py in the subdirectory;
-note that the import for the wx version only works with Python 2.
+The GUI toolkit used is controlled in toolkit.py in the subdirectory; currently you can only specify `wx` or `qt`.
 
 Requirements
 ------------
 
 - Python
 - PyQT(5) for the current GUI version
-- wxPython for the older GUI version (it's currently being overhauled and adapted for wxPhoennix)
+- wxPython (Phoenix) for a version of the GUI where I don't have the rich text field fully working yet.
 
 Note that the current implementation uses *pickle* for storing the data, I'm in the
 process of changing that to something safer.
