@@ -497,7 +497,7 @@ class AddCommand(qtw.QUndoCommand):
         shared.log("root, under zijn {} ({}) en {}".format(self.root, self.root.text(0),
                                                            self.under))
         self.data = self.win.master.do_additem(self.root, self.under, self.pos,
-                                        self.new_title, self.extra_titles)
+                                               self.new_title, self.extra_titles)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #             en kan ik deze dus ook niet terugstoppen
 
@@ -682,7 +682,7 @@ class CopyCommand(qtw.QUndoCommand):
         shared.log(' in undo: newstate is {}'.format(self.newstate))
         if self.cut:
             shared.log('itemdict terugzetten in redo bij cut, cut_from_itemdict is {}'.format(
-                       cut_from_itemdict))
+                cut_from_itemdict))
             for key, value in cut_from_itemdict:
                 self.win.master.itemdict[key] = value
             parent, pos = oldloc
@@ -817,7 +817,8 @@ class TreePanel(qtw.QTreeWidget):
         """add item to tree at a given location
         """
         shared.log('in add_to_parent, itemkey is {}, titel is {}, parent is {},'.format(itemkey,
-                   titel, parent))
+                                                                                        titel,
+                                                                                        parent))
         new = qtw.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
         # save plain text on tree item to facilitate search
@@ -943,7 +944,7 @@ class TreePanel(qtw.QTreeWidget):
     def putsubtree(self, parent, titel, key, subtree=None, pos=-1):
         "build a new part of the tree"
         shared.log('in TreePanel.putsubtree met parent {}, titel {}, key {} of type {}'.format(
-                   parent, titel, key, type(key)))
+            parent, titel, key, type(key)))
         shared.log('calling shared.putsubtree met parent, titel, key, subtree, pos)')
         return shared.putsubtree(self, parent, titel, key, subtree, pos)
 
@@ -1012,6 +1013,20 @@ class EditorPanel(qtw.QTextEdit):
                                                self.toPlainText())
         return self.toHtml().replace('img src="{}/'.format(
             str(self.parent.master.project_file.parent)), 'img src="')
+
+    def get_text_position(self):
+        """return where the cursor is positioned in the text
+        """
+        print('in editor.get_position')
+        return self.textCursor().position()
+
+    def set_text_position(self, pos):
+        """set where the cursor should appear in the text
+        """
+        print('in editor.set_position')
+        cursor = self.textCursor()
+        cursor.setPosition(pos)
+        self.setTextCursor(cursor)
 
     def select_all(self):
         "select complete text"
@@ -1565,7 +1580,7 @@ class MainGui(qtw.QMainWindow):
         self.tray_icon.show()
         self.hide()
 
-    def revive(self):
+    def revive(self, event=None):
         """applicatie weer zichtbaar maken"""
         if event == qtw.QSystemTrayIcon.Unknown:
             self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
@@ -1707,7 +1722,7 @@ class MainGui(qtw.QMainWindow):
         action = self.viewmenu.actions()[self.master.opts["ActiveView"] + 7]
         action.setText('{} {}'.format(str(action.text()).split()[0], newname))
 
-    def check_next_viewmenu_option(prev=False):
+    def check_next_viewmenu_option(self, prev=False):
         "find the currently checked option, uncheck it and check the next/previous one"
         menuitem_list = [x for x in self.viewmenu.actions()][7:]
         if prev:

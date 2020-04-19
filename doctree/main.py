@@ -32,13 +32,13 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         newkey = max(itemdict.keys()) + 1
     except ValueError:
         newkey = 0
-    shared.log("add_newitem: cut_from_itemdict is {}".format(cut_from_itemdict))
+    shared.log("add_newitems: cut_from_itemdict is {}".format(cut_from_itemdict))
     for key, item in cut_from_itemdict:
         title, text = item
         itemdict[newkey] = (title, text)
         keymap[key] = newkey
         newkey += 1
-    shared.log("add_newitem: keymap is {}".format(keymap))
+    shared.log("add_newitems: keymap is {}".format(keymap))
     copied_item = replace_keys(copied_item, keymap)
     used_keys = list(keymap.values())
     return copied_item, itemdict, used_keys
@@ -76,11 +76,11 @@ def add_item_to_view(item, view):
     view.append((int(key), struct))
 
 
-def write_to_files(filename, opts, views, itemdict, extra_images=None):
+def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None):
     """settings en tree data in een structuur omzetten en opslaan
 
     images contained are saved in a separate zipfile"""
-    nt_data = {0: opts, 1: views, 2: itemdict}
+    nt_data = {0: opts, 1: views, 2: itemdict, 3: textpositions}
     zipfile = filename.with_suffix('.zip')
     try:
         shutil.copyfile(str(filename), str(filename) + ".bak")
@@ -825,7 +825,7 @@ class MainWindow():
             opts['Version'] = self.opts.get('Version', None)
             views, viewcount, itemdict = [[]], 1, {}
         else:
-            opts, views, viewcount, itemdict = self.read(other_file=other_file)
+            opts, views, viewcount, itemdict, positions = self.read(other_file=other_file)
 
         # 3. cut action on the item
 
@@ -850,7 +850,7 @@ class MainWindow():
 
         # 5. write back the updated structure
 
-        write_to_files(other_file, opts, views, itemdict, extra_images)
+        write_to_files(other_file, opts, views, itemdict, positions, extra_images)
 
     def order_top(self, *args):
         """order items directly under the top level"""
@@ -1205,11 +1205,17 @@ class MainWindow():
         if self.activeitem:
             text = self.gui.tree.getitemtitle(self.activeitem)
             shared.log('active item is {} ({})'.format(self.activeitem, text))
+            ref = self.gui.tree.getitemkey(self.activeitem)
+            pos = self.gui.editor.get_text_position()
+            try:
+                ref = int(ref)
+            except ValueError:
+                ref = -1
+            self.text_positions[ref] = pos
             if self.gui.editor.check_dirty():
                 if message:
                     gui.show_message(self, message)
                 shared.log('contents is {}'.format(self.gui.tree.getitemdata(self.activeitem)))
-                ref = self.gui.tree.getitemkey(self.activeitem)
                 content = str(self.gui.editor.get_contents())
                 try:
                     titel, tekst = self.itemdict[int(ref)]
@@ -1231,8 +1237,11 @@ class MainWindow():
             titel, tekst = self.itemdict[ref]
         except (KeyError, ValueError):
             self.gui.editor.set_contents(str(ref))
+            ref = -1
         else:
             self.gui.editor.set_contents(tekst)  # , titel)
+        pos = self.text_positions[ref]
+        self.gui.editor.set_text_position(pos)
         self.gui.editor.openup(True)
 
     def cleanup_files(self):
@@ -1283,9 +1292,15 @@ class MainWindow():
         except KeyError:
             itemdict = {}
 
+        # read text positions
+        try:
+            text_positions = nt_data[3]
+        except KeyError:
+            text_positions = {x: 0 for x in itemdict}
+
         # exit if meant for file to copy stuff to
         if other_file:
-            return nt_data[0], views, viewcount, itemdict
+            return nt_data[0], views, viewcount, itemdict, text_positions
 
         # make settings, views and itemdict into attributes
         for key, value in nt_data[0].items():
@@ -1293,6 +1308,8 @@ class MainWindow():
                 value = ""
             self.opts[key] = value
         self.views, self.viewcount, self.itemdict = views, viewcount, itemdict
+        self.text_positions = text_positions
+        # initialize screen positions dict
 
         # if possible, build a list of referred-to image files
         ## path = os.path.dirname((self.project_file))
@@ -1324,7 +1341,7 @@ class MainWindow():
         ## log('Itemdict items:')
         ## for x, y in self.master.itemdict.items():
             ## log('  {} ({}): {} ({})'.format(x, type(x), y, type(y)))
-        self.gui.set_focus_to_tree
+        self.gui.set_focus_to_tree()
         item_to_activate = self.viewtotree()
         self.has_treedata = True
         self.set_project_dirty(False)
@@ -1339,7 +1356,11 @@ class MainWindow():
         self.opts['SashPosition'] = self.gui.get_splitterpos()
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
-        self.imagelist = write_to_files(self.project_file, self.opts, self.views, self.itemdict)
+        # # do not write screen positions
+        # self.imagelist = write_to_files(self.project_file, self.opts, self.views, self.itemdict)
+        # also write screen positions
+        self.imagelist = write_to_files(self.project_file, self.opts, self.views, self.itemdict,
+                                        self.text_positions)
         self.set_project_dirty(False)
         if meld:
             ## print('In save - notify is', self.opts['NotifyOnSave'])
@@ -1351,4 +1372,5 @@ class MainWindow():
         if self.opts[setting]:
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
             # opslaan zonder vragen (em backuppen?)
-            write_to_files(self.project_file, self.opts, self.views, self.itemdict)
+            write_to_files(self.project_file, self.opts, self.views, self.itemdict,
+                           self.text_positions)

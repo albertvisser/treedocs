@@ -8,10 +8,11 @@ import wx.lib.mixins.treemixin as treemix
 import wx.richtext as rt
 import doctree.shared as shared
 
+
 def show_message(win, text):
     "show a confirmable message"
     with wx.MessageDialog(win, text, "DocTree", wx.OK | wx.ICON_INFORMATION) as dlg:
-        result = dlg.ShowModal()
+        dlg.ShowModal()
 
 
 def ask_ynquestion(win, text):
@@ -23,7 +24,7 @@ def ask_ynquestion(win, text):
 
 def ask_yncquestion(win, text):
     "ask a yes/no answerable question with possibilty to cancel"
-    with wx.MessageDialog(win, text, 'DocTree', wx.YES_NO | wx_CANCEL | wx.ICON_QUESTION) as dlg:
+    with wx.MessageDialog(win, text, 'DocTree', wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION) as dlg:
         result = dlg.ShowModal()
     return result == wx.ID_YES, result == wx.ID_CANCEL
 
@@ -31,7 +32,7 @@ def ask_yncquestion(win, text):
 def get_text(win, caption, oldtext):
     "open a dalog and get text input from the user"
     newtext = oldtext
-    with wx.TextEntryDialog(win, caption, title, oldtext) as dlg:
+    with wx.TextEntryDialog(win, caption, 'DocTree', oldtext) as dlg:
         ok = dlg.ShowModal() == wx.ID_OK
         newtext = dlg.GetValue()
     return ok, newtext
@@ -321,8 +322,8 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
 
     def getitemparentpos(self, item):
         "parent en positie van item onder parent bepalen"
-        log('*** in wx.tree.getitemparentpos ***')
-        log('item is {} {}'.format(item, self.getitemtitle(item)))
+        shared.log('*** in wx.tree.getitemparentpos ***')
+        shared.log('item is {} {}'.format(item, self.getitemtitle(item)))
         try:
             root = self.GetItemParent(item)
         except TypeError:   # geen item meegegeven - mag dat eigenlijk wel?
@@ -332,11 +333,11 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
             pos = 0
             tag, cookie = self.GetFirstChild(root)
             if tag:
-                log('start at tag {} {}'.format(tag, self.getitemtitle(tag)))
+                shared.log('start at tag {} {}'.format(tag, self.getitemtitle(tag)))
             while tag != item and tag.IsOk():
                 pos += 1
                 tag, cookie = self.GetNextChild(root, cookie)
-                log('next ok tag is {} {}'.format(tag, self.getitemtitle(tag)))
+                shared.log('next ok tag is {} {}'.format(tag, self.getitemtitle(tag)))
         return root, pos
 
     def getselecteditem(self):
@@ -368,7 +369,7 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
             prev = parent
             if prev == self.root:
                 prev = self.GetNextSibling(item)
-        self.Parent.Parent.popitems(item, cut_from_itemdict)
+        self.parent.parent.popitems(item, cut_from_itemdict)
         self.Delete(item)
         return oldloc, prev
 
@@ -400,8 +401,8 @@ class EditorPanel(rt.RichTextCtrl):
         data = str(data)
         ## self.SetValue(data)
         if data.startswith("<?xml"):
-            ## out = io.StringIO()                  -- out moet een OutputStream subclass zijn?
-            ##                                                  bv StringOutputStream maar die zijn er nog niet?
+            ## out = io.StringIO()              -- out moet een OutputStream subclass zijn?
+            ##                                     bv StringOutputStream maar die zijn er nog niet?
             ## out = io.BytesIO()
             handler = rt.RichTextXMLHandler()
             _buffer = self.GetBuffer()
@@ -422,7 +423,7 @@ class EditorPanel(rt.RichTextCtrl):
         "return contents from editor"
         ## content = self.GetValue()
         ## out = io.StringIO()                  -- out moet een OutputStream subclass zijn?
-        ##                                                  bv StringOutputStream maar die zijn er nog niet?
+        ##                                         bv StringOutputStream maar die zijn er nog niet?
         ## out = io.BytesIO()
         handler = rt.RichTextXMLHandler()
         _buffer = self.GetBuffer()
@@ -440,6 +441,17 @@ class EditorPanel(rt.RichTextCtrl):
         shared.log(content)
         return content
 
+    def get_text_position(self):
+        """return where the cursor is positioned in the text
+        """
+        return self.GetInsertionPoint()
+
+    def set_text_position(self, pos):
+        """set where the cursor should appear in the text
+        """
+        self.SetInsertionPoint(pos)
+        self.ScrollIntoView(pos)
+
     def undo(self, evt):
         "relay undo action"
         self.Undo()
@@ -452,7 +464,7 @@ class EditorPanel(rt.RichTextCtrl):
         "relay cut action"
         self.Cut()
 
-    def copy (self, evt):
+    def copy(self, evt):
         "relay copy action"
         self.Copy()
 
@@ -465,7 +477,7 @@ class EditorPanel(rt.RichTextCtrl):
         self.SelectAll()
 
     def clear(self):
-        "relay clear text action"
+        "empty the editor's contents"
         self.Clear()
 
     def text_bold(self, evt):
@@ -496,7 +508,7 @@ class EditorPanel(rt.RichTextCtrl):
         "alinea rechts uitlijnen"
         self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_RIGHT)
 
-    def text_justify(self, evt): #TODO
+    def text_justify(self, evt):  # TODO
         "alinea uitvullen"
         return  # self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_RIGHT)
 
@@ -617,10 +629,10 @@ class EditorPanel(rt.RichTextCtrl):
         ## dlg.Destroy()
 
     def enlarge_text(self, evt):
-        "letters groter maken" #TODO
+        "letters groter maken"  # TODO
 
     def shrink_text(self, evt):
-        "letters kleiner maken" #TODO
+        "letters kleiner maken"  # TODO
 
     def text_color(self, evt):
         "tekstkleur instellen"
@@ -694,10 +706,6 @@ class EditorPanel(rt.RichTextCtrl):
     def find_prev(self):
         "search backwards in textarea"
 
-    def clear(self):
-        "empty the editor's contents"
-        self.Clear()
-
 
 class MainGui(wx.Frame):
     "Primary application window (main screen)"
@@ -734,7 +742,7 @@ class MainGui(wx.Frame):
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.create_menu(menuBar, self.master.get_menu_data())
-        self.create_stylestoolbar(tbar) # frm)
+        self.create_stylestoolbar(tbar)  # frm)
 
         self.splitter.SplitVertically(self.tree, self.editor)
         self.splitter.SetSashPosition(self.master.opts['SashPosition'], True)
@@ -891,7 +899,6 @@ class MainGui(wx.Frame):
 
     def set_focus_to_editor(self):
         "set focus to the editor panel"
-        # self.editor.SetInsertionPoint(0)
         self.editor.SetFocus()
         self.in_editor = True
 
@@ -1026,7 +1033,7 @@ class MainGui(wx.Frame):
             if idx == self.opts["ActiveView"]:
                 menuitem.SetItemLabel(newname)
 
-    def check_next_viewmenu_option(prev=False):
+    def check_next_viewmenu_option(self, prev=False):
         "find the currently checked option, uncheck it and check the next/previous one"
         menuitem_list = [x for x in self.viewmenu.actions()][7:]
         if prev:
