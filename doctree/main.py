@@ -1153,7 +1153,7 @@ class MainWindow():
         # maar willen we toch weten of er iets gewijzigd is
         need_to_save = self.gui.editor.check_dirty() if always_check else False
         if save_is_needed or need_to_save:
-            if self.gui.editor.hasFocus():
+            if self.gui.in_editor():
                 self.check_active()
             question = "Data changed - save current file before continuing?"
             ok, cancel = gui.ask_yncquestion(self.gui, question)
