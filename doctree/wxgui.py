@@ -450,7 +450,7 @@ class EditorPanel(rt.RichTextCtrl):
         """set where the cursor should appear in the text
         """
         self.SetInsertionPoint(pos)
-        self.ScrollIntoView(pos)
+        self.ScrollIntoView(pos, 0)
 
     def undo(self, evt):
         "relay undo action"
@@ -942,14 +942,14 @@ class MainGui(wx.Frame):
 
     def set_next_item(self, any_level=False):
         "for go to next"
-        item = self.tree.GetNextSibling(self.activeitem)
+        item = self.tree.GetNextSibling(self.master.activeitem)
         if item.IsOk():
             self.tree.SelectItem(item)
         return item.IsOk()
 
     def set_prev_item(self, any_level=False):
         "for go to previous"
-        item = self.tree.GetPrevSibling(self.activeitem)
+        item = self.tree.GetPrevSibling(self.master.activeitem)
         if item.IsOk():
             self.tree.SelectItem(item)
         return item.IsOk()
