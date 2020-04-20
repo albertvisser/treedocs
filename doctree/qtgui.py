@@ -1017,13 +1017,11 @@ class EditorPanel(qtw.QTextEdit):
     def get_text_position(self):
         """return where the cursor is positioned in the text
         """
-        print('in editor.get_position')
         return self.textCursor().position()
 
     def set_text_position(self, pos):
         """set where the cursor should appear in the text
         """
-        print('in editor.set_position')
         cursor = self.textCursor()
         cursor.setPosition(pos)
         self.setTextCursor(cursor)
