@@ -1,3 +1,6 @@
+#! /usr/bin/env python3
+"""startup script voor DocTree
+"""
 import sys
 from doctree.main import MainWindow
 
