@@ -319,6 +319,7 @@ class MainWindow():
         self.views = [[]]
         self.viewcount = 1
         self.itemdict = {}
+        self.text_positions = {}
         self.imagelist = []
         self.opts = init_opts()
         self.has_treedata = True
@@ -1240,8 +1241,11 @@ class MainWindow():
             ref = -1
         else:
             self.gui.editor.set_contents(tekst)  # , titel)
-        pos = self.text_positions[ref]
-        self.gui.editor.set_text_position(pos)
+        try:
+            pos = self.text_positions[ref]
+            self.gui.editor.set_text_position(pos)
+        except KeyError:  # item is nieuw
+            self.text_positions[ref] = self.gui.editor.get_text_position()
         self.gui.editor.openup(True)
 
     def cleanup_files(self):
