@@ -106,9 +106,12 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
     zipped = []
     with zpf.ZipFile(str(zipfile), mode) as _out:
         for name in imagelist:
-            if name.startswith(str(filename)):
+            # if name.startswith(str(filename)):
+            imagepath = path / name
+            if imagepath.exists():
                 ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
-                _out.write(str(path / name), arcname=pathlib.Path(name).name)
+                # _out.write(str(path / name), arcname=pathlib.Path(name).name)
+                _out.write(str(imagepath), arcname=name)
                 zipped.append(name)
     return zipped
 

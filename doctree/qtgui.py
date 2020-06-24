@@ -992,8 +992,10 @@ class EditorPanel(qtw.QTextEdit):
             image.save(str(url))
             ## urlname = os.path.basename(urlname)  # make name "relative"
             document.addResource(gui.QTextDocument.ImageResource,
-                                 core.QUrl(url.name), image)
-            cursor.insertImage(url.name)
+            #                      core.QUrl(url.name), image)
+                                 core.QUrl(url), image)
+            # cursor.insertImage(url.name)
+            cursor.insertImage(url)
         else:
             super().insertFromMimeData(source)
 
