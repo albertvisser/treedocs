@@ -1571,9 +1571,15 @@ class MainGui(qtw.QMainWindow):
 
     def close(self):
         """applicatie afsluiten"""
-        if not self.master.save_needed(meld=False):
-            return
         super().close()
+
+    def closeEvent(self, event):
+        "reimplemented event handler"
+        if not self.master.save_needed(meld=False):
+            event.ignore()
+        else:
+            self.master.cleanup_files()
+            event.accept()
 
     def hide_me(self):
         """applicatie verbergen"""

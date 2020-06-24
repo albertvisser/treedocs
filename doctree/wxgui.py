@@ -933,6 +933,7 @@ class MainGui(wx.Frame):
         """applicatie afsluiten"""
         if not self.master.save_needed(meld=False):
             return
+        self.master.cleanup_files()
         if event:
             event.Skip()
 
