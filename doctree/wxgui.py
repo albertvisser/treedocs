@@ -765,6 +765,11 @@ class MainGui(wx.Frame):
         ## self.tree.SetFocus()
         self.Show(True)
 
+        self.srchtext = ''
+        self.srchtype = 0
+        self.srchflags = []
+        self.srchlist = self.srchwrap = False
+
     def create_menu(self, menubar, menudata):
         """bouw het menu en de meeste toolbars op"""
         self.keydef_to_method = {}
