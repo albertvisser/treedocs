@@ -363,13 +363,12 @@ class MainWindow():
         self.read()     # no need to check te result, should be ok when rereading?
         self.gui.show_statusmessage('{} herlezen'.format(str(self.project_file)))
 
-    def save(self, *args, meld=True):
+    def save(self, *args)
         """afhandelen Menu > save"""
         if self.project_file and self.project_file.name:
-            self.write(meld=meld)
+            self.write(meld=True)
         else:
             self.saveas()
-        self.gui.show_statusmessage('{} opgeslagen'.format(str(self.project_file)))
 
     def saveas(self, *args):
         """afhandelen Menu > Save As"""
@@ -381,7 +380,7 @@ class MainWindow():
             if test != '.pck':
                 filename = filename.with_suffix('.pck')
             self.project_file = filename
-            self.write()
+            self.write(meld=True)
             self.set_window_title()
 
     def rename_root(self, *args):
@@ -1373,11 +1372,15 @@ class MainWindow():
             ## print('In save - notify is', self.opts['NotifyOnSave'])
             save_text = str(self.project_file) + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
+        self.gui.show_statusmessage('{} opgeslagen'.format(str(self.project_file)))
 
     def confirm(self, setting='', textitem=''):
         "ask for confirmation when changing a setting"
         if self.opts[setting]:
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
-            # opslaan zonder vragen (em backuppen?)
+            # opslaan zonder vragen
+            # TODO moet eigenlijk ook zonder backuppen want dat heeft zo weinig zin
+            #      de extra backup overschrijft ook de eerder gemaakte werkelijke backup
+            # TODO mag ook zonder het zippen van de images want daar verandert niks aan
             write_to_files(self.project_file, self.opts, self.views, self.itemdict,
                            self.text_positions)
