@@ -363,7 +363,7 @@ class MainWindow():
         self.read()     # no need to check te result, should be ok when rereading?
         self.gui.show_statusmessage('{} herlezen'.format(str(self.project_file)))
 
-    def save(self, *args)
+    def save(self, *args):
         """afhandelen Menu > save"""
         if self.project_file and self.project_file.name:
             self.write(meld=True)
