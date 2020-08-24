@@ -76,19 +76,23 @@ def add_item_to_view(item, view):
     view.append((int(key), struct))
 
 
-def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None):
+def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None, backup=True,
+                   save_images=True):
     """settings en tree data in een structuur omzetten en opslaan
 
     images contained are saved in a separate zipfile"""
     nt_data = {0: opts, 1: views, 2: itemdict, 3: textpositions}
-    zipfile = filename.with_suffix('.zip')
-    try:
-        shutil.copyfile(str(filename), str(filename) + ".bak")
-        shutil.copyfile(str(zipfile), str(zipfile) + ".bak")
-    except FileNotFoundError:
-        pass
+    if backup:
+        zipfile = filename.with_suffix('.zip')
+        try:
+            shutil.copyfile(str(filename), str(filename) + ".bak")
+            shutil.copyfile(str(zipfile), str(zipfile) + ".bak")
+        except FileNotFoundError:
+            pass
     with filename.open("wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
+    if not save_images:
+        return
 
     if extra_images is None:
         # scan de itemdict af op image files en zet ze in een list
@@ -1378,9 +1382,6 @@ class MainWindow():
         "ask for confirmation when changing a setting"
         if self.opts[setting]:
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
-            # opslaan zonder vragen
-            # TODO moet eigenlijk ook zonder backuppen want dat heeft zo weinig zin
-            #      de extra backup overschrijft ook de eerder gemaakte werkelijke backup
-            # TODO mag ook zonder het zippen van de images want daar verandert niks aan
+            # opslaan zonder vragen, backuppen en zippen
             write_to_files(self.project_file, self.opts, self.views, self.itemdict,
-                           self.text_positions)
+                           self.text_positions, backup=False, save_images=False)
