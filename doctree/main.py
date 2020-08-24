@@ -1161,7 +1161,7 @@ class MainWindow():
             question = "Data changed - save current file before continuing?"
             ok, cancel = gui.ask_yncquestion(self.gui, question)
             if ok:
-                self.save(meld=meld)
+                self.save()
             elif cancel:
                 return False
         return True

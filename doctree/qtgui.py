@@ -983,19 +983,19 @@ class EditorPanel(qtw.QTextEdit):
                 image = gui.QImage(image)
             cursor = self.textCursor()
             document = self.document()
-            num = self.parent.opts['ImageCount']
+            num = self.parent.master.opts['ImageCount']
             num += 1
-            self.parent.opts['ImageCount'] = num
+            self.parent.master.opts['ImageCount'] = num
             ## urlname = '{}_{:05}.png'.format(str(self.parent.project_file), num)
-            img = '{}_{:05}.png'.format(self.parent.project_file.name, num)
-            url = self.parent.project_file.parent / img
+            img = '{}_{:05}.png'.format(self.parent.master.project_file.name, num)
+            url = self.parent.master.project_file.parent / img
             image.save(str(url))
             ## urlname = os.path.basename(urlname)  # make name "relative"
             document.addResource(gui.QTextDocument.ImageResource,
             #                      core.QUrl(url.name), image)
-                                 core.QUrl(url), image)
+                                 core.QUrl(str(url)), image)
             # cursor.insertImage(url.name)
-            cursor.insertImage(url)
+            cursor.insertImage(str(url))
         else:
             super().insertFromMimeData(source)
 
