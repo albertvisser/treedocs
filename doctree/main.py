@@ -82,8 +82,8 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
 
     images contained are saved in a separate zipfile"""
     nt_data = {0: opts, 1: views, 2: itemdict, 3: textpositions}
+    zipfile = filename.with_suffix('.zip')
     if backup:
-        zipfile = filename.with_suffix('.zip')
         try:
             shutil.copyfile(str(filename), str(filename) + ".bak")
             shutil.copyfile(str(zipfile), str(zipfile) + ".bak")
@@ -105,13 +105,15 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
     else:
         imagelist = extra_images
         mode = "a"
-    # add extra images to the zipfile
+    # rebuild zipfile or add extra images to the zipfile
+    # FIXME: als er niks veranderd is hoeft het zipfile ook niet aangemaakt te worden?
+    #        kun je daarvoor imagelist vergelijken met self.imagelist?
     path = filename.parent  # eventueel eerst absoluut maken
     zipped = []
     with zpf.ZipFile(str(zipfile), mode) as _out:
         for name in imagelist:
             # if name.startswith(str(filename)):
-            imagepath = path / name
+            imagepath = path / name  # TODO: kijken of dit nu dubbel voorgevoegd wordt
             if imagepath.exists():
                 ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
                 # _out.write(str(path / name), arcname=pathlib.Path(name).name)
@@ -1256,10 +1258,14 @@ class MainWindow():
 
     def cleanup_files(self):
         "remove temporary files on exit (as they have been zipped)"
+        dirname = str(self.project_file.parent)
         for name in self.imagelist:
+            if not name.startswith(dirname):
+                name = os.path.join(dirname, name)
             try:
                 os.remove(name)
             except FileNotFoundError:
+                # print('in cleanup_files, {} not found'.format(name))
                 pass
 
     def read(self, other_file=''):
