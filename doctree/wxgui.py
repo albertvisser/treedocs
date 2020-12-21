@@ -718,7 +718,8 @@ class MainGui(wx.Frame):
 
     def setup_screen(self):
         "continue after we have a reference to the class"
-        self.app_icon = wx.Icon(os.path.join(shared.HERE, "doctree.ico"), wx.BITMAP_TYPE_ICO)
+        self.app_icon = wx.Icon(os.path.join(shared.HERE, 'icons', "doctree.ico"),
+                                wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.app_icon)
         self.statbar = self.CreateStatusBar()
 

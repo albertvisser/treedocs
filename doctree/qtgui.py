@@ -1378,7 +1378,7 @@ class MainGui(qtw.QMainWindow):
         "continue after we have a reference to the class"
         offset = 40 if os.name != 'posix' else 10
         self.move(offset, offset)
-        self.nt_icon = gui.QIcon(str(shared.HERE / "doctree.xpm"))
+        self.nt_icon = gui.QIcon(str(shared.HERE / 'icons' / "doctree.xpm"))
         self.app.setWindowIcon(self.nt_icon)
         self.tray_icon = qtw.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
