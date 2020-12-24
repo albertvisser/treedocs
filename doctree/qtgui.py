@@ -1450,7 +1450,12 @@ class MainGui(qtw.QMainWindow):
                     elif label == '&Redo':
                         self.redo_item = action
                 if shortcut:
-                    action.setShortcuts([x for x in shortcut.split(",")])
+                    # print('  item is', item, 'shortcut is', shortcut)
+                    keys = [x for x in shortcut.split(",")]
+                    action.setShortcuts(keys)
+                    if menudef == menudata[0][1][-1]:
+                        self.quit_action = action
+                        self.quit_shortcuts = keys
                 if info.startswith("Check"):
                     action.setCheckable(True)
                     info = info[5:]
@@ -1792,3 +1797,14 @@ class MainGui(qtw.QMainWindow):
             ok = self.editor.find(self.srchtext, self.srchflags)
             if ok:
                 self.editor.ensureCursorVisible()
+
+    def add_escape_action(self):
+        "Add accelerator to for Esc key to close application"
+        if len(self.quit_action.shortcuts()) < 2:
+            self.quit_action.setShortcuts(self.quit_shortcuts)
+
+    def remove_escape_action(self):
+        "Remove accelerator to for Esc key to close application"
+        if len(self.quit_action.shortcuts()) > 1:
+            self.quit_action.setShortcuts(self.quit_shortcuts[:-1])
+

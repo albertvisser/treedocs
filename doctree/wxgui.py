@@ -59,7 +59,7 @@ def show_dialog(win, cls, kwargs=None):
     if kwargs:
         dlg = cls(win, **kwargs)
     else:
-        dlg = cls(win)
+        dlg = cls(win, id=-1)
     with dlg:
         ok = dlg.ShowModal()
         if ok == wx.ID_OK:
@@ -1103,7 +1103,7 @@ class MainGui(wx.Frame):
         keycode = event.GetKeyCode()
         mods = event.GetModifiers()
         win = event.GetEventObject()
-        if keycode == wx.WXK_ESCAPE:
+        if keycode == wx.WXK_ESCAPE and self.master.opts['EscapeClosesApp']:
             self.close()
         if keycode == wx.WXK_TAB and win == self.editor:
             if self.editor.IsModified():
@@ -1129,3 +1129,10 @@ class MainGui(wx.Frame):
         self.master.check_active()
         self.master.activate_item(x)
         event.Skip()
+
+    # API compliance: deze twee methoden zijn nu nog onnodig omdat de Esc afhandeling anders gebeurt
+    def add_escape_action(self):
+        "Add accelerator to for Esc key to close application"
+
+    def remove_escape_action(self):
+        "Remove accelerator to for Esc key to close application"

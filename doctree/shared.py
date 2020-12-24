@@ -54,4 +54,5 @@ def get_setttexts(settdict):
     """
     return {'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
             'NotifyOnLoad': 'Notify that the data has been reloaded',
-            'NotifyOnSave': 'Notify that the data has been saved' }
+            'NotifyOnSave': 'Notify that the data has been saved',
+            'EscapeClosesApp': 'Application can be closed by pressing Escape' }

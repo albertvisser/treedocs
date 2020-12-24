@@ -15,9 +15,9 @@ import doctree.shared as shared
 def init_opts():
     """return dict of options and their initial values
     """
-    return {"Application": "DocTree", "NotifyOnSave": True,
-            "AskBeforeHide": True, "SashPosition": 180, "ScreenSize": (800, 500),
-            "ActiveItem": [0], "ActiveView": 0, "ViewNames": ["Default"],
+    return {"Application": "DocTree", "NotifyOnSave": True, 'NotifyOnLoad': True,
+            "AskBeforeHide": True, "EscapeClosesApp": True, "SashPosition": 180,
+            "ScreenSize": (800, 500), "ActiveItem": [0], "ActiveView": 0, "ViewNames": ["Default"],
             "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
 
 
@@ -897,7 +897,8 @@ class MainWindow():
 
     def set_options(self, *args):
         """check settings for showing various messages"""
-        gui.show_dialog(self.gui, gui.OptionsDialog)
+        if gui.show_dialog(self.gui, gui.OptionsDialog):
+            self.set_escape_option()
 
     def add_view(self, *args):
         "handles Menu > View > New view"
@@ -1346,6 +1347,8 @@ class MainWindow():
             self.gui.set_window_split(self.opts['SashPosition'])
         except TypeError:
             gui.show_message(self.gui, 'Ignoring incompatible sash position')
+        self.set_escape_option()
+
         self.activeitem = self.gui.rebuild_root()  # item_to_activate =
         self.gui.init_app()
         self.gui.editor.set_contents(self.opts["RootData"])
@@ -1365,6 +1368,12 @@ class MainWindow():
         if item_to_activate != self.activeitem:
             self.gui.tree.set_item_selected(item_to_activate)
         return ''
+
+    def set_escape_option(self):
+        if self.opts['EscapeClosesApp']:
+            self.gui.add_escape_action()
+        else:
+            self.gui.remove_escape_action()
 
     def write(self, meld=True):
         """settings en tree data in een structuur omzetten en opslaan"""
