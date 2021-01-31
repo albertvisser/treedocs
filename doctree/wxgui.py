@@ -791,19 +791,24 @@ class MainGui(wx.Frame):
                     continue
                 label, handler, shortcut, icon, info = menudef
                 # icon is mede bedoeld om van hieruit de toolbar op te zetten
-                if info.startswith("Check"):
-                    menu_item = wx.MenuItem(submenu, -1, label, info)  # , wx.ITEM_CHECK)
+                if shortcut:
+                    firstkey = shortcut.split(',', 1)[0].replace('PgDown', 'PgDn')
+                    menulabel = '\t'.join((label, firstkey))
                 else:
-                    menu_item = wx.MenuItem(submenu, -1, label, info)
+                    menulabel = label
+                if info.startswith("Check"):
+                    menu_item = wx.MenuItem(submenu, -1, menulabel, info, wx.ITEM_CHECK)
+                else:
+                    menu_item = wx.MenuItem(submenu, -1, menulabel, info)
                 if item == menudata[3][0]:
                     if label == '&Undo':
                         self.undo_item = menu_item
                     elif label == '&Redo':
                         self.redo_item = menu_item
                 self.Bind(wx.EVT_MENU, handler, menu_item)
-                if icon:
-                    menu_item.SetBitmap(wx.Bitmap(os.path.join(shared.HERE, icon),
-                                                  wx.BITMAP_TYPE_PNG))
+                # if icon:
+                #     menu_item.SetBitmap(wx.Bitmap(os.path.join(shared.HERE, icon),
+                #                                   wx.BITMAP_TYPE_PNG))
                 submenu.Append(menu_item)
                 # TODO afwijkende callback / update_ui regelen voor:
                 # edit -> undo, redo, cut, copy, paste, select_all - allemaal 2x self.forward_event
@@ -945,7 +950,7 @@ class MainGui(wx.Frame):
         """nieuw item toevoegen (default: onder het geselecteerde)
         """
         origpos = -1  # is dit niet te beperkt?
-        self.master.do_additem(self, root, under, origpos, new_title, extra_titles)
+        self.master.do_additem(root, under, origpos, new_title, extra_titles)
 
     def set_next_item(self, any_level=False):
         "for go to next"
@@ -968,12 +973,12 @@ class MainGui(wx.Frame):
                     retain: remember item for pasting (True for cut and copy)
                     current: item to copy
         """
-        self.master.do_copyaction(self, cut, retain, current)
+        self.master.do_copyaction(cut, retain, current)
 
     def start_paste(self, before=True, below=False, dest=None):
         """start paste actie
         """
-        self.master.do_pasteitem(self, before, below, dest)
+        self.master.do_pasteitem(before, below, dest)
 
     def reorder_items(self, root, recursive=False):
         "(re)order_items"
@@ -1105,19 +1110,29 @@ class MainGui(wx.Frame):
         win = event.GetEventObject()
         if keycode == wx.WXK_ESCAPE and self.master.opts['EscapeClosesApp']:
             self.close()
-        if keycode == wx.WXK_TAB and win == self.editor:
-            if self.editor.IsModified():
-                key = self.tree.GetItemData(self.activeitem)
-                try:
-                    titel = self.itemdict[key][0]
-                except KeyError:
-                    print("on_key (tab): KeyError, waarschijnlijk op root")
-                    if key:
-                        self.tree.SetItemData(self.root, key)
-                else:
-                    self.itemdict[key] = (titel, self.editor.get_contents())
-            self.tree.SetFocus()
-            skip = False
+        elif keycode == wx.WXK_DELETE:
+            print('delete pressed', end = ' ')
+            if win == self.editor:
+                print('in editor, let editor handle this')
+            else:
+                print('in tree: handle with delete item')
+                self.delete_item()
+                skip = False
+        # elif keycode == wx.WXK_TAB and win == self.editor:
+        #     # dit betekent dat TAB in de editor geen tab invoegt maar naar de tree navigeert
+        #     # dat is niet zoals de qt versie werkt
+        #     if self.editor.IsModified():
+        #         key = self.tree.GetItemData(self.master.activeitem)
+        #         try:
+        #             titel = self.itemdict[key][0]
+        #         except KeyError:
+        #             print("on_key (tab): KeyError, waarschijnlijk op root")
+        #             if key:
+        #                 self.tree.SetItemData(self.root, key)
+        #         else:
+        #             self.itemdict[key] = (titel, self.editor.get_contents())
+        #     self.tree.SetFocus()
+        #     skip = False
         if event and skip:
             event.Skip()
 
