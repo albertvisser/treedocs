@@ -18,4 +18,4 @@ if __name__ == '__main__':
                         help='write output to separate files instead of to a '
                              'single one (filenames are generated)')
     args = parser.parse_args()
-    main(args.fname, args.as_html, args.to_files)
+    main(args.fname, donot_filter_html=args.as_html, to_files=args.to_files)
