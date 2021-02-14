@@ -11,7 +11,7 @@ def filter_html(data):
     behandel de data als een html document en geeft de inhoud van de html body terug
     als een string. Indien niet aanwezig: geef een lege string terug
     """
-    soup = bs.BeautifulSoup(data)
+    soup = bs.BeautifulSoup(data, 'lxml')
     if soup.html:
         body = soup.html.body
         return body.get_text()
