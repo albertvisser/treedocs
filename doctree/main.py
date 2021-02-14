@@ -139,7 +139,7 @@ class MainWindow():
                 ok = gui.ask_ynquestion(self.gui,
                                         fname + " does not exist, do you want to create it?")
                 if ok:
-                    self.new(filename=fname)
+                    self.new(filename=fname, ask_ok=False)
                     self.set_project_dirty(True)
             else:
                 err = self.read()
