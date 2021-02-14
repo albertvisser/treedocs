@@ -399,44 +399,46 @@ class EditorPanel(rt.RichTextCtrl):
         shared.log(data)
         self.Clear()
         data = str(data)
-        self.SetValue(data)
-        # if data.startswith("<?xml"):
-        #     # out = io.StringIO()              -- out moet een OutputStream subclass zijn?
-        #     #                                     bv StringOutputStream maar die zijn er nog niet?
-        #     # out = io.BytesIO()
-        #     handler = rt.RichTextXMLHandler()
-        #     _buffer = self.GetBuffer()
-        #     _buffer.AddHandler(handler)
-        #     with tempfile.NamedTemporaryFile(mode='w+') as out:
-        #         out.write(data)
-        #         # out.seek(0)
-        #         handler.LoadFile(_buffer, out.name)
-        #     # out.write(data)
-        #     # out.seek(0)
-        #     # handler.LoadFile(_buffer, out)
-        #     # handler.ImportXML(_buffer, data)
-        # else:
-        #     self.SetValue(data)  # WriteText(data)
+        # self.SetValue(data)
+        # als ik het onderstaande activeer en de app uitvoer krijg ik (maar niet altijd) een fout
+        # gemeld in een popup: "xml parsing error: no element found at line 1" .
+        if data.startswith("<?xml"):
+            handler = rt.RichTextXMLHandler()
+            _buffer = self.GetBuffer()
+            _buffer.AddHandler(handler)
+            # out = io.StringIO()              -- out moet een OutputStream subclass zijn?
+            #                                     bv StringOutputStream maar die zijn er nog niet?
+            # out = io.BytesIO()
+            # out.write(data)
+            # out.seek(0)
+            # handler.LoadFile(_buffer, out)
+            # handler.ImportXML(_buffer, data)
+            with tempfile.NamedTemporaryFile(mode='w+') as out:
+                out.write(data)
+                out.seek(0)
+                handler.LoadFile(_buffer, out.name)
+        else:
+            self.SetValue(data)  # WriteText(data)
         self.Refresh()
 
     def get_contents(self):
         "return contents from editor"
-        content = self.GetValue()
-        # # out = io.StringIO()                  -- out moet een OutputStream subclass zijn?
-        # #                                         bv StringOutputStream maar die zijn er nog niet?
-        # # out = io.BytesIO()
-        # handler = rt.RichTextXMLHandler()
-        # _buffer = self.GetBuffer()
-        # # print(type(_buffer), type(out))
-        # with tempfile.NamedTemporaryFile(mode='w+') as out:
-        #     handler.SaveFile(_buffer, out.name)
-        #     # handler.ExportXML(_buffer, content)
-        #     # # of moet dit zijn ok = _buffer.SaveFile(_out) ?
-        #     # out.seek(0)
-        #     content = out.read()
-        # # handler.SaveFile(_buffer, out)
-        # # out.seek(0)
-        # # content = out.read()
+        # content = self.GetValue()
+        handler = rt.RichTextXMLHandler()
+        _buffer = self.GetBuffer()
+        # print(type(_buffer), type(out))
+        # out = io.StringIO()                  -- out moet een OutputStream subclass zijn?
+        #                                         bv StringOutputStream maar die zijn er nog niet?
+        # out = io.BytesIO()
+        # handler.SaveFile(_buffer, out)
+        # out.seek(0)
+        # content = out.read()
+        with tempfile.NamedTemporaryFile(mode='w+') as out:
+            handler.SaveFile(_buffer, out.name)
+            # handler.ExportXML(_buffer, content)
+            # # of moet dit zijn ok = _buffer.SaveFile(_out) ?
+            out.seek(0)
+            content = out.read()
         shared.log("*** in get_contents: ***")
         shared.log(content)
         return content
