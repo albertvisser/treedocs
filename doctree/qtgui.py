@@ -1111,9 +1111,7 @@ class EditorPanel(qtw.QTextEdit):
         ## fmt = gui.QTextBlockFormat()
         fmt = where.blockFormat()
         wid = fmt.indent()
-        shared.log('indent_more called, current indent is {}'.format(wid))
         fmt.setIndent(wid + 100)
-        shared.log('indent_more called, indent aangepast naar {}'.format(fmt.indent()))
         # maar hier is geen merge methode voor, lijkt het...
 
     def indent_less(self):  # , event=None):
@@ -1122,29 +1120,23 @@ class EditorPanel(qtw.QTextEdit):
             return
         fmt = gui.QTextBlockFormat()
         wid = fmt.indent()
-        shared.log('indent_less called, current indent is {}'.format(wid))
         if wid > 100:
             fmt.setIndent(wid - 100)
 
     def increase_parspacing(self):
-        "relay"
-        self.OnParagraphSpacingMore()
+        "not implemented in Qt"
 
     def decrease_parspacing(self):
-        "relay"
-        self.OnParagraphSpacingLess()
+        "not implemented in Qt"
 
     def set_linespacing_10(self):
-        "relay"
-        self.OnLineSpacingSingle()
+        "not implemented in Qt"
 
     def set_linespacing_15(self):
-        "relay"
-        self.OnLineSpacingHalf()
+        "not implemented in Qt"
 
     def set_linespacing_20(self):
-        "relay"
-        self.OnLineSpacingDouble()
+        "not implemented in Qt"
 
     def text_font(self):  # , event=None):
         "lettertype en/of -grootte instellen"
@@ -1432,7 +1424,6 @@ class MainGui(qtw.QMainWindow):
                 self.treemenu = menu
             for menudef in data:
                 if not menudef:
-                    menu.addSeparator()
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if icon:
@@ -1496,28 +1487,28 @@ class MainGui(qtw.QMainWindow):
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
+        self.setcoloraction_color = core.Qt.black
         pix = gui.QPixmap(14, 14)
-        pix.fill(core.Qt.black)
+        pix.fill(self.setcoloraction_color)
         action = qtw.QAction(gui.QIcon(pix), "Change text color", self)
         action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
         self.actiondict["&Color..."] = action
         pix = gui.QPixmap(14, 14)
-        self.setcoloraction_color = core.Qt.magenta
         pix.fill(self.setcoloraction_color)
         action = qtw.QAction(gui.QIcon(pix), "Set text color", self)
         action.triggered.connect(self.editor.set_text_color)
         toolbar.addAction(action)
         self.setcolor_action = action
 
+        self.setbackgroundcoloraction_color = core.Qt.white
         pix = gui.QPixmap(18, 18)
-        pix.fill(core.Qt.white)
+        pix.fill(self.setbackgroundcoloraction_color)
         action = qtw.QAction(gui.QIcon(pix), "Change background color", self)
         action.triggered.connect(self.editor.background_color)
         toolbar.addAction(action)
         self.actiondict["&Background..."] = action
         pix = gui.QPixmap(18, 18)
-        self.setbackgroundcoloraction_color = core.Qt.yellow
         pix.fill(self.setbackgroundcoloraction_color)
         action = qtw.QAction(gui.QIcon(pix), "Set background color", self)
         action.triggered.connect(self.editor.set_background_color)

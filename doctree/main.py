@@ -209,7 +209,7 @@ class MainWindow():
                      'Switch to the next view in the list'),
                     ('Prior View', self.prev_view, 'Ctrl+-', '',
                      'Switch to the previous view in the list'),
-                    ())),  # label, handler, shortcut, icon, info
+                    ())),
                 ('&Tree', (
                     ('&Undo', self.gui.tree_undo, 'Ctrl+Alt+Z', '', 'Undo last operation'),
                     ('&Redo', self.gui.tree_redo, 'Ctrl+Alt+Y', '', 'Redo last undone operation'),
@@ -265,17 +265,21 @@ class MainWindow():
                      'icons/format-justify-center.png', 'Check'),
                     ('Align &Right', self.gui.editor.align_right, 'Shift+Ctrl+R',
                      'icons/format-justify-right.png', 'Check'),
-                    ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
-                     'icons/format-justify-fill.png', 'Check'),
+                    # niet implemented in wx - vind ik ook eigenlijk niet nodig
+                    # ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
+                    #  'icons/format-justify-fill.png', 'Check'),
                     (),
-                    # ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]', '',
-                    #  'Increase indentation'),
-                    # ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[', '',
-                    #  'Decrease indentation'),
+                    # in wx nog niet duidelijk hoe goed te krijgen
+                    # ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
+                    #  'icons/format-indent-more.png', 'Increase indentation'),
+                    # ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
+                    #  'icons/format-indent-less.png', 'Decrease indentation'),
                     # (),
+                    # niet implemented in qt - vind ik oom eigenlijk niet nodig
                     # ("Increase Paragraph &Spacing", self.gui.editor.increaseparspacing, ''),
                     # ("Decrease &Paragraph Spacing", self.gui.editor.decreaseparspacing, ''),
                     # (),
+                    # niet implemented in qt - vind ik oom eigenlijk niet nodig
                     # ("Normal Line Spacing", self.gui.editor.set_linespacing_10, ''),
                     # ("1.5 Line Spacing", self.gui.editor.set_linespacing_15,''),
                     # ("Double Line Spacing", self.gui.editor.set_linespacing_20, ''),

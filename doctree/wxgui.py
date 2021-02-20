@@ -6,6 +6,8 @@ import wx
 import wx.adv
 import wx.lib.mixins.treemixin as treemix
 import wx.richtext as rt
+import wx.lib.colourselect as csel
+import wx.lib.buttons as wxlb
 import doctree.shared as shared
 
 
@@ -388,6 +390,7 @@ class EditorPanel(rt.RichTextCtrl):
         rt.RichTextCtrl.__init__(self, parent, _id,  # size=(400,200),
                                  style=wx.VSCROLL | wx.HSCROLL | wx.NO_BORDER)
         self.textAttr = rt.RichTextAttr()
+        self.parent_ = parent.parent
 
     def on_url(self, evt):
         "dummy handler for clicking on a url"
@@ -495,8 +498,17 @@ class EditorPanel(rt.RichTextCtrl):
         self.ApplyUnderlineToSelection()
 
     def text_strikethrough(self, evt):
-        "selectie onderstrepen"
+        "selectie doorhalen"
         # self.ApplyUnderlineToSelection() - as yet unclear how to implement
+        attr = rt.RichTextAttr()
+        attr.SetFlags(wx.TEXT_ATTR_FONT_STRIKETHROUGH)
+        if not self.HasSelection():
+            print('vanaf hier')
+            self.BeginStyle(attr)
+        else:
+            print('selectie')
+            range = self.GetSelectionRange()
+            self.SetStyle(range, attr)
 
     def align_left(self, evt):
         "alinea links uitlijnen"
@@ -512,7 +524,7 @@ class EditorPanel(rt.RichTextCtrl):
 
     def text_justify(self, evt):  # TODO
         "alinea uitvullen"
-        return  # self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_RIGHT)
+        self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_JUSTIFIED)  # unimplemented vlgs docs
 
     def indent_more(self, evt):
         "alinea verder laten inspringen"
@@ -609,26 +621,20 @@ class EditorPanel(rt.RichTextCtrl):
 
     def text_font(self, evt):
         "lettertype en/of grootte instellen"
-        if not self.HasSelection():
-            return
-
-        range = self.GetSelectionRange()
-        fontData = wx.FontData()
-        fontData.EnableEffects(False)
+        font = evt.GetFont()
         attr = rt.RichTextAttr()
-        attr.SetFlags(wx.TEXT_ATTR_FONT)
-        if self.GetStyle(self.GetInsertionPoint(), attr):
-            fontData.SetInitialFont(attr.GetFont())
-
-        with wx.FontDialog(self, fontData) as dlg:
-            if dlg.ShowModal() == wx.ID_OK:
-                fontData = dlg.GetFontData()
-                font = fontData.GetChosenFont()
-                if font:
-                    attr.SetFlags(wx.TEXT_ATTR_FONT)
-                    attr.SetFont(font)
-                    self.SetStyle(range, attr)
-        ## dlg.Destroy()
+        if font:
+            if not self.HasSelection():
+                # attr.SetFlags(wx.TEXT_ATTR_FONT)
+                # attr.SetFont(font)
+                # self.SetStyle(self.GetInsertionPoint(), attr)
+                self.BeginFont(font)
+            else:
+                range = self.GetSelectionRange()
+                attr.SetFlags(wx.TEXT_ATTR_FONT)
+                attr.SetFont(font)
+                self.SetStyle(range, attr)
+        self.SetFocus()
 
     def enlarge_text(self, evt):
         "letters groter maken"  # TODO
@@ -638,28 +644,53 @@ class EditorPanel(rt.RichTextCtrl):
 
     def text_color(self, evt):
         "tekstkleur instellen"
-        colourData = wx.ColourData()
-        attr = rt.RichTextAttr()
-        attr.SetFlags(wx.TEXT_ATTR_TEXT_COLOUR)
-        if self.GetStyle(self.GetInsertionPoint(), attr):
-            colourData.SetColour(attr.GetTextColour())
+        colour = evt.GetEventObject().GetValue()
+        if colour:
+            self.applyfgcolour(colour)
+            self.parent_.textcolour = colour
+            self.parent_.changebitmapbuttoncolour(self.parent_.fgcset, colour)
+        self.SetFocus()
 
-        with wx.ColourDialog(self, colourData) as dlg:
-            if dlg.ShowModal() == wx.ID_OK:
-                colourData = dlg.GetColourData()
-                colour = colourData.GetColour()
-                if colour:
-                    if not self.HasSelection():
-                        self.BeginTextColour(colour)
-                    else:
-                        range = self.GetSelectionRange()
-                        attr.SetFlags(wx.TEXT_ATTR_TEXT_COLOUR)
-                        attr.SetTextColour(colour)
-                        self.SetStyle(range, attr)
-        ## dlg.Destroy()
+    def set_text_color(self, evt):
+        "tekstkleur instellen"
+        self.applyfgcolour(self.parent_.textcolour)
+        self.SetFocus()
+
+    def applyfgcolour(self, colour):
+        "colorize selected text"
+        if not self.HasSelection():
+            self.BeginTextColour(colour)
+        else:
+            range = self.GetSelectionRange()
+            attr = rt.RichTextAttr()
+            attr.SetFlags(wx.TEXT_ATTR_TEXT_COLOUR)
+            attr.SetTextColour(colour)
+            self.SetStyle(range, attr)
 
     def background_color(self, evt):
-        "achtergrondkleur voor tekst instellen"  # TODO
+        "achtergrondkleur voor tekst instellen"
+        colour = evt.GetEventObject().GetValue()
+        if colour:
+            self.applybgcolour(colour)
+            self.parent_.backgroundcolour = colour
+            self.parent_.changebitmapbuttoncolour(self.parent_.bgcset, colour)
+        self.SetFocus()
+
+    def set_background_color(self, evt):
+        "achtergrondkleur instellen"
+        self.applybgcolour(self.parent_.backgroundcolour)
+        self.SetFocus()
+
+    def applybgcolour(self, colour):
+        "colorize background of selected text"
+        attr = rt.RichTextAttr()
+        attr.SetFlags(wx.TEXT_ATTR_BACKGROUND_COLOUR)
+        attr.SetBackgroundColour(colour)
+        if not self.HasSelection():
+            self.BeginStyle(attr)  # BeginBackgroundColour(colour)
+        else:
+            range = self.GetSelectionRange()
+            self.SetStyle(range, attr)
 
     def update_bold(self, evt):
         "het betreffende menuitem aanvinken indien van toepassing"
@@ -674,6 +705,10 @@ class EditorPanel(rt.RichTextCtrl):
         evt.Check(self.IsSelectionUnderlined())
 
     def update_alignleft(self, evt):
+        "het betreffende menuitem aanvinken indien van toepassing"
+        evt.Check(self.IsSelectionAligned(wx.TEXT_ALIGNMENT_LEFT))
+
+    def update_strikethrough(self, evt):
         "het betreffende menuitem aanvinken indien van toepassing"
         evt.Check(self.IsSelectionAligned(wx.TEXT_ALIGNMENT_LEFT))
 
@@ -725,14 +760,17 @@ class MainGui(wx.Frame):
         self.SetIcon(self.app_icon)
         self.statbar = self.CreateStatusBar()
 
-        tbar = wx.ToolBar(self, -1)
-        self.SetToolBar(tbar)  # - is blijkbaar niet nodig
-        menuBar = wx.MenuBar()
-        self.SetMenuBar(menuBar)
+        toolbar1 = wx.ToolBar(self)
+        # toolbar2 = wx.ToolBar(self)
+        self.SetToolBar(toolbar1)
+        # self.SetToolBar(toolbar2)
+        menubar = wx.MenuBar()
+        self.SetMenuBar(menubar)
 
         ## self.splitter = wx.Frame(self)
         self.splitter = wx.SplitterWindow(self, -1)  # , style = wx.NO_3D) # |wx.SP_3D
         self.splitter.SetMinimumPaneSize(1)
+        self.splitter.parent = self
 
         self.tree = TreePanel(self.splitter, -1, style=wx.TR_HAS_BUTTONS)
         self.root = self.tree.AddRoot("MyNotes")
@@ -744,8 +782,11 @@ class MainGui(wx.Frame):
         self.editor.new_content = True
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
-        self.create_menu(menuBar, self.master.get_menu_data())
-        self.create_stylestoolbar(tbar)  # frm)
+        self.create_menu(menubar, toolbar1, self.master.get_menu_data())
+        # print(toolbar1.GetToolsCount())
+        # toolbar1.Realize()
+        self.create_stylestoolbar(toolbar1)  # frm)
+        toolbar1.Realize()
 
         self.splitter.SplitVertically(self.tree, self.editor)
         self.splitter.SetSashPosition(self.master.opts['SashPosition'], True)
@@ -773,8 +814,17 @@ class MainGui(wx.Frame):
         self.srchflags = []
         self.srchlist = self.srchwrap = False
 
-    def create_menu(self, menubar, menudata):
+    def create_menu(self, menubar, toolbar, menudata):
         """bouw het menu en de meeste toolbars op"""
+        update_ui = {}  # bijwerken menu is niet meer nodig  
+                     # "&Bold": self.editor.update_bold,
+                     # "&Italic": self.editor.update_italic,
+                     # "&Underline": self.editor.update_underline,
+                     # 'Strike&through': self.editor.update_strikethrough,
+                     # "Align &Left": self.editor.update_alignleft,
+                     # "&Center": self.editor.update_center,
+                     # "Align &Right": self.editor.update_alignright,
+                     # '&Justify': None}
         self.keydef_to_method = {}
         for item, data in menudata:
             menu_label = item
@@ -786,6 +836,8 @@ class MainGui(wx.Frame):
                 self.notemenu = submenu
             elif item == menudata[3][0]:
                 self.treemenu = submenu
+            if item in (menudata[3][0], menudata[4][0], menudata[5][0]):
+                toolbar.AddSeparator()
             for menudef in data:
                 label = ''
                 if not menudef:
@@ -798,79 +850,71 @@ class MainGui(wx.Frame):
                     menulabel = '\t'.join((label, firstkey))
                 else:
                     menulabel = label
-                if info.startswith("Check"):
-                    menu_item = wx.MenuItem(submenu, -1, menulabel, info, wx.ITEM_CHECK)
-                else:
-                    menu_item = wx.MenuItem(submenu, -1, menulabel, info)
+                # menuitems kunnen niet zowel een icon als type check hebben
+                # if info.startswith("Check"):
+                #     menu_item = wx.MenuItem(submenu, -1, menulabel, info, wx.ITEM_CHECK)
+                # else:
+                menu_item = wx.MenuItem(submenu, -1, menulabel, info)
                 if item == menudata[3][0]:
                     if label == '&Undo':
                         self.undo_item = menu_item
                     elif label == '&Redo':
                         self.redo_item = menu_item
                 self.Bind(wx.EVT_MENU, handler, menu_item)
-                # if icon:
-                #     menu_item.SetBitmap(wx.Bitmap(os.path.join(shared.HERE, icon),
-                #                                   wx.BITMAP_TYPE_PNG))
+                if icon:
+                    bmp = wx.Bitmap(os.path.join(shared.HERE, icon), wx.BITMAP_TYPE_PNG)
+                    menu_item.SetBitmap(bmp)
+                    # tevens opbouwen eerste toolbar
+                    tooltype = wx.ITEM_NORMAL
+                    # if label in update_ui and update_ui[label] is not None:
+                    #     tooltype = wx.ITEM_CHECK
+                    item = toolbar.AddTool(-1, label, bmp)
+                    # item = toolbar.AddTool(-1, label, bmp, shortHelp=info, kind=tooltype)
+                    if label in update_ui:
+                        if update_ui[label]:
+                            callback, ui_updater = handler, update_ui[label]
+                    else:
+                    #     callback = ui_updater = self.forward_event
+                        callback, ui_updater = handler, None
+                    self.Bind(wx.EVT_TOOL, callback, item)
+                    if ui_updater:
+                        self.Bind(wx.EVT_UPDATE_UI, ui_updater, item)
                 submenu.Append(menu_item)
-                # TODO afwijkende callback / update_ui regelen voor:
-                # edit -> undo, redo, cut, copy, paste, select_all - allemaal 2x self.forward_event
-                # format - bold, italic, underline: self.editor_text_xx, self.editor_update_xx
-                # format - left, center, right: self.editor.align_xx, self.editor_update_xx
-                # if updateUI is not None:
-                #     self.Bind(wx.EVT_UPDATE_UI, updateUI, menu_item)
             menubar.Append(submenu, menu_label)
 
-    def create_stylestoolbar(self, tbar):
+    def create_stylestoolbar(self, toolbar):
         "build toolbar with buttons to change styles"
-        # in de qt versie zijn de meeste van deze al tijdens het opzetten van het menu
-        # aan de toolbar gekoppeld
-        for action in ((wx.ID_CUT, "edit-cut.png", "Cut", None, None),
-                       (wx.ID_COPY, "edit-copy.png", "Copy", None, None),
-                       (wx.ID_PASTE, "edit-paste.png", "Paste", None, None),
-                       (),
-                       (wx.ID_UNDO, "edit-undo.png", "Undo", None, None),
-                       (wx.ID_REDO, "edit-redo.png", "Redo", None, None),
-                       (),
-                       (-1, "format-text-bold.png", "Bold", self.editor.text_bold,
-                        self.editor.update_bold),
-                       (-1, "format-text-italic.png", "Italic",
-                        self.editor.text_italic, self.editor.update_italic),
-                       (-1, "format-text-underline.png", "Underline",
-                        self.editor.text_underline, self.editor.update_underline),
-                       (-1, "format-justify-left.png", "Align Left",
-                        self.editor.align_left, self.editor.update_alignleft),
-                       (-1, "format-justify-center.png", "Center",
-                        self.editor.align_center, self.editor.update_center),
-                       (-1, "format-justify-right.png", "Align Right",
-                        self.editor.align_right, self.editor.update_alignright),
-                       (),
-                       (-1, "format-indent-less.png", "Indent Less",
-                        self.editor.indent_less, None),
-                       (-1, "format-indent-more.png", "Indent More",
-                        self.editor.indent_more, None),
-                       (),
-                       (-1, "gnome-settings-font.png", "Font",
-                        self.editor.text_font, None),
-                       (-1, "gnome-settings-font.png", "Font Colour",
-                        self.editor.text_color, None)):
-            if not action:
-                tbar.AddSeparator()
-                continue
-            actionid, iconame, shorthelp, handler, update_ui = action
-            tooltype = wx.ITEM_NORMAL
-            if handler is None:
-                handler = update_ui = self.forward_event
-            elif update_ui is not None:
-                tooltype = wx.ITEM_CHECK
-            bmp = wx.Bitmap(os.path.join(shared.HERE, "icons", iconame), type=wx.BITMAP_TYPE_PNG)
-            label = os.path.splitext(os.path.basename(iconame))[0]
-            item = tbar.AddTool(actionid, label, bmp, shortHelp=shorthelp, kind=tooltype)
+        self.textcolour = wx.BLACK
+        self.fontpicker = wx.FontPickerCtrl(toolbar, style=wx.FNTP_FONTDESC_AS_LABEL)
+        self.fontpicker.Bind(wx.EVT_FONTPICKER_CHANGED, self.editor.text_font)
+        toolbar.AddControl(self.fontpicker)
+        self.fgcselect = csel.ColourSelect(toolbar, colour=self.textcolour)
+        self.fgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.text_color)
+        toolbar.AddControl(self.fgcselect)
+        bmp = wx.Bitmap(14, 14)
+        self.fgcset = wxlb.GenBitmapButton(toolbar, bitmap=bmp, size=(22, 22))
+        self.changebitmapbuttoncolour(self.fgcset, self.textcolour)
+        self.fgcset.Bind(wx.EVT_BUTTON, self.editor.set_text_color)
+        toolbar.AddControl(self.fgcset)
+        self.backgroundcolour = wx.WHITE
+        self.bgcselect = csel.ColourSelect(toolbar, colour=self.backgroundcolour, size=(24, 24))
+        self.bgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.background_color)
+        toolbar.AddControl(self.bgcselect)
+        bmp = wx.Bitmap(16, 16)
+        self.bgcset = wxlb.GenBitmapButton(toolbar, bitmap=bmp, size=(24, 24))
+        self.changebitmapbuttoncolour(self.bgcset, self.backgroundcolour)
+        self.bgcset.Bind(wx.EVT_BUTTON, self.editor.set_background_color)
+        toolbar.AddControl(self.bgcset)
 
-            self.Bind(wx.EVT_TOOL, handler, item)
-            if update_ui is not None:
-                self.Bind(wx.EVT_UPDATE_UI, update_ui, item)
-
-        tbar.Realize()
+    def changebitmapbuttoncolour(self, bitmapbutton, colour):
+        "recolor the button"
+        bmp = bitmapbutton.GetBitmapLabel()
+        dc = wx.MemoryDC()
+        dc.SelectObject(bmp)
+        dc.SetBackground(wx.Brush(colour))
+        dc.Clear()
+        dc.SelectObject(wx.NullBitmap)
+        bitmapbutton.SetBitmapLabel(bmp)
 
     def show_statusmessage(self, text):
         "show a message in the status bar"
