@@ -1289,15 +1289,15 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.actiondict["Align &Left"].setChecked(False)
         self.parent.actiondict["C&enter"].setChecked(False)
         self.parent.actiondict["Align &Right"].setChecked(False)
-        self.parent.actiondict["&Justify"].setChecked(False)
+        # self.parent.actiondict["&Justify"].setChecked(False)
         if align & core.Qt.AlignLeft:
             self.parent.actiondict["Align &Left"].setChecked(True)
         elif align & core.Qt.AlignHCenter:
             self.parent.actiondict["C&enter"].setChecked(True)
         elif align & core.Qt.AlignRight:
             self.parent.actiondict["Align &Right"].setChecked(True)
-        elif align & core.Qt.AlignJustify:
-            self.parent.actiondict["&Justify"].setChecked(True)
+        # elif align & core.Qt.AlignJustify:
+        #     self.parent.actiondict["&Justify"].setChecked(True)
 
     def mergeCurrentCharFormat(self, fmt):
         "de geselecteerde tekst op de juiste manier weergeven"
