@@ -1424,6 +1424,7 @@ class MainGui(qtw.QMainWindow):
                 self.treemenu = menu
             for menudef in data:
                 if not menudef:
+                    menu.addSeparator()
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if icon:
