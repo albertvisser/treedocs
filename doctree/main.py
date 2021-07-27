@@ -8,7 +8,6 @@ import doctree.pickle_dml as dml
 import shutil
 from datetime import datetime
 import zipfile as zpf
-import bs4 as bs
 import doctree.gui as gui
 import doctree.shared as shared
 
@@ -157,7 +156,8 @@ def add_item_to_view(item, view):
 #         # scan de itemdict af op image files en zet ze in een list
 #         imagelist = []
 #         for _, data in nt_data[2].values():
-#             names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
+#             # names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
+#             names = shared.get_imagenames(data)
 #             imagelist.extend(names)
 #         ## fname = os.path.basename(filename)
 #         mode = "w"
@@ -402,6 +402,7 @@ class MainWindow():
         self.gui.add_viewmenu_option('&1 Default')
         self.gui.init_app()
         self.activeitem = self.gui.rebuild_root()  # item_to_activate =
+        print('in new() - after creating self.activeitem:', self.activeitem)
         self.gui.editor.set_contents(self.opts["RootData"])
         self.gui.editor.openup(False)
         self.gui.set_focus_to_tree()
@@ -906,7 +907,8 @@ class MainWindow():
 
         extra_images = []
         for _, data in [x[1] for x in self.cut_from_itemdict]:
-            names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
+            names = shared.get_imagenames(data)
+            # names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
             extra_images.extend(names)
 
         # 4. paste action on the other file

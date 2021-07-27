@@ -1,6 +1,8 @@
 import os
 import pathlib
 import logging
+import bs4 as bs
+from .toolkit import toolkit
 
 HERE = pathlib.Path(__file__).parent.resolve()
 HIDE_TEXT = "\n".join(("DocTree gaat nu slapen in de System tray",
@@ -48,6 +50,11 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
         putsubtree(self, new, subtitel, subkey, subsubtree)
     return new
 
+
+def get_imagenames(data):
+    if toolkit == 'wx':
+        return
+    return [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
 
 def get_setttexts(settdict):
     """returns texts associated with the message dialogs that can be hidden

@@ -6,7 +6,8 @@ import pathlib
 import pickle as pck
 import shutil
 import zipfile as zpf
-
+import doctree.shared as shared
+from .toolkit import toolkit
 
 def read_from_files(this_file, other_file):
     "(try to) load the data"
@@ -81,6 +82,8 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
             pass
     with filename.open("wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
+    if toolkit == 'wx':  # wx versie doet niet aan externe images
+        return
     if not save_images:
         return
 
@@ -88,7 +91,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
         # scan de itemdict af op image files en zet ze in een list
         imagelist = []
         for _, data in nt_data[2].values():
-            names = [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
+            names = shared.get_imagenames(data)
             imagelist.extend(names)
         ## fname = os.path.basename(filename)
         mode = "w"
