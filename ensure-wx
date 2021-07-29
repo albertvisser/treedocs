@@ -1,0 +1,4 @@
+#! /bin/sh
+mv doctree/toolkit.py doctree/toolkit-orig
+cp doctree/ensure_wx.py doctree/toolkit.py
+./start.py $1

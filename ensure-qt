@@ -1,0 +1,5 @@
+#! /bin/sh
+cd ~/projects/doctree
+mv doctree/toolkit.py doctree/toolkit-orig
+cp doctree/ensure_qt.py doctree/toolkit.py
+./start.py $1 &

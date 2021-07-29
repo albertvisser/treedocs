@@ -76,6 +76,13 @@ def add_item_to_view(item, view):
     view.append((int(key), struct))
 
 
+def reset_toolkit_file_if_needed():
+    "see if toolkit.py needs to be restored"
+    path = pathlib.Path(__file__).parent.resolve()
+    if (path / 'toolkit-orig').exists():
+        (path / 'toolkit-orig').rename(path / 'toolkit.py')
+
+
 class MainWindow():
     "Primary application window (main screen)"
     def __init__(self, fname=''):
@@ -102,6 +109,7 @@ class MainWindow():
                     gui.show_message(self.gui, err)
         else:
             self.new(ask_ok=False)  # fname='' forces filename dialog
+        reset_toolkit_file_if_needed()
         self.gui.go()
 
     def get_menu_data(self):
