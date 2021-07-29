@@ -86,7 +86,7 @@ def rename_dtree(filename, newname):
     db[filename].rename(newname)
 
 
-#----------- deze routines komen uit main - ombouwen voor doctree
+#----------- deze routines komen uit main - ombouwen voor mongodb
 def read_from_files(this_file, other_file=''):
     "(try to) load the data"
     filename = other_file or this_file
@@ -126,11 +126,12 @@ def read_from_files(this_file, other_file=''):
     return opts, views, viewcount, itemdict, text_positions  #, imagelist
 
 
-def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None, backup=True,
-                   save_images=True):
+def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
+                   backup=True, save_images=True):
     """settings en tree data in een structuur omzetten en opslaan
 
-    images contained are saved in a separate zipfile"""
+    images contained are saved in a separate zipfile (not needed for wx)
+    """
     # nt_data = {0: opts, 1: views, 2: itemdict, 3: textpositions}
     # zipfile = filename.with_suffix('.zip')
     # if backup:
