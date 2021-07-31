@@ -391,6 +391,7 @@ class EditorPanel(rt.RichTextCtrl):
                                  style=wx.VSCROLL | wx.HSCROLL | wx.NO_BORDER)
         self.textAttr = rt.RichTextAttr()
         self.parent_ = parent.parent
+        self.mark_dirty(False)
 
     def on_url(self, evt):
         "dummy handler for clicking on a url"
@@ -726,7 +727,7 @@ class EditorPanel(rt.RichTextCtrl):
 
     def mark_dirty(self, value):
         "mixin exit to manually turn modified flag on/off (mainly intended for off)"
-        self.SetModified(not value)
+        self.SetModified(value)
 
     def openup(self, value):
         "mixin exit to make text accessible (or not)"
