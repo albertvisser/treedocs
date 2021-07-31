@@ -816,7 +816,7 @@ class MainGui(wx.Frame):
 
     def create_menu(self, menubar, toolbar, menudata):
         """bouw het menu en de meeste toolbars op"""
-        update_ui = {}  # bijwerken menu is niet meer nodig  
+        update_ui = {}  # bijwerken menu is niet meer nodig
                      # "&Bold": self.editor.update_bold,
                      # "&Italic": self.editor.update_italic,
                      # "&Underline": self.editor.update_underline,
@@ -881,6 +881,19 @@ class MainGui(wx.Frame):
                         self.Bind(wx.EVT_UPDATE_UI, ui_updater, item)
                 submenu.Append(menu_item)
             menubar.Append(submenu, menu_label)
+
+    def disable_menu(self, value=True):
+        """disable most menu actions when tree is not properly initialized;
+        re-enable menu actions after tree is properly initialized
+        """
+        menubar = self.GetMenuBar()
+        for menuindex in range(1, len(menubar.GetMenus())):
+            menubar.EnableTop(menuindex, not value)
+        mainmenu = menubar.GetMenu(0)
+        for menuitem in mainmenu.GetMenuItems():
+            if menuitem.GetLabel() not in ('Open', 'Init', 'eXit'):
+                mainmenu.Enable(menuitem.GetId(), not value)
+        self.menu_disabled = value
 
     def create_stylestoolbar(self, toolbar):
         "build toolbar with buttons to change styles"

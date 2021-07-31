@@ -1037,7 +1037,7 @@ class EditorPanel(qtw.QTextEdit):
         if not self.hasFocus():
             return
         fmt = gui.QTextCharFormat()
-        if self.parent.actiondict['&Bold'].isChecked():
+        if self.parent.styleactiondict['&Bold'].isChecked():
             fmt.setFontWeight(gui.QFont.Bold)
         else:
             fmt.setFontWeight(gui.QFont.Normal)
@@ -1048,7 +1048,7 @@ class EditorPanel(qtw.QTextEdit):
         if not self.hasFocus():
             return
         fmt = gui.QTextCharFormat()
-        fmt.setFontItalic(self.parent.actiondict['&Italic'].isChecked())
+        fmt.setFontItalic(self.parent.styleactiondict['&Italic'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
     def text_underline(self):  # , event=None):
@@ -1056,7 +1056,7 @@ class EditorPanel(qtw.QTextEdit):
         if not self.hasFocus():
             return
         fmt = gui.QTextCharFormat()
-        fmt.setFontUnderline(self.parent.actiondict['&Underline'].isChecked())
+        fmt.setFontUnderline(self.parent.styleactiondict['&Underline'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
     def text_strikethrough(self):  # , event=None):
@@ -1064,43 +1064,43 @@ class EditorPanel(qtw.QTextEdit):
         if not self.hasFocus():
             return
         fmt = gui.QTextCharFormat()
-        fmt.setFontStrikeOut(self.parent.actiondict['Strike&through'].isChecked())
+        fmt.setFontStrikeOut(self.parent.styleactiondict['Strike&through'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
     def align_left(self):  # , event=None):
         "alinea links uitlijnen"
         if not self.hasFocus():
             return
-        self.parent.actiondict["C&enter"].setChecked(False)
-        self.parent.actiondict["Align &Right"].setChecked(False)
-        self.parent.actiondict["&Justify"].setChecked(False)
+        self.parent.styleactiondict["C&enter"].setChecked(False)
+        self.parent.styleactiondict["Align &Right"].setChecked(False)
+        self.parent.styleactiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignLeft | core.Qt.AlignAbsolute)
 
     def align_center(self):  # , event=None):
         "alinea centreren"
         if not self.hasFocus():
             return
-        self.parent.actiondict["Align &Left"].setChecked(False)
-        self.parent.actiondict["Align &Right"].setChecked(False)
-        self.parent.actiondict["&Justify"].setChecked(False)
+        self.parent.styleactiondict["Align &Left"].setChecked(False)
+        self.parent.styleactiondict["Align &Right"].setChecked(False)
+        self.parent.styleactiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignHCenter)
 
     def align_right(self):  # , event=None):
         "alinea rechts uitlijnen"
         if not self.hasFocus():
             return
-        self.parent.actiondict["Align &Left"].setChecked(False)
-        self.parent.actiondict["C&enter"].setChecked(False)
-        self.parent.actiondict["&Justify"].setChecked(False)
+        self.parent.styleactiondict["Align &Left"].setChecked(False)
+        self.parent.styleactiondict["C&enter"].setChecked(False)
+        self.parent.styleactiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignRight | core.Qt.AlignAbsolute)
 
     def text_justify(self):  # , event=None):
         "alinea aan weerszijden uitlijnen"
         if not self.hasFocus():
             return
-        self.parent.actiondict["Align &Left"].setChecked(False)
-        self.parent.actiondict["C&enter"].setChecked(False)
-        self.parent.actiondict["Align &Right"].setChecked(False)
+        self.parent.styleactiondict["Align &Left"].setChecked(False)
+        self.parent.styleactiondict["C&enter"].setChecked(False)
+        self.parent.styleactiondict["Align &Right"].setChecked(False)
         self.setAlignment(core.Qt.AlignJustify)
 
     def indent_more(self):  # , event=None):
@@ -1260,10 +1260,10 @@ class EditorPanel(qtw.QTextEdit):
             self.parent.combo_font.findText(gui.QFontInfo(font).family()))
         self.parent.combo_size.setCurrentIndex(
             self.parent.combo_size.findText(str(font.pointSize())))
-        self.parent.actiondict["&Bold"].setChecked(font.bold())
-        self.parent.actiondict["&Italic"].setChecked(font.italic())
-        self.parent.actiondict["&Underline"].setChecked(font.underline())
-        self.parent.actiondict["Strike&through"].setChecked(font.strikeOut())
+        self.parent.styleactiondict["&Bold"].setChecked(font.bold())
+        self.parent.styleactiondict["&Italic"].setChecked(font.italic())
+        self.parent.styleactiondict["&Underline"].setChecked(font.underline())
+        self.parent.styleactiondict["Strike&through"].setChecked(font.strikeOut())
 
     def color_changed(self, col):
         """kleur aanpassen
@@ -1271,7 +1271,7 @@ class EditorPanel(qtw.QTextEdit):
         het icon in de toolbar krijgt een andere kleur"""
         pix = gui.QPixmap(14, 14)
         pix.fill(col)
-        self.parent.actiondict["&Color..."].setIcon(gui.QIcon(pix))
+        self.parent.styleactiondict["&Color..."].setIcon(gui.QIcon(pix))
 
     def background_changed(self, col):
         """kleur aanpassen
@@ -1279,25 +1279,25 @@ class EditorPanel(qtw.QTextEdit):
         het icon in de toolbar krijgt een andere kleur"""
         pix = gui.QPixmap(18, 18)
         pix.fill(col)
-        self.parent.actiondict["&Background..."].setIcon(gui.QIcon(pix))
+        self.parent.styleactiondict["&Background..."].setIcon(gui.QIcon(pix))
 
     def alignment_changed(self, align):
         """alignment aanpassen
 
         de van toepassing zijnde menuitems worden aangevinkt
         en de betreffende toolbaricons worden geaccentueerd"""
-        self.parent.actiondict["Align &Left"].setChecked(False)
-        self.parent.actiondict["C&enter"].setChecked(False)
-        self.parent.actiondict["Align &Right"].setChecked(False)
-        # self.parent.actiondict["&Justify"].setChecked(False)
+        self.parent.styleactiondict["Align &Left"].setChecked(False)
+        self.parent.styleactiondict["C&enter"].setChecked(False)
+        self.parent.styleactiondict["Align &Right"].setChecked(False)
+        # self.parent.styleactiondict["&Justify"].setChecked(False)
         if align & core.Qt.AlignLeft:
-            self.parent.actiondict["Align &Left"].setChecked(True)
+            self.parent.styleactiondict["Align &Left"].setChecked(True)
         elif align & core.Qt.AlignHCenter:
-            self.parent.actiondict["C&enter"].setChecked(True)
+            self.parent.styleactiondict["C&enter"].setChecked(True)
         elif align & core.Qt.AlignRight:
-            self.parent.actiondict["Align &Right"].setChecked(True)
+            self.parent.styleactiondict["Align &Right"].setChecked(True)
         # elif align & core.Qt.AlignJustify:
-        #     self.parent.actiondict["&Justify"].setChecked(True)
+        #     self.parent.styleactiondict["&Justify"].setChecked(True)
 
     def mergeCurrentCharFormat(self, fmt):
         "de geselecteerde tekst op de juiste manier weergeven"
@@ -1384,7 +1384,9 @@ class MainGui(qtw.QMainWindow):
         self.in_editor = False
         self.setWindowTitle(self.title)
 
-        self.actiondict = {}
+        self.menulist = []
+        self.mainactiondict = {}
+        self.styleactiondict = {}
         menubar = self.menuBar()
         self.splitter = qtw.QSplitter(self)
         self.setCentralWidget(self.splitter)
@@ -1396,6 +1398,7 @@ class MainGui(qtw.QMainWindow):
         self.splitter.addWidget(self.editor)
 
         self.create_menu(menubar, self.master.get_menu_data())
+        self.menu_disabled = False
         self.undo_stack = UndoRedoStack(self)
         self.create_stylestoolbar()
 
@@ -1415,6 +1418,7 @@ class MainGui(qtw.QMainWindow):
         """bouw het menu en de meeste toolbars op"""
         for item, data in menudata:
             menu = menubar.addMenu(item)
+            self.menulist.append(menu)
             toolbar_added = False
             if item == menudata[2][0]:  # "&View":
                 self.viewmenu = menu
@@ -1466,7 +1470,21 @@ class MainGui(qtw.QMainWindow):
                 action.triggered.connect(handler)
                 if label:
                     menu.addAction(action)
-                    self.actiondict[label] = action
+                    if menu == self.menulist[0]:
+                        self.mainactiondict[label] = action
+                    elif len(self.menulist) > 5 and menu == self.menulist[5]:
+                        self.styleactiondict[label] = action
+
+    def disable_menu(self, value=True):
+        """disable most menu actions when tree is not properly initialized;
+        re-enable menu actions after tree is properly initialized
+        """
+        for menu in self.menulist[1:]:
+            menu.setDisabled(value)
+        for text, action in self.mainactiondict.items():
+            if text not in ('&Open', '&Init', 'e&Xit'):
+                action.setDisabled(value)
+        self.menu_disabled = value
 
     def create_stylestoolbar(self):
         "build toolbar with buttons to change styles"
@@ -1494,7 +1512,7 @@ class MainGui(qtw.QMainWindow):
         action = qtw.QAction(gui.QIcon(pix), "Change text color", self)
         action.triggered.connect(self.editor.text_color)
         toolbar.addAction(action)
-        self.actiondict["&Color..."] = action
+        self.styleactiondict["&Color..."] = action
         pix = gui.QPixmap(14, 14)
         pix.fill(self.setcoloraction_color)
         action = qtw.QAction(gui.QIcon(pix), "Set text color", self)
@@ -1508,7 +1526,7 @@ class MainGui(qtw.QMainWindow):
         action = qtw.QAction(gui.QIcon(pix), "Change background color", self)
         action.triggered.connect(self.editor.background_color)
         toolbar.addAction(action)
-        self.actiondict["&Background..."] = action
+        self.styleactiondict["&Background..."] = action
         pix = gui.QPixmap(18, 18)
         pix.fill(self.setbackgroundcoloraction_color)
         action = qtw.QAction(gui.QIcon(pix), "Set background color", self)

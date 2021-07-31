@@ -103,6 +103,8 @@ class MainWindow():
                 if ok:
                     self.new(filename=fname, ask_ok=False)
                     self.set_project_dirty(True)
+                else:
+                    self.gui.disable_menu()
             else:
                 err = self.read()
                 if err:
@@ -302,6 +304,8 @@ class MainWindow():
         self.opts = init_opts()
         self.gui.set_version()
         self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
+        if self.gui.menu_disabled:
+            self.gui.disable_menu(False)
         self.gui.clear_viewmenu()
         self.gui.add_viewmenu_option('&1 Default')
         self.gui.init_app()
@@ -326,6 +330,8 @@ class MainWindow():
             gui.show_message(self.gui, err)
         else:
             self.gui.show_statusmessage('{} gelezen'.format(str(self.project_file)))
+            if self.gui.menu_disabled:
+                self.gui.disable_menu(False)
 
     def reread(self, *args):
         """afhandelen Menu > Reload (Ctrl-R)"""
