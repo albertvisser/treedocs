@@ -768,7 +768,7 @@ class TreePanel(qtw.QTreeWidget):
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        "for showing a context menu"
+        "event handler for showing a context menu using the mouse"
         if event.button() == core.Qt.RightButton:
             xc, yc = event.x(), event.y()
             item = self.itemAt(xc, yc)
@@ -782,7 +782,7 @@ class TreePanel(qtw.QTreeWidget):
         super().mouseReleaseEvent(event)
 
     def keyReleaseEvent(self, event):
-        "also for showing a context menu"
+        "event handler for showing a context menu using the keyboard"
         if event.key() == core.Qt.Key_Menu:
             item = self.currentItem()
             self.create_popupmenu(item)
@@ -792,7 +792,7 @@ class TreePanel(qtw.QTreeWidget):
         super().keyReleaseEvent(event)
 
     def create_popupmenu(self, item):
-        "also for showing a context menu"
+        "build the context menu"
         menu = qtw.QMenu()
         for action in self.parent.notemenu.actions():
             menu.addAction(action)
