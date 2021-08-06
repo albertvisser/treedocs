@@ -6,7 +6,6 @@ usage: [python] convert.py [<filename> [<method>]]
            If none is given, the name 'MyMan.ini' is used.
 <method> can be 'wx' or 'qt', if none is given 'qt' is used.
 """
-from __future__ import print_function
 import pathlib
 import sys
 import cPickle as pck
