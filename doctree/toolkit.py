@@ -1,3 +1,3 @@
 """DocTree: which gui toolkit to use
 """
-toolkit = 'wx'
+toolkit = 'qt'

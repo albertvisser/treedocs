@@ -1,3 +1,5 @@
+"""DocTree: toolkit-agnostic subroutines
+"""
 import os
 import pathlib
 import logging
@@ -46,18 +48,19 @@ def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
         subtree = []
     new = tree.add_to_parent(key, str(titel), parent, pos)
     for subtitel, subkey, subsubtree in subtree:
-        putsubtree(self, new, subtitel, subkey, subsubtree)
+        putsubtree(tree, new, subtitel, subkey, subsubtree)
     return new
 
 
 def get_imagenames(data):
+    "analyze text for names of image files"
     return [img['src'] for img in bs.BeautifulSoup(data, 'lxml').find_all('img')]
 
 
-def get_setttexts(settdict):
+def get_setttexts():
     """returns texts associated with the message dialogs that can be hidden
     """
     return {'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
             'NotifyOnLoad': 'Notify that the data has been reloaded',
             'NotifyOnSave': 'Notify that the data has been saved',
-            'EscapeClosesApp': 'Application can be closed by pressing Escape' }
+            'EscapeClosesApp': 'Application can be closed by pressing Escape'}

@@ -71,6 +71,7 @@ def show_dialog(win, cls, kwargs=None):
 
 def show_nonmodal(win, cls):
     "show dialog and return to ongoing business"
+    #TODO
 
 
 def get_hotkeys_from_text(label):
@@ -93,7 +94,8 @@ def get_hotkeys_from_text(label):
                    'PgDn': wx.WXK_PAGEDOWN,
                    'PgUp': wx.WXK_PAGEUP,
                    'Esc': wx.WXK_ESCAPE}.get(ord(key))
-            for ix, mod in enumerate(mods):
+            # for ix, mod in enumerate(mods):
+            for ix in range(mods):
                 mods[ix] = {'Ctrl': wx.MOD_CONTROL,
                             'Shift': wx.MOD_SHIFT}.get()
         hotkeys.append(mods, key)
@@ -136,10 +138,10 @@ class CheckDialog(wx.Dialog):
 class OptionsDialog(wx.Dialog):
     """Dialog om de instellingen voor te tonen meldingen te tonen en eventueel te kunnen wijzigen
     """
-    def __init__(self, parent, id):
+    def __init__(self, parent, id_):
         self.parent = parent
-        sett2text = shared.get_setttexts(self.parent.master.opts)
-        super().__init__(parent, id, title='A Propos Settings')
+        sett2text = shared.get_setttexts()
+        super().__init__(parent, id_, title='A Propos Settings')
         pnl = self  # wx.Panel(self, -1)
         sizer0 = wx.BoxSizer(wx.VERTICAL)
         sizer1 = wx.FlexGridSizer(cols=2)
@@ -154,7 +156,7 @@ class OptionsDialog(wx.Dialog):
             self.controls.append((key, chk))
         sizer0.Add(sizer1, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 5)
         sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        btn = wx.Button(pnl, id=wx.ID_OK, label = '&Apply')
+        btn = wx.Button(pnl, id=wx.ID_OK, label='&Apply')
         sizer1.Add(btn, 0, wx.EXPAND | wx.ALL, 2)
         # self.SetAffirmativeId(wx.ID_APPLY)
         btn = wx.Button(pnl, id=wx.ID_CLOSE)
@@ -174,7 +176,7 @@ class OptionsDialog(wx.Dialog):
             self.parent.master.opts[keyvalue] = control.GetValue()
 
 
-class SearchDialog(wx.Dialog):
+class SearchDialog(wx.Dialog):  #FIXME
     """search mode: 0 = current document, 1 = all titles, 2 = all texts
     """
     def __init__(self, parent, mode=0):
@@ -194,7 +196,7 @@ class SearchDialog(wx.Dialog):
         "afsluiten met bijwerken"
 
 
-class ResultsDialog(wx.Dialog):
+class ResultsDialog(wx.Dialog):  #FIXME
     "Present search results in a non-modal dialog"
     def __init__(self, parent):
         pass
@@ -393,9 +395,9 @@ class EditorPanel(rt.RichTextCtrl):
         self.parent_ = parent.parent
         self.mark_dirty(False)
 
-    def on_url(self, evt):
-        "dummy handler for clicking on a url"
-        wx.MessageBox(evt.GetString(), "URL Clicked")
+    # def on_url(self, evt):
+    #     "dummy handler for clicking on a url"
+    #     wx.MessageBox(evt.GetString(), "URL Clicked")
 
     def set_contents(self, data):
         "load contents into editor"
@@ -866,7 +868,7 @@ class MainGui(wx.Frame):
                     bmp = wx.Bitmap(os.path.join(shared.HERE, icon), wx.BITMAP_TYPE_PNG)
                     menu_item.SetBitmap(bmp)
                     # tevens opbouwen eerste toolbar
-                    tooltype = wx.ITEM_NORMAL
+                    # tooltype = wx.ITEM_NORMAL
                     # if label in update_ui and update_ui[label] is not None:
                     #     tooltype = wx.ITEM_CHECK
                     item = toolbar.AddTool(-1, label, bmp)
@@ -920,7 +922,8 @@ class MainGui(wx.Frame):
         self.bgcset.Bind(wx.EVT_BUTTON, self.editor.set_background_color)
         toolbar.AddControl(self.bgcset)
 
-    def changebitmapbuttoncolour(self, bitmapbutton, colour):
+    @staticmethod
+    def changebitmapbuttoncolour(bitmapbutton, colour):
         "recolor the button"
         bmp = bitmapbutton.GetBitmapLabel()
         dc = wx.MemoryDC()
@@ -1166,12 +1169,12 @@ class MainGui(wx.Frame):
         """afhandeling toetscombinaties"""
         skip = True
         keycode = event.GetKeyCode()
-        mods = event.GetModifiers()
+        # mods = event.GetModifiers()
         win = event.GetEventObject()
         if keycode == wx.WXK_ESCAPE and self.master.opts['EscapeClosesApp']:
             self.close()
         elif keycode == wx.WXK_DELETE:
-            print('delete pressed', end = ' ')
+            print('delete pressed', end=' ')
             if win == self.editor:
                 print('in editor, let editor handle this')
             else:

@@ -8,7 +8,7 @@ usage: [python] convert.py [<filename> [<method>]]
 """
 import pathlib
 import sys
-import cPickle as pck
+import pickle as pck
 ## import pprint
 
 data_list = []
@@ -65,8 +65,8 @@ def convert(data):
     except AttributeError:
         pass
     else:
-        print(data)
-        return
+        print('data was strip()ped')
+        return data
     # eerst maar even kijken wat er in zit en in welke volgorde het staat
     ## for key, value in data.items():
         ## if key == 0:
@@ -142,6 +142,7 @@ def main():
     new = old.parent / "_{}".format(methode).join(old.stem, old.suffix)
     with new.open("wb") as f_out:
         pck.dump(data, f_out)
+
 
 if __name__ == "__main__":
     main()

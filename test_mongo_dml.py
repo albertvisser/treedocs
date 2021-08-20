@@ -7,8 +7,10 @@ testdata = [{'Application': 'DocTree'},
             {0: '0', 1: '0'}]
 # ik weet niet of ik _add_doc en _update_doc nodig ga hebben
 
+
 def test_list_dtrees():
     print('output van list_dtrees:', dml.list_dtrees())
+
 
 def test_create_new_dtree():
     info = dml.list_dtrees()
@@ -24,6 +26,7 @@ def test_create_new_dtree():
     else:
         print('test_create_new_dtree failed: bij 2e keer aanmaken werd een exception verwacht')
 
+
 def test_read_dtree():
     info = dml.list_dtrees()
     if 'test' not in info:
@@ -34,6 +37,7 @@ def test_read_dtree():
     assert data[0]['type'] == 'settings'
     # assert data[1]['type'] == 'textpos'
     assert data[1]['type'] == 'imagelist'
+
 
 def test_clear_dtree():
     info = dml.list_dtrees()
@@ -53,6 +57,7 @@ def test_clear_dtree():
     assert 'test' in dml.list_dtrees()
     dml.clear_dtree('test', recreate=True)
     assert 'test' in dml.list_dtrees()
+
 
 def test_rename_dtree():
     info = dml.list_dtrees()
@@ -74,6 +79,7 @@ def test_rename_dtree():
     info = dml.list_dtrees()
     assert 'new' in info and 'newer' in info
 
+
 def test_write_to_files():
     filename = 'testfile'
     if filename in dml.list_dtrees():
@@ -84,6 +90,7 @@ def test_write_to_files():
     dml.write_to_files(filename, settings, views, itemdict, textpos)
     return_data = dml.read_dtree(filename, readable=True)
     assert list(return_data) == testdata
+
 
 def test_read_from_files():
     filename = 'testfile'

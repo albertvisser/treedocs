@@ -15,8 +15,7 @@ def filter_html(data):
     if soup.html:
         body = soup.html.body
         return body.get_text()
-    else:
-        return ''
+    return ''
 
 
 def write_file(outfile, title, data, as_html):
@@ -99,3 +98,4 @@ def main(fname, *, donot_filter_html=False, to_files=False):
         else:
             print('itemdict', file=_out)
             pprint.pprint(itemdict, stream=_out)
+        return 'done.'

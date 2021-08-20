@@ -4,8 +4,7 @@
 
 def show_message(win, text):
     "show a confirmable message"
-    print(text)
-    print
+    print(text, end='\n\n')
 
 
 def ask_question(win, text):
@@ -13,14 +12,14 @@ def ask_question(win, text):
     result = input(text + ' ([Y]es/[n]o)')
     if not result:
         return True
-    else:
-        return result[0].lower() != 'n'
+    return result[0].lower() != 'n'
 
 
 class MainGui():
-    "Primary application window (main screen)i: dummy version"
+    "Primary application window (main screen): dummy version"
     def __init__(self):
         pass
 
     def go(self):
+        "pretend starting the GUI"
         pass

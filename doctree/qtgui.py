@@ -37,11 +37,11 @@ def get_text(win, caption, oldtext):
 
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
-    filter = "Pickle files (*.pck)"
+    file_filter = "Pickle files (*.pck)"
     if save:
-        filename = qtw.QFileDialog.getSaveFileName(win, title, start, filter)
+        filename = qtw.QFileDialog.getSaveFileName(win, title, start, file_filter)
     else:
-        filename = qtw.QFileDialog.getOpenFileName(win, title, start, filter)
+        filename = qtw.QFileDialog.getOpenFileName(win, title, start, file_filter)
     ok = True if filename[0] else False
     return ok, filename[0]
 
@@ -110,7 +110,7 @@ class OptionsDialog(qtw.QDialog):
     """
     def __init__(self, parent):
         self.parent = parent
-        sett2text = shared.get_setttexts(self.parent.master.opts)
+        sett2text = shared.get_setttexts()
         super().__init__(parent)
         self.setWindowTitle('A Propos Settings')
         vbox = qtw.QVBoxLayout()
@@ -505,7 +505,7 @@ class AddCommand(qtw.QUndoCommand):
         """actie ongedaan maken
         """
         shared.log('in AddCommand.undo')
-        newkey, extra_keys, new_item, subitem = self.data
+        newkey, extra_keys, new_item = self.data[:3]
         # TODO: als ik wil dat de eventuele tekstinhoud onthouden wordt
         # dan moet ik volgens mij uitvoeren:
         # self.win.master.activeitem = new_item
@@ -845,16 +845,19 @@ class TreePanel(qtw.QTreeWidget):
         "titel + data in de visual tree ophalen"
         return item.text(0), self.getitemkey(item)  # str(item.text(1))  # kan integer zijn
 
-    def getitemuserdata(self, item):
+    @staticmethod
+    def getitemuserdata(item):
         "data in de visual tree ophalen"
         # eigenlijk is dit hetzelfde als item.text(1) - behalve bij het root item ?
         return item.data(0, core.Qt.UserRole)
 
-    def getitemtitle(self, item):
+    @staticmethod
+    def getitemtitle(item):
         "alleen titel in de visual tree ophalen"
         return item.text(0)
 
-    def getitemkey(self, item):
+    @staticmethod
+    def getitemkey(item):
         "sleutel voor de itemdict ophalen"
         value = item.text(1)
         shared.log('in tree.getitemkey, type voor omzetten is {}'.format(type(value), always=True))
@@ -865,22 +868,26 @@ class TreePanel(qtw.QTreeWidget):
         shared.log('in tree.getitemkey, type na omzetten is {}'.format(type(value), always=True))
         return value
 
-    def setitemtitle(self, item, title):
+    @staticmethod
+    def setitemtitle(item, title):
         "titel (en tooltip instellen)"
         item.setText(0, title)
         item.setToolTip(0, title)
 
-    def setitemtext(self, item, text):
+    @staticmethod
+    def setitemtext(item, text):
         """Meant to set the text for the root item (goes in same place as the keys
         for the other items)
         """
         item.setText(1, text)
 
-    def getitemkids(self, item):
+    @staticmethod
+    def getitemkids(item):
         "children van item ophalen"
         return [item.child(num) for num in range(item.childCount())]
 
-    def getitemparentpos(self, item):
+    @staticmethod
+    def getitemparentpos(item):
         "parent en positie van item onder parent bepalen"
         root = item.parent()
         if root:
@@ -893,11 +900,13 @@ class TreePanel(qtw.QTreeWidget):
         "return first selected item"
         return self.selectedItems()[0]
 
-    def set_item_expanded(self, item):
+    @staticmethod
+    def set_item_expanded(item):
         "expand a tree item"
         item.setExpanded(True)  # of: self.expandItem(item)
 
-    def set_item_collapsed(self, item):
+    @staticmethod
+    def set_item_collapsed(item):
         "collapse a tree item"
         item.setExpanded(False)  # of: self.collapseItem(item)
 
@@ -992,7 +1001,7 @@ class EditorPanel(qtw.QTextEdit):
             image.save(str(url))
             ## urlname = os.path.basename(urlname)  # make name "relative"
             document.addResource(gui.QTextDocument.ImageResource,
-            #                      core.QUrl(url.name), image)
+                                 #  core.QUrl(url.name), image)
                                  core.QUrl(str(url)), image)
             # cursor.insertImage(url.name)
             cursor.insertImage(str(url))
@@ -1817,4 +1826,3 @@ class MainGui(qtw.QMainWindow):
         "Remove accelerator to for Esc key to close application"
         if len(self.quit_action.shortcuts()) > 1:
             self.quit_action.setShortcuts(self.quit_shortcuts[:-1])
-
