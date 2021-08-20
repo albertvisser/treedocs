@@ -1,13 +1,13 @@
 """DocTree: Main program, meant to be gui-toolkit agnostic
 """
 import os
-import sys
+# import sys
 import pathlib
 # import pickle as pck
 import doctree.pickle_dml as dml
-import shutil
+# import shutil
 from datetime import datetime
-import zipfile as zpf
+# import zipfile as zpf
 import doctree.gui as gui
 import doctree.shared as shared
 
@@ -117,158 +117,159 @@ class MainWindow():
     def get_menu_data(self):
         """Menu options definitions
         """
-        return (("&Main", (
-                    ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png', 'Reread notes file'),
-                    ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png',
-                     "Choose and open notes file"),
-                    ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png',
-                     'Start a new notes file'),
-                    ("&Save", self.save, 'Ctrl+S', 'icons/filesave.png', 'Save notes file'),
-                    ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png',
-                     'Name and save notes file'),
-                    (),
-                    ("&Root title", self.rename_root, 'Shift+F2', '', 'Rename root'),
-                    ("Items sorteren", self.order_top, '', '', 'Bovenste niveau sorteren op titel'),
-                    ("Items recursief sorteren", self.order_all, '', '',
-                     'Alle niveaus sorteren op titel'),
-                    (),
-                    ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
-                    ("Switch pane", self.change_pane, 'Ctrl+Tab', '',
-                     'switch tussen tree en editor'),
-                    (),
-                    ("s&Ettings", self.set_options, 'Alt+O', '',
-                     'Show settings for some display options'),
-                    ("e&Xit", self.gui.close, 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'))),
-                ("&Note", (
-                    ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
-                    ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
-                    ("New &under root", self.root_item, 'Shift+Ctrl+N', '',
-                     'Add note (below root)'),
-                    ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
-                    ("&Move", self.move_to_file, 'Ctrl+M', '',
-                     'Copy note to other file and remove'),
-                    (),
-                    ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
-                    ("Subitems &sorteren", self.order_this, '', '',
-                     'Onderliggend niveau sorteren op titel'),
-                    ("Subitems &recursief sorteren", self.order_lower, '', '',
-                     'Alle onderliggende niveaus sorteren op titel'),
-                    (),
-                    ("&Forward", self.next_note_any, 'Ctrl+PgDown', '', 'View next note'),
-                    ("For&ward on same level", self.next_note, 'Shift+Ctrl+PgDown', '',
-                     'View next note'),
-                    ("&Back", self.prev_note_any, 'Ctrl+PgUp', '', 'View previous note'),
-                    ("Bac&k on same level", self.prev_note, 'Shift+Ctrl+PgUp', '',
-                     'View previous note'))),
-                ("&View", (
-                    ('&New View', self.add_view, '', '',
-                     'Add an alternative view (tree) to this data'),
-                    ('&Rename Current View', self.rename_view, '', '',
-                     'Rename the current tree view'),
-                    ('&Delete Current View', self.remove_view, '', '',
-                     'Remove the current tree view'),
-                    (),
-                    ('Next View', self.next_view, 'Ctrl++', '',
-                     'Switch to the next view in the list'),
-                    ('Prior View', self.prev_view, 'Ctrl+-', '',
-                     'Switch to the previous view in the list'),
-                    ())),
-                ('&Tree', (
-                    ('&Undo', self.gui.tree_undo, 'Ctrl+Alt+Z', '', 'Undo last operation'),
-                    ('&Redo', self.gui.tree_redo, 'Ctrl+Alt+Y', '', 'Redo last undone operation'),
-                    (),
-                    ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png',
-                     'Copy the selection and delete from tree'),
-                    ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png',
-                     'Just copy the selection'),
-                    ('&Paste Under', self.paste_item_below, 'Ctrl+Alt+V',
-                     'icons/treeitem-paste.png',
-                     'Paste the copied selection under the selected item'),
-                    ('&Paste After', self.paste_item_after, 'Shift+Ctrl+Alt+V', '',
-                     'Paste the copied selection after the selected item (same parent)'),
-                    ('&Paste Before', self.paste_item, '', '',
-                     'Paste the copied selection before the selected item (same parent)'),
-                    (),
-                    ('Expand', self.expand_item, 'Ctrl+<', '', 'Expand tree item'),
-                    ('Collapse', self.collapse_item, 'Ctrl+>', '', 'Collapse tree item'),
-                    ('Expand all', self.expand_all, 'Ctrl+Alt+<', '',
-                     'Expand all subitems'),
-                    ('Collapse all', self.collapse_all, 'Ctrl+Alt+>', '',
-                     'Collapse all subitems'))),
-                ('T&ext', (
-                    ('&Undo', self.gui.editor.undo, 'Ctrl+Z', 'icons/edit-undo.png',
-                     'Undo last operation'),
-                    ('&Redo', self.gui.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png',
-                     'Redo last undone operation'),
-                    (),
-                    ('Cu&t', self.gui.editor.cut, 'Ctrl+X', 'icons/edit-cut.png',
-                     'Copy the selection and delete from text'),
-                    ('&Copy', self.gui.editor.copy, 'Ctrl+C', 'icons/edit-copy.png',
-                     'Just copy the selection'),
-                    ('&Paste', self.gui.editor.paste, 'Ctrl+V', 'icons/edit-paste.png',
-                     'Paste the copied selection'),
-                    (),
-                    ('Select A&ll', self.gui.editor.select_all, 'Ctrl+A', "",
-                     'Select the entire text'),
-                    ("&Clear All (can't undo)", self.gui.editor.clear, '', '',
-                     'Delete the entire text'))),
-                ('&Format', (
-                    ('&Bold', self.gui.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png',
-                     'CheckB'),
-                    ('&Italic', self.gui.editor.text_italic, 'Ctrl+I',
-                     'icons/format-text-italic.png', 'CheckI'),
-                    ('&Underline', self.gui.editor.text_underline, 'Ctrl+U',
-                     'icons/format-text-underline.png', 'CheckU'),
-                    ('Strike&through', self.gui.editor.text_strikethrough, 'Ctrl+~',
-                     'icons/format-text-strikethrough.png', 'CheckS'),
-                    (),
-                    ('Align &Left', self.gui.editor.align_left, 'Shift+Ctrl+L',
-                     'icons/format-justify-left.png', 'Check'),
-                    ('C&enter', self.gui.editor.align_center, 'Shift+Ctrl+C',
-                     'icons/format-justify-center.png', 'Check'),
-                    ('Align &Right', self.gui.editor.align_right, 'Shift+Ctrl+R',
-                     'icons/format-justify-right.png', 'Check'),
-                    # niet implemented in wx - vind ik ook eigenlijk niet nodig
-                    # ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
-                    #  'icons/format-justify-fill.png', 'Check'),
-                    (),
-                    # in wx nog niet duidelijk hoe goed te krijgen
-                    # ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
-                    #  'icons/format-indent-more.png', 'Increase indentation'),
-                    # ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
-                    #  'icons/format-indent-less.png', 'Decrease indentation'),
-                    # (),
-                    # niet implemented in qt - vind ik oom eigenlijk niet nodig
-                    # ("Increase Paragraph &Spacing", self.gui.editor.increaseparspacing, ''),
-                    # ("Decrease &Paragraph Spacing", self.gui.editor.decreaseparspacing, ''),
-                    # (),
-                    # niet implemented in qt - vind ik oom eigenlijk niet nodig
-                    # ("Normal Line Spacing", self.gui.editor.set_linespacing_10, ''),
-                    # ("1.5 Line Spacing", self.gui.editor.set_linespacing_15,''),
-                    # ("Double Line Spacing", self.gui.editor.set_linespacing_20, ''),
-                    # (),
-                    ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
-                    ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl+Up', '',
-                     'Use bigger letters'),
-                    ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+Down', '',
-                     'Use smaller letters'),
-                    (),
-                    ("&Color...", self.gui.editor.text_color, '', '', 'Set/change colour'),
-                    ("&Background...", self.gui.editor.background_color, '', '',
-                     'Set/change background colour'))),
-                ('&Search', (
-                    ('&Current text', self.search, 'Ctrl+F', '', "Search in current text"),
-                    ('All t&exts', self.search_texts, 'Shift+Ctrl+F', '',
-                     "Search in all texts"),
-                    ('All t&itles', self.search_titles, 'Ctrl+Alt+F', '',
-                     "Search in all titles"),
-                    (),
-                    ('&Next', self.find_next, 'F3', '', 'Repeat search forwards'),
-                    ('&Previous', self.find_prev, 'Shift+F3', '',
-                     'Repeat search backwards'))),
-                ("&Help", (
-                    ("&About", self.info_page, '', '', 'About this application'),
-                    ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'))))
+        return (
+            ("&Main", (
+                ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png', 'Reread notes file'),
+                ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png',
+                 "Choose and open notes file"),
+                ("&Init", self.new, 'Shift+Ctrl+I', 'icons/filenew.png',
+                 'Start a new notes file'),
+                ("&Save", self.save, 'Ctrl+S', 'icons/filesave.png', 'Save notes file'),
+                ("Save as", self.saveas, 'Shift+Ctrl+S', 'icons/filesaveas.png',
+                 'Name and save notes file'),
+                (),
+                ("&Root title", self.rename_root, 'Shift+F2', '', 'Rename root'),
+                ("Items sorteren", self.order_top, '', '', 'Bovenste niveau sorteren op titel'),
+                ("Items recursief sorteren", self.order_all, '', '',
+                 'Alle niveaus sorteren op titel'),
+                (),
+                ("&Hide", self.hide_me, 'Ctrl+H', '', 'verbergen in system tray'),
+                ("Switch pane", self.change_pane, 'Ctrl+Tab', '',
+                 'switch tussen tree en editor'),
+                (),
+                ("s&Ettings", self.set_options, 'Alt+O', '',
+                 'Show settings for some display options'),
+                ("e&Xit", self.gui.close, 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'))),
+            ("&Note", (
+                ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
+                ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
+                ("New &under root", self.root_item, 'Shift+Ctrl+N', '',
+                 'Add note (below root)'),
+                ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
+                ("&Move", self.move_to_file, 'Ctrl+M', '',
+                 'Copy note to other file and remove'),
+                (),
+                ("Edit &Title", self.rename_item, 'F2', '', 'Rename current note'),
+                ("Subitems &sorteren", self.order_this, '', '',
+                 'Onderliggend niveau sorteren op titel'),
+                ("Subitems &recursief sorteren", self.order_lower, '', '',
+                 'Alle onderliggende niveaus sorteren op titel'),
+                (),
+                ("&Forward", self.next_note_any, 'Ctrl+PgDown', '', 'View next note'),
+                ("For&ward on same level", self.next_note, 'Shift+Ctrl+PgDown', '',
+                 'View next note'),
+                ("&Back", self.prev_note_any, 'Ctrl+PgUp', '', 'View previous note'),
+                ("Bac&k on same level", self.prev_note, 'Shift+Ctrl+PgUp', '',
+                 'View previous note'))),
+            ("&View", (
+                ('&New View', self.add_view, '', '',
+                 'Add an alternative view (tree) to this data'),
+                ('&Rename Current View', self.rename_view, '', '',
+                 'Rename the current tree view'),
+                ('&Delete Current View', self.remove_view, '', '',
+                 'Remove the current tree view'),
+                (),
+                ('Next View', self.next_view, 'Ctrl++', '',
+                 'Switch to the next view in the list'),
+                ('Prior View', self.prev_view, 'Ctrl+-', '',
+                 'Switch to the previous view in the list'),
+                ())),
+            ('&Tree', (
+                ('&Undo', self.gui.tree_undo, 'Ctrl+Alt+Z', '', 'Undo last operation'),
+                ('&Redo', self.gui.tree_redo, 'Ctrl+Alt+Y', '', 'Redo last undone operation'),
+                (),
+                ('Cu&t', self.cut_item, 'Ctrl+Alt+X', 'icons/treeitem-cut.png',
+                 'Copy the selection and delete from tree'),
+                ('&Copy', self.copy_item, 'Ctrl+Alt+C', 'icons/treeitem-copy.png',
+                 'Just copy the selection'),
+                ('&Paste Under', self.paste_item_below, 'Ctrl+Alt+V',
+                 'icons/treeitem-paste.png',
+                 'Paste the copied selection under the selected item'),
+                ('&Paste After', self.paste_item_after, 'Shift+Ctrl+Alt+V', '',
+                 'Paste the copied selection after the selected item (same parent)'),
+                ('&Paste Before', self.paste_item, '', '',
+                 'Paste the copied selection before the selected item (same parent)'),
+                (),
+                ('Expand', self.expand_item, 'Ctrl+<', '', 'Expand tree item'),
+                ('Collapse', self.collapse_item, 'Ctrl+>', '', 'Collapse tree item'),
+                ('Expand all', self.expand_all, 'Ctrl+Alt+<', '',
+                 'Expand all subitems'),
+                ('Collapse all', self.collapse_all, 'Ctrl+Alt+>', '',
+                 'Collapse all subitems'))),
+            ('T&ext', (
+                ('&Undo', self.gui.editor.undo, 'Ctrl+Z', 'icons/edit-undo.png',
+                 'Undo last operation'),
+                ('&Redo', self.gui.editor.redo, 'Ctrl+Y', 'icons/edit-redo.png',
+                 'Redo last undone operation'),
+                (),
+                ('Cu&t', self.gui.editor.cut, 'Ctrl+X', 'icons/edit-cut.png',
+                 'Copy the selection and delete from text'),
+                ('&Copy', self.gui.editor.copy, 'Ctrl+C', 'icons/edit-copy.png',
+                 'Just copy the selection'),
+                ('&Paste', self.gui.editor.paste, 'Ctrl+V', 'icons/edit-paste.png',
+                 'Paste the copied selection'),
+                (),
+                ('Select A&ll', self.gui.editor.select_all, 'Ctrl+A', "",
+                 'Select the entire text'),
+                ("&Clear All (can't undo)", self.gui.editor.clear, '', '',
+                 'Delete the entire text'))),
+            ('&Format', (
+                ('&Bold', self.gui.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png',
+                 'CheckB'),
+                ('&Italic', self.gui.editor.text_italic, 'Ctrl+I',
+                 'icons/format-text-italic.png', 'CheckI'),
+                ('&Underline', self.gui.editor.text_underline, 'Ctrl+U',
+                 'icons/format-text-underline.png', 'CheckU'),
+                ('Strike&through', self.gui.editor.text_strikethrough, 'Ctrl+~',
+                 'icons/format-text-strikethrough.png', 'CheckS'),
+                (),
+                ('Align &Left', self.gui.editor.align_left, 'Shift+Ctrl+L',
+                 'icons/format-justify-left.png', 'Check'),
+                ('C&enter', self.gui.editor.align_center, 'Shift+Ctrl+C',
+                 'icons/format-justify-center.png', 'Check'),
+                ('Align &Right', self.gui.editor.align_right, 'Shift+Ctrl+R',
+                 'icons/format-justify-right.png', 'Check'),
+                # niet implemented in wx - vind ik ook eigenlijk niet nodig
+                # ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
+                #  'icons/format-justify-fill.png', 'Check'),
+                (),
+                # in wx nog niet duidelijk hoe goed te krijgen
+                # ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
+                #  'icons/format-indent-more.png', 'Increase indentation'),
+                # ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
+                #  'icons/format-indent-less.png', 'Decrease indentation'),
+                # (),
+                # niet implemented in qt - vind ik oom eigenlijk niet nodig
+                # ("Increase Paragraph &Spacing", self.gui.editor.increaseparspacing, ''),
+                # ("Decrease &Paragraph Spacing", self.gui.editor.decreaseparspacing, ''),
+                # (),
+                # niet implemented in qt - vind ik oom eigenlijk niet nodig
+                # ("Normal Line Spacing", self.gui.editor.set_linespacing_10, ''),
+                # ("1.5 Line Spacing", self.gui.editor.set_linespacing_15,''),
+                # ("Double Line Spacing", self.gui.editor.set_linespacing_20, ''),
+                # (),
+                ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
+                ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl+Up', '',
+                 'Use bigger letters'),
+                ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+Down', '',
+                 'Use smaller letters'),
+                (),
+                ("&Color...", self.gui.editor.text_color, '', '', 'Set/change colour'),
+                ("&Background...", self.gui.editor.background_color, '', '',
+                 'Set/change background colour'))),
+            ('&Search', (
+                ('&Current text', self.search, 'Ctrl+F', '', "Search in current text"),
+                ('All t&exts', self.search_texts, 'Shift+Ctrl+F', '',
+                 "Search in all texts"),
+                ('All t&itles', self.search_titles, 'Ctrl+Alt+F', '',
+                 "Search in all titles"),
+                (),
+                ('&Next', self.find_next, 'F3', '', 'Repeat search forwards'),
+                ('&Previous', self.find_prev, 'Shift+F3', '',
+                 'Repeat search backwards'))),
+            ("&Help", (
+                ("&About", self.info_page, '', '', 'About this application'),
+                ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'))))
 
     def set_window_title(self):
         """standaard manier van venstertitel opbouwen"""
@@ -387,8 +388,8 @@ class MainWindow():
         "nieuw item toevoegen"
         new_title, extra_titles = self.get_item_title()
         if new_title:
-            pos = -1  # doesn't matter for now - will be determined in do_additem
-            ## log('under is {}, pos is {}'.format(under, pos))
+            # pos = -1  # doesn't matter for now - will be determined in do_additem
+            # log('under is {}, pos is {}'.format(under, pos))
             self.gui.start_add(root, under, new_title, extra_titles)
 
     def get_item_title(self):
@@ -801,12 +802,15 @@ class MainWindow():
         # 2. read the file
 
         other_file = pathlib.Path(filename)
-        if not other_file.exists():
+        if other_file.exists():
+            # TODO dit gaat ervan uit dat het lezen van het andere file goed gaat
+            # misschien kan ik dat het beste afschermen door een evt foutmelding in een list
+            # terug te geven en dan eerst te kijken of deze list maar één element heeft
+            opts, views, itemdict, positions = self.read(other_file=other_file)
+        else:
             opts = init_opts()
             opts['Version'] = self.opts.get('Version', None)
-            views, viewcount, itemdict = [[]], 1, {}
-        else:
-            opts, views, viewcount, itemdict, positions = self.read(other_file=other_file)
+            views, itemdict = [[]], {}
 
         # 3. cut action on the item
 
@@ -824,9 +828,8 @@ class MainWindow():
         # 4. paste action on the other file
         #     note that these functions mutate their arguments...
 
-        self.copied_item, itemdict, used_keys = add_newitems(self.copied_item,
-                                                             self.cut_from_itemdict,
-                                                             itemdict)
+        self.copied_item, itemdict = add_newitems(self.copied_item, self.cut_from_itemdict,
+                                                  itemdict)[:2]
         for view in views:
             add_item_to_view(self.copied_item, view)
 
@@ -1081,8 +1084,7 @@ class MainWindow():
             gui.show_message(self.gui, msg)
             return
         ## key, loc, type, text = self.search_results[self.srchno]
-        loc, type = self.search_results[self.srchno][:2]
-        self.gui.goto_searchresult(loc, type)
+        self.gui.goto_searchresult(self.search_results[self.srchno][:2])
 
     def info_page(self, *args):
         """help -> about"""
@@ -1253,12 +1255,14 @@ class MainWindow():
 
         if other_file:
             return nt_data[:-1]  # zonder imagelist
+
         # make settings, views and itemdict into attributes
         for key, value in nt_data[0].items():
             if key == 'RootData' and value is None:
                 value = ""
             self.opts[key] = value
-        self.views, self.viewcount, self.itemdict, self.text_positions, self.imagelist = nt_data[1:]
+        self.views, self.itemdict, self.text_positions, self.imagelist = nt_data[1:]
+        self.viewcount = len(self.views)
 
         # finish up (set up necessary attributes etc)
         self.gui.set_version()
@@ -1290,6 +1294,7 @@ class MainWindow():
         return ''
 
     def set_escape_option(self):
+        "respect setting whether using escape shuts down the application or not"
         if self.opts['EscapeClosesApp']:
             self.gui.add_escape_action()
         else:
@@ -1305,7 +1310,7 @@ class MainWindow():
         # self.imagelist = write_to_files(self.project_file, self.opts, self.views, self.itemdict)
         # also write screen positions
         self.imagelist = dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
-                                        self.text_positions, self.toolkit)
+                                            self.text_positions, self.toolkit)
         self.set_project_dirty(False)
         if meld:
             ## print('In save - notify is', self.opts['NotifyOnSave'])
@@ -1319,4 +1324,4 @@ class MainWindow():
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
             # opslaan zonder vragen, backuppen en zippen
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
-                           self.text_positions, self.toolkit, backup=False, save_images=False)
+                               self.text_positions, self.toolkit, backup=False, save_images=False)

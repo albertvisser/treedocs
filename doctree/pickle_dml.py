@@ -1,12 +1,10 @@
 """DocTree: data access using pickle
 """
-import os
-import sys
-import pathlib
 import pickle as pck
 import shutil
 import zipfile as zpf
 import doctree.shared as shared
+
 
 def read_from_files(this_file, other_file):
     "(try to) load the data"
@@ -36,7 +34,6 @@ def read_from_files(this_file, other_file):
         views = list(nt_data[1])
     except KeyError:
         views = [[]]
-    viewcount = len(views)
 
     # read itemdict
     try:
@@ -63,7 +60,7 @@ def read_from_files(this_file, other_file):
         except FileNotFoundError:
             pass
 
-    return nt_data[0], views, viewcount, itemdict, text_positions, imagelist
+    return nt_data[0], views, itemdict, text_positions, imagelist
 
 
 def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
@@ -82,9 +79,9 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
     with filename.open("wb") as f_out:
         pck.dump(nt_data, f_out, protocol=2)
     if toolkit == 'wx':  # wx versie doet niet aan externe images
-        return
+        return ''
     if not save_images:
-        return
+        return ''
 
     if extra_images is None:
         # scan de itemdict af op image files en zet ze in een list

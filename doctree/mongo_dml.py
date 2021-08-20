@@ -86,7 +86,7 @@ def rename_dtree(filename, newname):
     db[filename].rename(newname)
 
 
-#----------- deze routines komen uit main - ombouwen voor mongodb
+# ----------- deze routines komen uit main - ombouwen voor mongodb
 def read_from_files(this_file, other_file=''):
     "(try to) load the data"
     filename = other_file or this_file
@@ -96,12 +96,11 @@ def read_from_files(this_file, other_file=''):
     # read/init/check settings if possible, otherwise cancel
     opts = db[filename].find_one({'type': 'settings'})['data']
     if opts.get('Application', '') != 'DocTree':
-        return ["{} is not a valid Doctree data file".format(str(infile))]
+        return ["{} is not a valid Doctree data file".format(str(filename))]  # is dit een Path?
 
     # read views
     views_from_db = db[filename].find({'type': 'view'})
     views = [x['data'] for x in sorted(views_from_db, key=lambda x: x['viewno'])]
-    viewcount = len(views)
 
     # read itemdict
     # read text positions
@@ -123,7 +122,7 @@ def read_from_files(this_file, other_file=''):
     #     except FileNotFoundError:
     #         pass
 
-    return opts, views, viewcount, itemdict, text_positions  #, imagelist
+    return opts, views, itemdict, text_positions  # , imagelist
 
 
 def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
@@ -143,12 +142,12 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
     # with filename.open("wb") as f_out:
     #     pck.dump(nt_data, f_out, protocol=2)
 
-    nt_data = {'settings': opts, 'views': views, 'docdata': itemdict, 'textpos': textpositions}
+    # nt_data = {'settings': opts, 'views': views, 'docdata': itemdict, 'textpos': textpositions}
     db[filename].update_one({'type': 'settings'}, {'$set': {'data': opts}})
     for seq, view in enumerate(views):
         print(seq, view)
         result = db[filename].update_one({'type': 'view', 'viewno': seq},
-                                {'$set': {'data': view}}, upsert=True)
+                                         {'$set': {'data': view}}, upsert=True)
         print(result.raw_result)
     # kan dit met updatemany? Nou zo in elk geval niet:
     # db[filename].update_many({'type': 'view', 'viewno': seq}, {'$set': {'data': view}},
@@ -156,7 +155,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
     for docid, doc in itemdict.items():
         pos = textpositions[docid]
         db[filename].update_one({'type': 'textitem', 'textid': docid},
-                                {'$set': {'data': doc, 'textpos': pos}}, upsert = True)
+                                {'$set': {'data': doc, 'textpos': pos}}, upsert=True)
     # db[filename].update_many({'type': 'textitem', 'textid': docid},
     #                          {'$set': {'data': doc, 'textpos': textpositions[docid]}},
     #                          upsert = True) for (docid, doc) in itemdict.items()
