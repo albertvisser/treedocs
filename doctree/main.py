@@ -356,8 +356,8 @@ class MainWindow():
         if ok:
             filename = pathlib.Path(filename)
             test = filename.suffix
-            if test != '.pck':
-                filename = filename.with_suffix('.pck')
+            if test != shared.FILE_TYPE[1]:
+                filename = filename.with_suffix(shared.FILE_TYPE[1])
             self.project_file = filename
             self.write(meld=True)
             self.set_window_title()

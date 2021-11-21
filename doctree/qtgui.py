@@ -37,7 +37,7 @@ def get_text(win, caption, oldtext):
 
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
-    file_filter = "Pickle files (*.pck)"
+    file_filter = "{}s (*{})".format(*shared.FILE_TYPE)
     if save:
         filename = qtw.QFileDialog.getSaveFileName(win, title, start, file_filter)
     else:

@@ -6,6 +6,7 @@ import logging
 import bs4 as bs
 
 HERE = pathlib.Path(__file__).parent.resolve()
+FILE_TYPE = ('Doctree File', '.trd')
 HIDE_TEXT = "\n".join(("DocTree gaat nu slapen in de System tray",
                        "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"))
 LOGFILE = pathlib.Path('/tmp') / 'logs' / 'doctree.log'
