@@ -956,11 +956,13 @@ class MainGui(wx.Frame):
 
     def set_window_split(self, pos):
         "split positie instellen"
-        self.splitter.SetSashPosition(self.master.opts["SashPosition"], True)
+        # self.splitter.SetSashPosition(self.master.opts["SashPosition"], True)
+        self.splitter.SetSashPosition(pos[0], True)
 
     def get_splitterpos(self):
         "return the position at which the screen is split"
-        return self.splitter.GetSashPosition()
+        # return self.splitter.GetSashPosition()
+        return (self.splitter.GetSashPosition(), )
 
     def init_app(self):
         "undo stack leegmaken"

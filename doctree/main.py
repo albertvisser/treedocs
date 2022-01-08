@@ -1267,6 +1267,9 @@ class MainWindow():
         # finish up (set up necessary attributes etc)
         self.gui.set_version()
         self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
+        if len(self.opts['SashPosition']) == 1:
+            righthand_size = self.opts['ScreenSize'][0] - self.opts['SashPosition'][0]
+            self.opts['SashPosition'] = (self.opts['SashPosition'][0], righthand_size)
         try:
             self.gui.set_window_split(self.opts['SashPosition'])
         except TypeError:

@@ -1565,14 +1565,16 @@ class MainGui(qtw.QMainWindow):
 
     def set_window_split(self, pos):
         "split positie instellen"
-        try:
-            self.splitter.restoreState(pos)
-        except TypeError:
-            pass
+        # try:
+        #     self.splitter.restoreState(pos)
+        # except TypeError:
+        #     pass
+        self.splitter.setSizes(pos)
 
     def get_splitterpos(self):
         "return the position at which the screen is split"
-        return self.splitter.saveState()
+        # return self.splitter.saveState()
+        return self.splitter.sizes()
 
     def init_app(self):
         "undo stack leegmaken"
