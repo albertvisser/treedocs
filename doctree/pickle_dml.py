@@ -77,7 +77,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
         except FileNotFoundError:
             pass
     with filename.open("wb") as f_out:
-        pck.dump(nt_data, f_out, protocol=2)
+        pck.dump(nt_data, f_out)  # , protocol=2)
     if toolkit == 'wx':  # wx versie doet niet aan externe images
         return ''
     if not save_images:
