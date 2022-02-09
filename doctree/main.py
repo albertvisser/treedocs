@@ -3,11 +3,11 @@
 import os
 # import sys
 import pathlib
-# import pickle as pck
-import doctree.pickle_dml as dml
-# import shutil
+import shutil
 from datetime import datetime
+# import pickle as pck
 # import zipfile as zpf
+import doctree.pickle_dml as dml
 import doctree.gui as gui
 import doctree.shared as shared
 
@@ -835,7 +835,8 @@ class MainWindow():
 
         # 5. write back the updated structure
 
-        dml.write_to_files(other_file, opts, views, itemdict, positions, self.toolkit, extra_images)
+        dml.write_to_files(other_file, opts, views, itemdict, positions, self.toolkit, extra_images,
+                origin=self.project_file)
 
     def order_top(self, *args):
         """order items directly under the top level"""

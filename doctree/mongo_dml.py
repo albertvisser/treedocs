@@ -126,7 +126,7 @@ def read_from_files(this_file, other_file=''):
 
 
 def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
-                   backup=True, save_images=True):
+                   backup=True, save_images=True, origin=None):
     """settings en tree data in een structuur omzetten en opslaan
 
     images contained are saved in a separate zipfile (not needed for wx)
@@ -160,7 +160,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
     #                          {'$set': {'data': doc, 'textpos': textpositions[docid]}},
     #                          upsert = True) for (docid, doc) in itemdict.items()
 
-    # -- nog even zonder plaatjes
+    # TODO: bedenken hoe ik images ga doen (en dus ook hoe ik ze moet kopiëren)
     # db[filename].update_one({'type': 'imagelist'}, {'$set': {'data': []}})
     # if not save_images:
     #    return
@@ -184,7 +184,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
     # with zpf.ZipFile(str(zipfile), mode) as _out:
     #     for name in imagelist:
     #         # if name.startswith(str(filename)):
-    #         imagepath = path / name  # TODO: kijken of dit nu dubbel voorgevoegd wordt
+    #         imagepath = path / name
     #         if imagepath.exists():
     #             ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
     #             # _out.write(str(path / name), arcname=pathlib.Path(name).name)

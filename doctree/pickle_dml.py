@@ -64,7 +64,7 @@ def read_from_files(this_file, other_file):
 
 
 def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
-                   backup=True, save_images=True):
+                   backup=True, save_images=True, origin=None):
     """settings en tree data in een structuur omzetten en opslaan
 
     images contained are saved in a separate zipfile"""
@@ -84,6 +84,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
         return ''
 
     if extra_images is None:
+        extra_images = []
         # scan de itemdict af op image files en zet ze in een list
         imagelist = []
         for _, data in nt_data[2].values():
@@ -94,18 +95,28 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
     else:
         imagelist = extra_images
         mode = "a"
+        # plaatjes uit verplaatste items kopieren indien nodig
+        if origin and origin.parent != filename.parent:
+            for name in extra_images:  # als dit het doet aparte functie dml.movefiles van maken
+                src = origin.parent / name
+                dest = filename.parent / name
+                shutil.copyfile(str(src), str(dest))
+
     # rebuild zipfile or add extra images to the zipfile
-    # FIXME: als er niks veranderd is hoeft het zipfile ook niet aangemaakt te worden?
-    #        kun je daarvoor imagelist vergelijken met self.imagelist?
     path = filename.parent  # eventueel eerst absoluut maken
     zipped = []
     with zpf.ZipFile(str(zipfile), mode) as _out:
         for name in imagelist:
             # if name.startswith(str(filename)):
-            imagepath = path / name  # TODO: kijken of dit nu dubbel voorgevoegd wordt
+            imagepath = path / name
             if imagepath.exists():
                 ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
                 # _out.write(str(path / name), arcname=pathlib.Path(name).name)
                 _out.write(str(imagepath), arcname=name)
                 zipped.append(name)
+    # plaatjes uit verplaatste items fysiek verwijderen
+    if origin and origin.parent != filename.parent:
+        for name in extra_images:
+            dest = filename.parent / name
+            dest.unlink()
     return zipped
