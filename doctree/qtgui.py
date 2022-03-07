@@ -15,8 +15,8 @@ def show_message(win, text):
 
 def ask_ynquestion(win, text):
     "ask a yes/no answerable question"
-    result = qtw.QMessageBox.question(win, "DocTree", text,
-                                      qtw.QMessageBox.Yes | qtw.QMessageBox.No)
+    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.Yes | qtw.QMessageBox.No,
+                                      defaultButton=qtw.QMessageBox.Yes)
     return result == qtw.QMessageBox.Yes
 
 
