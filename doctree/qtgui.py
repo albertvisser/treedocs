@@ -1186,7 +1186,7 @@ class EditorPanel(qtw.QTextEdit):
         if pointsize > 0:
             fmt = gui.QTextCharFormat()
             fmt.setFontPointSize(pointsize)
-            self.setTabStopWidth(tabsize(pointsize))
+            # self.setTabStopWidth(tabsize(pointsize))
             self.mergeCurrentCharFormat(fmt)
             self.setFocus()
 
