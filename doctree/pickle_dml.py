@@ -3,7 +3,7 @@
 import pickle as pck
 import shutil
 import zipfile as zpf
-import doctree.shared as shared
+from doctree import shared
 
 
 def read_from_files(this_file, other_file):
@@ -16,18 +16,18 @@ def read_from_files(this_file, other_file):
     try:
         f_in = infile.open("rb")
     except IOError:
-        return ["couldn't open {}".format(str(infile))]
+        return [f"couldn't open {infile}"]
     with f_in:
         try:
             nt_data = pck.load(f_in)
         except EOFError:
-            return ["couldn't load data from {}".format(str(infile))]
+            return [f"couldn't load data from {infile}"]
 
     # read/init/check settings if possible, otherwise cancel
     ## print(nt_data[0])
     test = nt_data[0].get("Application", None)
     if test and test != 'DocTree':
-        return ["{} is not a valid Doctree data file".format(str(infile))]
+        return [f"{infile} is not a valid Doctree data file"]
 
     # read views
     try:
@@ -63,7 +63,7 @@ def read_from_files(this_file, other_file):
     return nt_data[0], views, itemdict, text_positions, imagelist
 
 
-def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
+def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None,
                    backup=True, save_images=True, origin=None):
     """settings en tree data in een structuur omzetten en opslaan
 
@@ -78,8 +78,8 @@ def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extr
             pass
     with filename.open("wb") as f_out:
         pck.dump(nt_data, f_out)  # , protocol=2)
-    if toolkit == 'wx':  # wx versie doet niet aan externe images
-        return ''
+    # if toolkit == 'wx':  # wx versie doet niet aan externe images
+    #     return ''
     if not save_images:
         return ''
 

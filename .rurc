@@ -1,0 +1,10 @@
+[testdir]
+unittests
+
+[testscripts]
+mongo: test_mongo_dml.py
+pickle: test_pickle_dml.py
+
+[testees]
+mongo: doctree/mongo_dml.py
+pickle: doctree/pickle_dml.py

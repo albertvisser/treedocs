@@ -1,37 +1,37 @@
 """Data processing routines for MongoDB version
 """
-import datetime
+# import datetime
 # import shutil
-import pathlib
+# import pathlib
 from pymongo import MongoClient
-from pymongo.collection import Collection
+# from pymongo.collection import Collection
 cl = MongoClient()
 db = cl.doctree_database
 # support for older pymongo versions
-try:
-    test = Collection.update_one
-except AttributeError:
-    ## Collection.insert_one = Collection.insert
-    Collection.update_one = Collection.update
-    Collection.replace_one = Collection.update
-    ## # Collection.find_one_and_delete = Collection.remove
-    Collection.delete_many = Collection.remove
+# try:
+#     test = Collection.update_one
+# except AttributeError:
+#     ## Collection.insert_one = Collection.insert
+#     Collection.update_one = Collection.update
+#     Collection.replace_one = Collection.update
+#     ## # Collection.find_one_and_delete = Collection.remove
+#     Collection.delete_many = Collection.remove
 
 
 def _add_doc(filename, doc):
     """create new document in the dtree document
     """
-    try:
-        id_ = db[filename].insert_one(doc).inserted_id
-    except TypeError:
-        id_ = db[filename].insert(doc)
+    # try:
+    id_ = db[filename].insert_one(doc).inserted_id
+    # except TypeError:
+    #     id_ = db[filename].insert(doc)
     return id_
 
 
 def _update_doc(filename, docid, doc):
     """change a document in the dtree document
     """
-    db[filename].update({'_id': docid}, doc)
+    db[filename].update_one({'_id': docid}, doc)
 
 
 def list_dtrees():
@@ -41,8 +41,7 @@ def list_dtrees():
 
 
 def create_new_dtree(filename):
-    """set up a new dtree/collection
-    """
+    """set up a new dtree/  """
     if db[filename].find_one({'type': 'settings'}):
         raise FileExistsError
     db[filename].insert_one({'type': 'settings'})
@@ -96,7 +95,7 @@ def read_from_files(this_file, other_file=''):
     # read/init/check settings if possible, otherwise cancel
     opts = db[filename].find_one({'type': 'settings'})['data']
     if opts.get('Application', '') != 'DocTree':
-        return ["{} is not a valid Doctree data file".format(str(filename))]  # is dit een Path?
+        return [f"{filename} is not a valid Doctree data file"]  # is dit een Path?
 
     # read views
     views_from_db = db[filename].find({'type': 'view'})
@@ -125,7 +124,7 @@ def read_from_files(this_file, other_file=''):
     return opts, views, itemdict, text_positions  # , imagelist
 
 
-def write_to_files(filename, opts, views, itemdict, textpositions, toolkit, extra_images=None,
+def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None,
                    backup=True, save_images=True, origin=None):
     """settings en tree data in een structuur omzetten en opslaan
 

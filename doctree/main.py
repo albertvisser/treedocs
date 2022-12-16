@@ -3,13 +3,13 @@
 import os
 # import sys
 import pathlib
-import shutil
+# import shutil
 from datetime import datetime
 # import pickle as pck
 # import zipfile as zpf
 import doctree.pickle_dml as dml
-import doctree.gui as gui
-import doctree.shared as shared
+from doctree import gui
+from doctree import shared
 
 
 def init_opts():
@@ -32,13 +32,13 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         newkey = max(itemdict.keys()) + 1
     except ValueError:
         newkey = 0
-    shared.log("add_newitems: cut_from_itemdict is {}".format(cut_from_itemdict))
+    shared.log(f"add_newitems: cut_from_itemdict is {cut_from_itemdict}")
     for key, item in cut_from_itemdict:
         title, text = item
         itemdict[newkey] = (title, text)
         keymap[key] = newkey
         newkey += 1
-    shared.log("add_newitems: keymap is {}".format(keymap))
+    shared.log(f"add_newitems: keymap is {keymap}")
     copied_item = replace_keys(copied_item, keymap)
     used_keys = list(keymap.values())
     return copied_item, itemdict, used_keys
@@ -92,7 +92,8 @@ class MainWindow():
         self.imagelist = []
         self.copied_item, self.cut_from_itemdict = (), []
         self.opts = init_opts()
-        self.toolkit = gui.toolkit
+        # self.toolkit = gui.toolkit
+        self.images_embedded = gui.toolkit == 'wx'
         self.gui = gui.MainGui(self, title="Doctree")
         self.gui.setup_screen()
         if fname:
@@ -274,11 +275,13 @@ class MainWindow():
     def set_window_title(self):
         """standaard manier van venstertitel opbouwen"""
         if self.gui.in_editor:
-            text = 'title: {}'.format(self.gui.tree.getitemtitle(self.activeitem))
+            if not self.activeitem:
+                return
+            text = f'title: {self.gui.tree.getitemtitle(self.activeitem)}'
         else:
-            text = 'view: {}'.format(self.opts["ViewNames"][self.opts["ActiveView"]])
+            text = f'view: {self.opts["ViewNames"][self.opts["ActiveView"]]}'
         mark = '*' if self.project_dirty else ''
-        self.gui.set_windowtitle("{}{} ({}) - Doctree".format(self.project_file.name, mark, text))
+        self.gui.set_windowtitle(f"{self.project_file.name}{mark} ({text}) - Doctree")
 
     # menu callbacks en hulpmethoden
 
@@ -330,7 +333,7 @@ class MainWindow():
         if err:
             gui.show_message(self.gui, err)
         else:
-            self.gui.show_statusmessage('{} gelezen'.format(str(self.project_file)))
+            self.gui.show_statusmessage(f'{self.project_file} gelezen')
             if self.gui.menu_disabled:
                 self.gui.disable_menu(False)
 
@@ -340,7 +343,7 @@ class MainWindow():
             return
         ## if self._ok_to_reload():
         self.read()     # no need to check te result, should be ok when rereading?
-        self.gui.show_statusmessage('{} herlezen'.format(str(self.project_file)))
+        self.gui.show_statusmessage(f'{self.project_file} herlezen')
 
     def save(self, *args):
         """afhandelen Menu > save"""
@@ -419,18 +422,18 @@ class MainWindow():
         # bepaal eerst de parent voor het nieuwe item
         if not root:
             root = self.activeitem or self.gui.root
-            shared.log('no root provided, using either active ({}) or root ({})'.format(
-                self.activeitem, self.gui.root))
+            shared.log(f'no root provided, using either active ({self.activeitem})'
+                       f' or root ({self.gui.root})')
         text = self.gui.tree.getitemtitle(root)
-        shared.log('root is {} ({}), under is {}, origpos is {}'.format(root, text, under, origpos))
+        shared.log(f'root is {root} ({text}), under is {under}, origpos is {origpos}')
         if under:
             parent = root
             pos = -1
         else:
             ## root, pos = getitemparentpos(self.activeitem)
             parent, pos = self.gui.tree.getitemparentpos(root)
-            shared.log("na getitemparentpos: root, pos is {}, {}".format(parent, pos))
-            shared.log('comparing to origpos: {}'.format(origpos))
+            shared.log(f"na getitemparentpos: root, pos is {parent}, {pos}")
+            shared.log(f'comparing to origpos: {origpos}')
             if origpos == -1:
                 pos += 1    # we want to insert after, not before
                 if pos == len(self.gui.tree.getitemkids(parent)):
@@ -439,7 +442,7 @@ class MainWindow():
                 pos = origpos
         ## print(parent, parent.__dict__)
         text = self.gui.tree.getitemtitle(parent)
-        shared.log('parent, pos is {} ({}), {}'.format(parent, text, pos))
+        shared.log(f'parent, pos is {parent} ({text}), {pos}')
         item = self.gui.tree.add_to_parent(newkey, new_title, parent, pos)
         new_item = item
         # doe hetzelfde met het via \ toegevoegde item
@@ -658,10 +661,10 @@ class MainWindow():
         # create a copy buffer
         # self.cut_from_itemdict = []
         copied_item, itemlist = self.gui.tree.getsubtree(current)
-        shared.log('in main.do_copyaction na getsubtree, copied_item is {}, itemlist is {}'.format(
-            copied_item, itemlist))
+        shared.log(f'in main.do_copyaction na getsubtree, copied_item is {copied_item},'
+                   f' itemlist is {itemlist}')
         cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
-        shared.log('  cut_from_itemdict wordt dan {}'.format(cut_from_itemdict))
+        shared.log(f'  cut_from_itemdict wordt dan {cut_from_itemdict}')
         oldloc = None  # alleen interessant bij undo van cut/delete
         if retain:
             self.copied_item = copied_item
@@ -820,7 +823,8 @@ class MainWindow():
         #      so they can be copied over to the other zipfile
 
         extra_images = []
-        if self.toolkit != 'wx':    # wx xml bevat plaatjes inline
+        # if self.toolkit != 'wx':    # wx xml bevat plaatjes inline
+        if not self.images_embedded:
             for _, data in [x[1] for x in self.cut_from_itemdict]:
                 names = shared.get_imagenames(data)
                 extra_images.extend(names)
@@ -835,8 +839,10 @@ class MainWindow():
 
         # 5. write back the updated structure
 
-        dml.write_to_files(other_file, opts, views, itemdict, positions, self.toolkit, extra_images,
-                origin=self.project_file)
+        # save_images = self.toolkit != 'wx'
+        dml.write_to_files(other_file, opts, views, itemdict, positions, extra_images,
+                           # origin=self.project_file, save_images=save_images)
+                           origin=self.project_file, save_images=not self.images_embedded)
 
     def order_top(self, *args):
         """order items directly under the top level"""
@@ -884,12 +890,12 @@ class MainWindow():
             self.activeitem)
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.viewcount += 1
-        new_view = "New View #{}".format(self.viewcount)
+        new_view = f"New View #{self.viewcount}"
         self.opts["ViewNames"].append(new_view)
         active = self.opts["ActiveItem"][self.opts["ActiveView"]]
         self.opts["ActiveItem"].append(active)
         self.gui.uncheck_viewmenu_option()
-        action = self.gui.add_viewmenu_option('&{} {}'.format(self.viewcount, new_view))
+        action = self.gui.add_viewmenu_option(f'&{self.viewcount} {new_view}')
         self.gui.check_viewmenu_option(action)
         self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
         self.gui.rebuild_root()
@@ -1085,7 +1091,7 @@ class MainWindow():
             gui.show_message(self.gui, msg)
             return
         ## key, loc, type, text = self.search_results[self.srchno]
-        self.gui.goto_searchresult(self.search_results[self.srchno][:2])
+        self.gui.goto_searchresult(self.search_results[self.srchno][:2])  # niet *self.srchno?
 
     def info_page(self, *args):
         """help -> about"""
@@ -1190,7 +1196,7 @@ class MainWindow():
         shared.log('*** in main.check_active ***')
         if self.activeitem:
             text = self.gui.tree.getitemtitle(self.activeitem)
-            shared.log('active item is {} ({})'.format(self.activeitem, text))
+            shared.log(f'active item is {self.activeitem} ({text})')
             ref = self.gui.tree.getitemkey(self.activeitem)
             pos = self.gui.editor.get_text_position()
             try:
@@ -1201,7 +1207,7 @@ class MainWindow():
             if self.gui.editor.check_dirty():
                 if message:
                     gui.show_message(self, message)
-                shared.log('contents is {}'.format(self.gui.tree.getitemdata(self.activeitem)))
+                shared.log(f'contents is {self.gui.tree.getitemdata(self.activeitem)}')
                 content = str(self.gui.editor.get_contents())
                 try:
                     titel, tekst = self.itemdict[int(ref)]
@@ -1216,7 +1222,7 @@ class MainWindow():
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
-        shared.log('*** in main.activate_item, item is {}'.format(item))
+        shared.log(f'*** in main.activate_item, item is {item}')
         self.activeitem = item
         ref = self.gui.tree.getitemkey(item)
         try:
@@ -1269,8 +1275,8 @@ class MainWindow():
         self.gui.set_version()
         self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         if len(self.opts['SashPosition']) == 1:
-            righthand_size = self.opts['ScreenSize'][0] - self.opts['SashPosition'][0]
-            self.opts['SashPosition'] = (self.opts['SashPosition'][0], righthand_size)
+            righthand_size = self.opts['ScreenSize'][0] - self.opts['SashPosition']
+            self.opts['SashPosition'] = (self.opts['SashPosition'], righthand_size)
         try:
             self.gui.set_window_split(self.opts['SashPosition'])
         except TypeError:
@@ -1282,7 +1288,7 @@ class MainWindow():
         self.gui.editor.set_contents(self.opts["RootData"])
         self.gui.clear_viewmenu()
         for idx, name in enumerate(self.opts["ViewNames"]):
-            action = self.gui.add_viewmenu_option('&{} {}'.format(idx + 1, name))
+            action = self.gui.add_viewmenu_option('&{idx + 1} {name}')
             if idx == self.opts["ActiveView"]:
                 self.gui.check_viewmenu_option(action)
         ## log('Itemdict items:')
@@ -1313,14 +1319,16 @@ class MainWindow():
         # # do not write screen positions
         # self.imagelist = write_to_files(self.project_file, self.opts, self.views, self.itemdict)
         # also write screen positions
+        # save_images = self.toolkit != 'wx'
         self.imagelist = dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
-                                            self.text_positions, self.toolkit)
+                                            # self.text_positions, save_images=save_images)
+                                            self.text_positions, save_images=not self.images_embedded)
         self.set_project_dirty(False)
         if meld:
             ## print('In save - notify is', self.opts['NotifyOnSave'])
             save_text = str(self.project_file) + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
-        self.gui.show_statusmessage('{} opgeslagen'.format(str(self.project_file)))
+        self.gui.show_statusmessage('{self.project_file} opgeslagen')
 
     def confirm(self, setting='', textitem=''):
         "ask for confirmation when changing a setting"
@@ -1328,4 +1336,4 @@ class MainWindow():
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
             # opslaan zonder vragen, backuppen en zippen
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
-                               self.text_positions, self.toolkit, backup=False, save_images=False)
+                               self.text_positions, backup=False, save_images=False)
