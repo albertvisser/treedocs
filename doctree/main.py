@@ -1324,11 +1324,11 @@ class MainWindow():
                                             # self.text_positions, save_images=save_images)
                                             self.text_positions, save_images=not self.images_embedded)
         self.set_project_dirty(False)
+        save_text = f"{self.project_file} is opgeslagen"
         if meld:
             ## print('In save - notify is', self.opts['NotifyOnSave'])
-            save_text = str(self.project_file) + " is opgeslagen"
             self.confirm(setting="NotifyOnSave", textitem=save_text)
-        self.gui.show_statusmessage('{self.project_file} opgeslagen')
+        self.gui.show_statusmessage(save_text)
 
     def confirm(self, setting='', textitem=''):
         "ask for confirmation when changing a setting"
