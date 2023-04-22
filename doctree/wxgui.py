@@ -1157,7 +1157,7 @@ class MainGui(wx.Frame):
     def find_needle(self, haystack):
         "search in plain text version of text"
 
-    def goto_searchresult(self, loc, srchtype):
+    def goto_searchresult(self, loc):
         "position on found data in text"
 
     def forward_event(self, evt):

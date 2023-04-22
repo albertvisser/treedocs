@@ -20,13 +20,17 @@ def read_from_files(this_file, other_file):
     with f_in:
         try:
             nt_data = pck.load(f_in)
-        except EOFError:
+        except (EOFError, pck.UnpicklingError):
             return [f"couldn't load data from {infile}"]
 
     # read/init/check settings if possible, otherwise cancel
     ## print(nt_data[0])
-    test = nt_data[0].get("Application", None)
-    if test and test != 'DocTree':
+    try:
+        test = nt_data[0].get("Application", None)
+        fail = test != 'DocTree'
+    except AttributeError:
+        fail = True
+    if fail:
         return [f"{infile} is not a valid Doctree data file"]
 
     # read views

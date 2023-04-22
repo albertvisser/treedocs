@@ -1808,13 +1808,13 @@ class MainGui(qtw.QMainWindow):
         ## return ok.hasSelection()
         return not ok.isNull()
 
-    def goto_searchresult(self, loc, srchtype):
+    def goto_searchresult(self, loc):
         "position on found data in text"
         treeitem = self.root
         for x in loc:
             treeitem = treeitem.child(x)
         self.tree.setCurrentItem(treeitem)
-        if srchtype == 'text':
+        if self.srchtype & 2:
             ok = self.editor.find(self.srchtext, self.srchflags)
             if ok:
                 self.editor.ensureCursorVisible()

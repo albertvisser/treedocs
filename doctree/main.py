@@ -805,10 +805,14 @@ class MainWindow():
         # 2. read the file
 
         other_file = pathlib.Path(filename)
+        if other_file == self.project_file:
+            gui.show_message(self.gui, 'Destination file is the same as origin file')
+            return
         if other_file.exists():
-            # TODO dit gaat ervan uit dat het lezen van het andere file goed gaat
-            # misschien kan ik dat het beste afschermen door een evt foutmelding in een list
-            # terug te geven en dan eerst te kijken of deze list maar één element heeft
+            data = self.read(other_file=other_file)
+            if len(data) == 1:
+                gui.show_message(self.gui, data[0])
+                return
             opts, views, itemdict, positions = self.read(other_file=other_file)
         else:
             opts = init_opts()
@@ -1258,7 +1262,7 @@ class MainWindow():
         self.opts = init_opts()
         nt_data = dml.read_from_files(self.project_file, other_file)
         if len(nt_data) == 1:
-            return nt_data[0]  # foutmelding
+            return (nt_data[0], )  # foutmelding - teruggeven als 1-tuple
 
         if other_file:
             return nt_data[:-1]  # zonder imagelist
