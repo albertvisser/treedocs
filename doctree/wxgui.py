@@ -527,7 +527,8 @@ class EditorPanel(rt.RichTextCtrl):
 
     def text_justify(self, evt):  # TODO
         "alinea uitvullen"
-        self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_JUSTIFIED)  # unimplemented vlgs docs
+        show_message(self.parent, 'Sorry, Not possible in WxPython at this time')
+        # self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_JUSTIFIED)  # unimplemented vlgs docs
 
     def indent_more(self, evt):
         "alinea verder laten inspringen"
