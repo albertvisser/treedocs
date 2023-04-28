@@ -170,9 +170,9 @@ class MainWindow():
                 ('&Delete Current View', self.remove_view, '', '',
                  'Remove the current tree view'),
                 (),
-                ('Next View', self.next_view, 'Ctrl++', '',
+                ('Next View', self.next_view, 'Ctrl+Up', '',
                  'Switch to the next view in the list'),
-                ('Prior View', self.prev_view, 'Ctrl+-', '',
+                ('Prior View', self.prev_view, 'Ctrl+Down', '',
                  'Switch to the previous view in the list'),
                 ())),
             ('&Tree', (
@@ -250,9 +250,9 @@ class MainWindow():
                 # ("Double Line Spacing", self.gui.editor.set_linespacing_20, ''),
                 # (),
                 ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
-                ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl+Up', '',
+                ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl++', '',
                  'Use bigger letters'),
-                ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+Down', '',
+                ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+-', '',
                  'Use smaller letters'),
                 (),
                 ("&Color...", self.gui.editor.text_color, '', '', 'Set/change colour'),
@@ -1292,7 +1292,7 @@ class MainWindow():
         self.gui.editor.set_contents(self.opts["RootData"])
         self.gui.clear_viewmenu()
         for idx, name in enumerate(self.opts["ViewNames"]):
-            action = self.gui.add_viewmenu_option('&{idx + 1} {name}')
+            action = self.gui.add_viewmenu_option(f'&{idx + 1} {name}')
             if idx == self.opts["ActiveView"]:
                 self.gui.check_viewmenu_option(action)
         ## log('Itemdict items:')
