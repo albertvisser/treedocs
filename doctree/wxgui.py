@@ -525,7 +525,7 @@ class EditorPanel(rt.RichTextCtrl):
         "alinea rechts uitlijnen"
         self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_RIGHT)
 
-    def text_justify(self, evt):  # TODO
+    def text_justify(self, evt):
         "alinea uitvullen"
         show_message(self.parent, 'Sorry, Not possible in WxPython at this time')
         # self.ApplyAlignmentToSelection(wx.TEXT_ALIGNMENT_JUSTIFIED)  # unimplemented vlgs docs
