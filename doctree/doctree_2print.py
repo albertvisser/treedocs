@@ -51,7 +51,8 @@ def main(fname, *, donot_filter_html=False, to_files=False):
     ## """
 
     old = pathlib.Path(fname)
-    new = pathlib.Path(fname + '.out')
+    extra = 'as-saved' if donot_filter_html else 'text-only'
+    new = pathlib.Path(fname + f'-{extra}.out')
     print('donot-filter-html:', donot_filter_html)
     print('to-files:', to_files)
     # try to open the input file, if not present do not create output but fail
@@ -97,5 +98,5 @@ def main(fname, *, donot_filter_html=False, to_files=False):
                            donot_filter_html)
         else:
             print('itemdict', file=_out)
-            pprint.pprint(itemdict, stream=_out)
+            pprint.pprint(itemdict, width=200, stream=_out)
         return 'done.'
