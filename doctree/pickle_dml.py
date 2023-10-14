@@ -109,7 +109,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
     # rebuild zipfile or add extra images to the zipfile
     path = filename.parent  # eventueel eerst absoluut maken
     zipped = []
-    with zpf.ZipFile(str(zipfile), mode) as _out:
+    with zpf.ZipFile(str(zipfile), mode, compression=zpf.ZIP_DEFLATED) as _out:
         for name in imagelist:
             # if name.startswith(str(filename)):
             imagepath = path / name
