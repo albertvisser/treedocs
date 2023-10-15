@@ -3,8 +3,9 @@
 import os
 # import sys
 import pathlib
-# import shutil
+import shutil
 from datetime import datetime
+import tempfile
 # import pickle as pck
 # import zipfile as zpf
 import doctree.pickle_dml as dml
@@ -90,6 +91,7 @@ class MainWindow():
         self.add_node_on_paste = False
         self.has_treedata = False
         self.imagelist = []
+        self.temp_imagepath = pathlib.Path(tempfile.mkdtemp())
         self.copied_item, self.cut_from_itemdict = (), []
         self.opts = init_opts()
         # self.toolkit = gui.toolkit
@@ -1245,24 +1247,25 @@ class MainWindow():
 
     def cleanup_files(self):
         "remove temporary files on exit (as they have been zipped)"
-        dirname = str(self.project_file.parent)
-        for name in self.imagelist:
-            if not name.startswith(dirname):
-                name = os.path.join(dirname, name)
-            try:
-                os.remove(name)
-            except FileNotFoundError:
-                # print('in cleanup_files, {} not found'.format(name))
-                pass
+        shutil.rmtree(self.temp_imagepath)
+        # dirname = str(self.project_file.parent)
+        # for name in self.imagelist:
+        #     if not name.startswith(dirname):
+        #         name = os.path.join(dirname, name)
+        #     try:
+        #         os.remove(name)
+        #     except FileNotFoundError:
+        #         # print('in cleanup_files, {} not found'.format(name))
+        #         pass
 
     def read(self, other_file=''):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         if not other_file:
             self.has_treedata = False
         self.opts = init_opts()
-        nt_data = dml.read_from_files(self.project_file, other_file)
+        nt_data = dml.read_from_files(self.project_file, other_file, self.temp_imagepath)
         if len(nt_data) == 1:
-            return (nt_data[0], )  # foutmelding - teruggeven als 1-tuple
+            return (nt_data[0],)  # foutmelding - teruggeven als 1-tuple
 
         if other_file:
             return nt_data[:-1]  # zonder imagelist
@@ -1286,6 +1289,10 @@ class MainWindow():
         except TypeError:
             gui.show_message(self.gui, 'Ignoring incompatible sash position')
         self.set_escape_option()
+
+        # afleiden hoogst uitgegeven image nummer
+        if self.imagelist:
+            self.opts['ImageCount'] = int(max(self.imagelist).split('.')[0])
 
         self.activeitem = self.gui.rebuild_root()  # item_to_activate =
         self.gui.init_app()
@@ -1326,7 +1333,8 @@ class MainWindow():
         # save_images = self.toolkit != 'wx'
         self.imagelist = dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
                                             # self.text_positions, save_images=save_images)
-                                            self.text_positions, save_images=not self.images_embedded)
+                                            self.text_positions, self.temp_imagepath,
+                                            save_images=not self.images_embedded)
         self.set_project_dirty(False)
         save_text = f"{self.project_file} is opgeslagen"
         if meld:
@@ -1339,5 +1347,6 @@ class MainWindow():
         if self.opts[setting]:
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
             # opslaan zonder vragen, backuppen en zippen
+
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
                                self.text_positions, backup=False, save_images=False)

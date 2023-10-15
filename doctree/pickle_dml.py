@@ -6,7 +6,7 @@ import zipfile as zpf
 from doctree import shared
 
 
-def read_from_files(this_file, other_file):
+def read_from_files(this_file, other_file, temp_imagepath):
     "(try to) load the data"
     # determine the name of the file to read and read + unpickle it if possible,
     # otherwise cancel
@@ -54,12 +54,9 @@ def read_from_files(this_file, other_file):
 
     imagelist = []
     if not other_file:
-        # if possible, build a list of referred-to image files
-        ## path = os.path.dirname((self.project_file))
-        path = str(this_file.parent)
         try:
             with zpf.ZipFile(str(this_file.with_suffix('.zip'))) as f_in:
-                f_in.extractall(path=path)
+                f_in.extractall(path=temp_imagepath)
                 imagelist = f_in.namelist()
         except FileNotFoundError:
             pass
@@ -67,7 +64,7 @@ def read_from_files(this_file, other_file):
     return nt_data[0], views, itemdict, text_positions, imagelist
 
 
-def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None,
+def write_to_files(filename, opts, views, itemdict, textpositions, temp_imagepath, extra_images=None,
                    backup=True, save_images=True, origin=None):
     """settings en tree data in een structuur omzetten en opslaan
 
@@ -96,7 +93,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
             imagelist.extend(names)
         ## fname = os.path.basename(filename)
         mode = "w"
-    else:
+    else:  # moet bij temp_imagepath mogelijk anders
         imagelist = extra_images
         mode = "a"
         # plaatjes uit verplaatste items kopieren indien nodig
@@ -107,18 +104,17 @@ def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=
                 shutil.copyfile(str(src), str(dest))
 
     # rebuild zipfile or add extra images to the zipfile
-    path = filename.parent  # eventueel eerst absoluut maken
     zipped = []
     with zpf.ZipFile(str(zipfile), mode, compression=zpf.ZIP_DEFLATED) as _out:
         for name in imagelist:
             # if name.startswith(str(filename)):
-            imagepath = path / name
+            imagepath = temp_imagepath / name
             if imagepath.exists():
                 ## _out.write(os.path.join(path, name), arcname=os.path.basename(name))
                 # _out.write(str(path / name), arcname=pathlib.Path(name).name)
                 _out.write(str(imagepath), arcname=name)
                 zipped.append(name)
-    # plaatjes uit verplaatste items fysiek verwijderen
+    # plaatjes uit verplaatste items fysiek verwijderen - moet bij temp_filepath wrschl anders
     if origin and origin.parent != filename.parent:
         for name in extra_images:
             dest = filename.parent / name

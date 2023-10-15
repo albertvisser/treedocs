@@ -996,13 +996,10 @@ class EditorPanel(qtw.QTextEdit):
             num += 1
             self.parent.master.opts['ImageCount'] = num
             ## urlname = '{}_{:05}.png'.format(str(self.parent.project_file), num)
-            img = '{}_{:05}.png'.format(self.parent.master.project_file.name, num)
-            url = self.parent.master.project_file.parent / img
+            url = self.parent.master.temp_imagepath / f'{num:05}.png'
             image.save(str(url))
             ## urlname = os.path.basename(urlname)  # make name "relative"
-            document.addResource(gui.QTextDocument.ImageResource,
-                                 #  core.QUrl(url.name), image)
-                                 core.QUrl(str(url)), image)
+            document.addResource(gui.QTextDocument.ImageResource, core.QUrl(str(url)), image)
             # cursor.insertImage(url.name)
             cursor.insertImage(str(url))
         else:
@@ -1010,8 +1007,7 @@ class EditorPanel(qtw.QTextEdit):
 
     def set_contents(self, data):
         "load contents into editor"
-        data = data.replace('img src="', 'img src="{}/'.format(
-            str(self.parent.master.project_file.parent)))
+        data = data.replace('img src="', f'img src="{self.parent.master.temp_imagepath}/')
         self.setHtml(data)
         fmt = gui.QTextCharFormat()
         self.charformat_changed(fmt)
@@ -1020,10 +1016,8 @@ class EditorPanel(qtw.QTextEdit):
     def get_contents(self):
         "return contents from editor"
         # update plain text in tree item to facilitate search
-        self.parent.tree.currentItem().setData(0, core.Qt.UserRole,
-                                               self.toPlainText())
-        return self.toHtml().replace('img src="{}/'.format(
-            str(self.parent.master.project_file.parent)), 'img src="')
+        self.parent.tree.currentItem().setData(0, core.Qt.UserRole, self.toPlainText())
+        return self.toHtml().replace(f'img src="{self.parent.master.temp_imagepath}/', 'img src="')
 
     def get_text_position(self):
         """return where the cursor is positioned in the text
