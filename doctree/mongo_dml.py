@@ -124,11 +124,11 @@ def read_from_files(this_file, other_file=''):
     return opts, views, itemdict, text_positions  # , imagelist
 
 
-def write_to_files(filename, opts, views, itemdict, textpositions, extra_images=None,
-                   backup=True, save_images=True, origin=None):
+def write_to_files(filename, opts, views, itemdict, textpositions, temp_imagepath, extra_images=None,
+                   backup=True, save_images=True):
     """settings en tree data in een structuur omzetten en opslaan
 
-    images contained are saved in a separate zipfile (not needed for wx)
+    images contained exist in the temp_imagepath directory (not needed for wx)
     """
     # nt_data = {0: opts, 1: views, 2: itemdict, 3: textpositions}
     # zipfile = filename.with_suffix('.zip')
