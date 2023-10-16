@@ -1,6 +1,6 @@
 """DocTree: Main program, meant to be gui-toolkit agnostic
 """
-import os
+# import os
 # import sys
 import pathlib
 import shutil
@@ -831,9 +831,9 @@ class MainWindow():
         extra_images = []
         # if self.toolkit != 'wx':    # wx xml bevat plaatjes inline
         if not self.images_embedded:
-            for _, data in [x[1] for x in self.cut_from_itemdict]:
-                names = shared.get_imagenames(data)
-                extra_images.extend(names)
+            self.cut_from_itemdict, extra_images = dml.verify_imagenames(self.cut_from_itemdict,
+                                                                         self.temp_imagepath,
+                                                                         other_file)
 
         # 4. paste action on the other file
         #     note that these functions mutate their arguments (by design)...
@@ -847,9 +847,7 @@ class MainWindow():
 
         # save_images = self.toolkit != 'wx'
         dml.write_to_files(other_file, opts, views, itemdict, positions, self.temp_imagepath,
-                           extra_images, new_keys,
-                           # origin=self.project_file, save_images=save_images)
-                           origin=self.project_file, save_images=not self.images_embedded)
+                           extra_images, save_images=not self.images_embedded)
 
     def order_top(self, *args):
         """order items directly under the top level"""
