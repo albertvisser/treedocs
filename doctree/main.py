@@ -836,17 +836,18 @@ class MainWindow():
                 extra_images.extend(names)
 
         # 4. paste action on the other file
-        #     note that these functions mutate their arguments...
+        #     note that these functions mutate their arguments (by design)...
 
-        self.copied_item, itemdict = add_newitems(self.copied_item, self.cut_from_itemdict,
-                                                  itemdict)[:2]
+        self.copied_item, itemdict, new_keys = add_newitems(self.copied_item, self.cut_from_itemdict,
+                                                            itemdict)
         for view in views:
             add_item_to_view(self.copied_item, view)
 
         # 5. write back the updated structure
 
         # save_images = self.toolkit != 'wx'
-        dml.write_to_files(other_file, opts, views, itemdict, positions, extra_images,
+        dml.write_to_files(other_file, opts, views, itemdict, positions, self.temp_imagepath,
+                           extra_images, new_keys,
                            # origin=self.project_file, save_images=save_images)
                            origin=self.project_file, save_images=not self.images_embedded)
 
@@ -1349,4 +1350,5 @@ class MainWindow():
             # opslaan zonder vragen, backuppen en zippen
 
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
-                               self.text_positions, backup=False, save_images=False)
+                               self.text_positions, self.temp_imagepath, backup=False,
+                               save_images=False)
