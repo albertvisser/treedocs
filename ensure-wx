@@ -1,7 +1,8 @@
 #! /bin/sh
 where=$PWD
-cd ~/projects/doctree
+here=${0%/*}
+cd $here 
 mv doctree/toolkit.py doctree/toolkit-orig
 cp doctree/ensure_wx.py doctree/toolkit.py
 cd $where
-~/projects/doctree/start.py $1 &
+$here/start.py $1 &
