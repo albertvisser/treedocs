@@ -35,6 +35,13 @@ def get_text(win, caption, oldtext):
     return ok, newtext
 
 
+def get_choice(win, caption, options, current):
+    "open a dialog and let the user choose from a set of possible values"
+    data, ok = qtw.QInputDialog.getItem(win, "DocTree", caption, options, current, editable=False)
+    newtext = str(data) if ok else ''
+    return ok, newtext
+
+
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
     file_filter = "{}s (*{})".format(*shared.FILE_TYPE)

@@ -172,6 +172,8 @@ class MainWindow():
                 ('&Delete Current View', self.remove_view, '', '',
                  'Remove the current tree view'),
                 (),
+                ('Goto (Select) View', self.select_view_from_dropdown, 'Ctrl+G', '',
+                 'Switch to another view'),
                 ('Next View', self.next_view, 'Ctrl+PgDown', '',
                  'Switch to the next view in the list'),
                 ('Prior View', self.prev_view, 'Ctrl+PgUp', '',
@@ -969,6 +971,22 @@ class MainWindow():
             self.opts["ActiveView"] -= 1
             if self.opts["ActiveView"] < 0:
                 self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
+        self.gui.rebuild_root()
+        self.activeitem = self.gui.root
+        tree_item = self.viewtotree()
+        self.set_window_title()
+        self.gui.tree.set_item_selected(tree_item)
+
+    def select_view_from_dropdown(self):
+        "handles Menu > View > Goto View"
+        ok, newview = gui.get_choice(self.gui, 'Select a view:', self.opts["ViewNames"],
+                                     self.opts["ActiveView"])
+        if not ok:
+            return
+        self.check_active()
+        self.views[self.opts["ActiveView"]] = self.treetoview()
+        self.gui.editor.clear()
+        self.opts["ActiveView"] = self.opts["ViewNames"].index(newview)
         self.gui.rebuild_root()
         self.activeitem = self.gui.root
         tree_item = self.viewtotree()
