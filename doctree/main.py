@@ -984,6 +984,7 @@ class MainWindow():
         newviewtext = str(newview).split(None, 1)[1]
         self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
         self.gui.rebuild_root()
+        self.activeitem = self.gui.root
         tree_item = self.viewtotree()
         self.set_window_title()
         self.gui.tree.set_item_selected(tree_item)
