@@ -931,6 +931,8 @@ class TreePanel(qtw.QTreeWidget):
             prev = parent
             if prev == self.parent.root:
                 prev = parent.child(pos + 1)
+            if prev is None:
+                prev = self.parent.root
         self.parent.master.popitems(item, cut_from_itemdict)
         shared.log('  na popitem: cut_from_itemdict is {}'.format(cut_from_itemdict))
         ## parent.takeChild(pos)
