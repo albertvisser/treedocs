@@ -84,7 +84,7 @@ def reset_toolkit_file_if_needed():
         (path / 'toolkit-orig').rename(path / 'toolkit.py')
 
 
-class MainWindow():
+class MainWindow:
     "Primary application window (main screen)"
     def __init__(self, fname=''):
         self.project_dirty = False  # need to set this directly here
@@ -1073,10 +1073,7 @@ class MainWindow():
         - title of the itemdict item
         """
         result = []
-        if not loc:
-            location = []
-        else:
-            location = loc
+        location = loc or []
         # for ix in range(parent.childCount()):
         for ix, treeitem in enumerate(self.gui.tree.getitemkids(parent)):
             loc = location + [ix]

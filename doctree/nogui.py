@@ -15,11 +15,10 @@ def ask_question(win, text):
     return result[0].lower() != 'n'
 
 
-class MainGui():
+class MainGui:
     "Primary application window (main screen): dummy version"
     def __init__(self):
         pass
 
     def go(self):
         "pretend starting the GUI"
-        pass

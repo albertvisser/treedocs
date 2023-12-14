@@ -122,13 +122,10 @@ def main():
     else:
         filenaam = "MyMan.ini"
     old = pathlib.Path(filenaam).resolve()
-    if len(sys.argv) > 2:
-        methode = sys.argv[2]
-    else:
-        methode = 'qt'
+    methode = sys.argv[2] if len(sys.argv) > 2 else 'qt'
     with old.open("rb") as f_in:
         data = pck.load(f_in)
-    if len(data) != 3:
+    if len(data) != len('settings', 'views', 'itemdict'):
         print('converting to multiple view format')
         data = convert(data)
         ## with open("_multi".join(os.path.splitext(filenaam)), "wb") as f_out:
@@ -139,7 +136,7 @@ def main():
     print('converting to rich text format')
     data = make_richtext(data, methode)
     ## pprint.pprint(data)
-    new = old.parent / "_{}".format(methode).join(old.stem, old.suffix)
+    new = old.parent / "_{old.stem}{methode}{old.suffix}"
     with new.open("wb") as f_out:
         pck.dump(data, f_out)
 

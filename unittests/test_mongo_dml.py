@@ -1,6 +1,7 @@
 import types
 import pytest
 import doctree.mongo_dml as dml
+from pymongo.collection import Collection
 
 testdata = [{'Application': 'DocTree'},
             # [[(0, [(1, []), (2, [])])]],  # MongoDB ver-list de tuples
@@ -14,7 +15,7 @@ def test_add_doc(monkeypatch, capsys):
         print('called database.insert_one() with args', args)
         return types.SimpleNamespace(inserted_id='x')
     mycoll = dml.db['test']
-    monkeypatch.setattr(dml.Collection, 'insert_one', mock_insert_one)
+    monkeypatch.setattr(Collection, 'insert_one', mock_insert_one)
     assert dml._add_doc('test', 'doc') == 'x'
     assert capsys.readouterr().out == f"called database.insert_one() with args ({mycoll}, 'doc')\n"
 
@@ -23,7 +24,7 @@ def test_update_doc(monkeypatch, capsys):
     def mock_update(*args):
         print('called database.update_one() with args', args)
     mycoll = dml.db['test']
-    monkeypatch.setattr(dml.Collection, 'update_one', mock_update)
+    monkeypatch.setattr(Collection, 'update_one', mock_update)
     dml._update_doc('test', '1', 'doc')
     assert capsys.readouterr().out == (f"called database.update_one() with args ({mycoll},"
                                        " {'_id': '1'}, 'doc')\n")
@@ -45,11 +46,11 @@ def test_create_new_dtree(monkeypatch, capsys):
         print('called database.find_one() with args', args)
     def mock_insert_one(*args):
         print('called database.insert_one() with args', args)
-    monkeypatch.setattr(dml.Collection, 'find_one', mock_find_one_exc)
+    monkeypatch.setattr(Collection, 'find_one', mock_find_one_exc)
     with pytest.raises(FileExistsError):
         dml.create_new_dtree('test')
-    monkeypatch.setattr(dml.Collection, 'find_one', mock_find_one)
-    monkeypatch.setattr(dml.Collection, 'insert_one', mock_insert_one)
+    monkeypatch.setattr(Collection, 'find_one', mock_find_one)
+    monkeypatch.setattr(Collection, 'insert_one', mock_insert_one)
     mycoll = dml.db['test']
     dml.create_new_dtree('test')
     assert capsys.readouterr().out == (
@@ -64,7 +65,7 @@ def test_read_dtree():
         dml.create_new_dtree('test')
     # print([x for x in dml.read_dtree('test')])
     data = list(dml.read_dtree('test'))
-    assert len(data) == 2
+    assert len(data) == len(['settings', 'imagelist'])
     assert data[0]['type'] == 'settings'
     # assert data[1]['type'] == 'textpos'
     assert data[1]['type'] == 'imagelist'
@@ -80,12 +81,12 @@ def test_clear_dtree(monkeypatch, capsys):
         print('called database.drop() with args', args)
     def mock_create_new_dtree(*args):
         print('called dml.create_new_tree() with args', args)
-    monkeypatch.setattr(dml.Collection, 'find_one', mock_find_one_not)
+    monkeypatch.setattr(Collection, 'find_one', mock_find_one_not)
     with pytest.raises(FileNotFoundError):
         dml.clear_dtree('test')
     mycoll = dml.db['test']
-    monkeypatch.setattr(dml.Collection, 'find_one', mock_find_one)
-    monkeypatch.setattr(dml.Collection, 'drop', mock_drop)
+    monkeypatch.setattr(Collection, 'find_one', mock_find_one)
+    monkeypatch.setattr(Collection, 'drop', mock_drop)
     monkeypatch.setattr(dml, 'create_new_dtree', mock_create_new_dtree)
     dml.clear_dtree('test')
     assert capsys.readouterr().out == (
@@ -106,12 +107,12 @@ def test_rename_dtree(monkeypatch, capsys):
         return None
     def mock_rename(*args):
         print('called database.rename() with args', args)
-    monkeypatch.setattr(dml.Collection, 'find_one', mock_find_one)
+    monkeypatch.setattr(Collection, 'find_one', mock_find_one)
     with pytest.raises(FileExistsError) as exc:
         dml.rename_dtree('test', 'new')
     assert str(exc.value) == 'new_name_taken'
-    monkeypatch.setattr(dml.Collection, 'find_one', mock_find_none)
-    monkeypatch.setattr(dml.Collection, 'rename', mock_rename)
+    monkeypatch.setattr(Collection, 'find_one', mock_find_none)
+    monkeypatch.setattr(Collection, 'rename', mock_rename)
     mycoll = dml.db['test']
     newcoll = dml.db['other']
     dml.rename_dtree('test', 'other')

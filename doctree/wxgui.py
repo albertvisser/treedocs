@@ -8,7 +8,7 @@ import wx.lib.mixins.treemixin as treemix
 import wx.richtext as rt
 import wx.lib.colourselect as csel
 import wx.lib.buttons as wxlb
-import doctree.shared as shared
+from doctree import shared
 
 
 def show_message(win, text):
@@ -40,6 +40,10 @@ def get_text(win, caption, oldtext):
     return ok, newtext
 
 
+def get_choice(win, caption, options, current):
+    "open a dialog and let the user choose from a set of possible values"
+
+
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
     filter = "Pickle files (*.pck)|*.pck"
@@ -58,10 +62,7 @@ def get_filename(win, title, start, save=False):
 
 def show_dialog(win, cls, kwargs=None):
     "show dialog and return if confirmed or rejected"
-    if kwargs:
-        dlg = cls(win, **kwargs)
-    else:
-        dlg = cls(win, id=-1)
+    dlg = cls(win, **kwargs) if kwargs else cls(win, id=-1)
     with dlg:
         ok = dlg.ShowModal()
         if ok == wx.ID_OK:
@@ -79,7 +80,7 @@ def get_hotkeys_from_text(label):
     """
     text = label.split('\n')
     hotkeys = []
-    if len(text) == 2:
+    if len(text) == len(['label', 'key']):
         keys = text[1][1:-1].split(', ')
         for item in keys:
             test = item.split('+')
@@ -273,19 +274,13 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
 
     def create_popupmenu(self, item):
         "rightclick menu in tree - not implemented yet in this version"
-        pass
 
     def add_to_parent(self, itemkey, titel, parent, pos=-1):
         """add item to tree at a given location
         """
         ## log('*** in add_to_parent ***')
         ## log('parent is {}, pos is {}'.format(parent, pos))
-        if pos == -1:
-            ## log('append new item')
-            new = self.AppendItem(parent, titel)
-        else:
-            ## log('insert before pos {}'.format(pos))
-            new = self.InsertItem(parent, pos, titel)
+        new = self.AppendItem(parent, titel) if pos == -1 else self.InsertItem(parent, pos, titel)
         self.SetItemData(new, itemkey)
         return new
 
@@ -327,7 +322,7 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
     def getitemparentpos(self, item):
         "parent en positie van item onder parent bepalen"
         shared.log('*** in wx.tree.getitemparentpos ***')
-        shared.log('item is {} {}'.format(item, self.getitemtitle(item)))
+        shared.log(f'item is {item} {self.getitemtitle(item)}')
         try:
             root = self.GetItemParent(item)
         except TypeError:   # geen item meegegeven - mag dat eigenlijk wel?
@@ -337,11 +332,11 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
             pos = 0
             tag, cookie = self.GetFirstChild(root)
             if tag:
-                shared.log('start at tag {} {}'.format(tag, self.getitemtitle(tag)))
+                shared.log(f'start at tag {tag} {self.getitemtitle(tag)}')
             while tag != item and tag.IsOk():
                 pos += 1
                 tag, cookie = self.GetNextChild(root, cookie)
-                shared.log('next ok tag is {} {}'.format(tag, self.getitemtitle(tag)))
+                shared.log(f'next ok tag is {tag} {self.getitemtitle(tag)}')
         return root, pos
 
     def getselecteditem(self):
@@ -393,6 +388,8 @@ class EditorPanel(rt.RichTextCtrl):
                                  style=wx.VSCROLL | wx.HSCROLL | wx.NO_BORDER)
         self.textAttr = rt.RichTextAttr()
         self.parent_ = parent.parent
+        self.paragraph_indent = 100
+        self.parspace_increment = 20
         self.mark_dirty(False)
 
     # def on_url(self, evt):
@@ -539,7 +536,7 @@ class EditorPanel(rt.RichTextCtrl):
             range = rt.RichTextRange(ip, ip)
             if self.HasSelection():
                 range = self.GetSelectionRange()
-            attr.SetLeftIndent(attr.GetLeftIndent() + 100)
+            attr.SetLeftIndent(attr.GetLeftIndent() + self.paragraph_indent)
             attr.SetFlags(wx.TEXT_ATTR_LEFT_INDENT)
             self.SetStyle(range, attr)
 
@@ -552,8 +549,8 @@ class EditorPanel(rt.RichTextCtrl):
             range = rt.RichTextRange(ip, ip)
             if self.HasSelection():
                 range = self.GetSelectionRange()
-        if attr.GetLeftIndent() >= 100:
-            attr.SetLeftIndent(attr.GetLeftIndent() - 100)
+        if attr.GetLeftIndent() >= self.paragraph_indent:
+            attr.SetLeftIndent(attr.GetLeftIndent() - self.paragraph_indent)
             attr.SetFlags(wx.TEXT_ATTR_LEFT_INDENT)
             self.SetStyle(range, attr)
 
@@ -566,7 +563,7 @@ class EditorPanel(rt.RichTextCtrl):
             range = rt.RichTextRange(ip, ip)
             if self.HasSelection():
                 range = self.GetSelectionRange()
-            attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() + 20)
+            attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() + self.parspace_increment)
             attr.SetFlags(wx.TEXT_ATTR_PARA_SPACING_AFTER)
             self.SetStyle(range, attr)
 
@@ -579,8 +576,9 @@ class EditorPanel(rt.RichTextCtrl):
             range = rt.RichTextRange(ip, ip)
             if self.HasSelection():
                 range = self.GetSelectionRange()
-            if attr.GetParagraphSpacingAfter() >= 20:
-                attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() - 20)
+            if attr.GetParagraphSpacingAfter() >= self.parspace_increment:
+                attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() -
+                                              self.parspace_increment)
                 attr.SetFlags(wx.TEXT_ATTR_PARA_SPACING_AFTER)
                 self.SetStyle(range, attr)
 
@@ -787,6 +785,7 @@ class MainGui(wx.Frame):
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.create_menu(menubar, toolbar1, self.master.get_menu_data())
+        self.menu_disabled = True
         # print(toolbar1.GetToolsCount())
         # toolbar1.Realize()
         self.create_stylestoolbar(toolbar1)  # frm)
@@ -851,7 +850,7 @@ class MainGui(wx.Frame):
                 # icon is mede bedoeld om van hieruit de toolbar op te zetten
                 if shortcut:
                     firstkey = shortcut.split(',', 1)[0].replace('PgDown', 'PgDn')
-                    menulabel = '\t'.join((label, firstkey))
+                    menulabel = f'{label}\t{firstkey}'
                 else:
                     menulabel = label
                 # menuitems kunnen niet zowel een icon als type check hebben
@@ -872,7 +871,7 @@ class MainGui(wx.Frame):
                     # tooltype = wx.ITEM_NORMAL
                     # if label in update_ui and update_ui[label] is not None:
                     #     tooltype = wx.ITEM_CHECK
-                    item = toolbar.AddTool(-1, label, bmp)
+                    toolitem = toolbar.AddTool(-1, label, bmp)
                     # item = toolbar.AddTool(-1, label, bmp, shortHelp=info, kind=tooltype)
                     if label in update_ui:
                         if update_ui[label]:
@@ -880,9 +879,9 @@ class MainGui(wx.Frame):
                     else:
                     #     callback = ui_updater = self.forward_event
                         callback, ui_updater = handler, None
-                    self.Bind(wx.EVT_TOOL, callback, item)
+                    self.Bind(wx.EVT_TOOL, callback, toolitem)
                     if ui_updater:
-                        self.Bind(wx.EVT_UPDATE_UI, ui_updater, item)
+                        self.Bind(wx.EVT_UPDATE_UI, ui_updater, toolitem)
                 submenu.Append(menu_item)
             menubar.Append(submenu, menu_label)
 
@@ -895,7 +894,7 @@ class MainGui(wx.Frame):
             menubar.EnableTop(menuindex, not value)
         mainmenu = menubar.GetMenu(0)
         for menuitem in mainmenu.GetMenuItems():
-            if menuitem.GetLabel() not in ('Open', 'Init', 'eXit'):
+            if menuitem.GetItemLabelText() not in ('Open', 'Init', 'eXit'):
                 mainmenu.Enable(menuitem.GetId(), not value)
         self.menu_disabled = value
 
@@ -1092,9 +1091,8 @@ class MainGui(wx.Frame):
             if menuitem.GetId() == menu_id:
                 newview = menuitem.GetItemLabelText()
                 menuitem.Check()
-            else:
-                if menuitem.IsChecked():
-                    menuitem.Check(False)
+            elif menuitem.IsChecked():
+                menuitem.Check(False)
         return newview
 
     def uncheck_viewmenu_option(self):
@@ -1136,7 +1134,7 @@ class MainGui(wx.Frame):
         for menuitem in menuitem_list[7:]:
             num, naam = str(menuitem.GetItemLabelText()).split(None, 1)
             if removed:
-                menuitem.SetItemLabelText('&{} {}'.format(int(num[1:]) - 1, naam))
+                menuitem.SetItemLabelText('&{int(num[1:]) - 1} {naam}')
                 if not item_to_check:
                     item_to_check = menuitem
             if naam == viewname:

@@ -66,7 +66,7 @@ def main(fname, *, donot_filter_html=False, to_files=False):
         try:
             test = nt_data[0]["AskBeforeHide"]
         except (ValueError, KeyError):
-            return "{} is not a valid Doctree data file".format(fname)
+            return "{fname} is not a valid Doctree data file"
 
         # pprint the first element; a dictionary with settings
         options = nt_data[0]

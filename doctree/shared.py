@@ -7,8 +7,8 @@ import bs4 as bs
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FILE_TYPE = ('Doctree File', '.trd')
-HIDE_TEXT = "\n".join(("DocTree gaat nu slapen in de System tray",
-                       "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken"))
+HIDE_TEXT = ("DocTree gaat nu slapen in de System tray\n"
+             "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken")
 LOGFILE = pathlib.Path('/tmp') / 'logs' / 'doctree.log'
 WANT_LOGGING = 'DEBUG' in os.environ and os.environ['DEBUG'] != "0"
 if WANT_LOGGING:
@@ -33,7 +33,7 @@ def getsubtree(tree, item, itemlist=None):
         itemlist = []
     titel, key = tree.getitemdata(item)
     itemlist.append(key)
-    log(' getsubtree item {}, {}'.format(titel, key))
+    log(f' getsubtree item {titel}, {key}')
     subtree = []
     for kid in tree.getitemkids(item):
         data, itemlist = getsubtree(tree, kid, itemlist)
@@ -43,8 +43,7 @@ def getsubtree(tree, item, itemlist=None):
 
 def putsubtree(tree, parent, titel, key, subtree=None, pos=-1):
     """recursieve functie om de onthouden structuur terug te zetten"""
-    log('in shared.putsubtree met parent {}, titel {}, key {} of type {}'.format(parent, titel,
-        key, type(key)))
+    log(f'in shared.putsubtree met {parent=}, {titel=}, {key=} of type {type(key)}')
     if subtree is None:
         subtree = []
     new = tree.add_to_parent(key, str(titel), parent, pos)

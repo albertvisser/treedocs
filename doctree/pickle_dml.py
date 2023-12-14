@@ -16,7 +16,7 @@ def read_from_files(this_file, other_file, temp_imagepath):
         return ['no file name given']
     try:
         f_in = infile.open("rb")
-    except IOError:
+    except OSError:
         return [f"couldn't open {infile}"]
     with f_in:
         try:

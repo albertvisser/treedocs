@@ -2,10 +2,11 @@
 """
 import os
 import sys
+import contextlib
 import PyQt5.QtGui as gui
 import PyQt5.QtWidgets as qtw
 import PyQt5.QtCore as core
-import doctree.shared as shared
+from doctree import shared
 
 
 def show_message(win, text):
@@ -49,16 +50,13 @@ def get_filename(win, title, start, save=False):
         filename = qtw.QFileDialog.getSaveFileName(win, title, start, file_filter)
     else:
         filename = qtw.QFileDialog.getOpenFileName(win, title, start, file_filter)
-    ok = True if filename[0] else False
+    ok = bool(filename[0])
     return ok, filename[0]
 
 
 def show_dialog(win, cls, kwargs=None):
     "show dialog and return if confirmed or rejected"
-    if kwargs:
-        dlg = cls(win, **kwargs)
-    else:
-        dlg = cls(win)
+    dlg = cls(win, **kwargs) if kwargs else cls(win)
     return dlg.exec_() == qtw.QDialog.Accepted
 
 
@@ -317,10 +315,8 @@ class ResultsDialog(qtw.QDialog):
             if self.parent.srchtype & 1:
                 where += ' and '
             where += 'texts'
-        hbox.addWidget(qtw.QLabel('\n'.join((
-            "Showing results of searching for `{}` in all {}".format(
-                self.parent.srchtext, where),
-            "Doubleclick to go to an entry")), self))
+        hbox.addWidget(qtw.QLabel(f"Showing results of searching for `{self.parent.srchtext}`"
+                                  " in all {where}\nDoubleclick to go to an entry", self))
         vbox.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
@@ -501,8 +497,7 @@ class AddCommand(qtw.QUndoCommand):
         """actie uitvoeren
         """
         shared.log('in AddCommand.redo')
-        shared.log("root, under zijn {} ({}) en {}".format(self.root, self.root.text(0),
-                                                           self.under))
+        shared.log(f"root, under zijn {self.root} ({self.root.text(0)}) en {self.under}")
         self.data = self.win.master.do_additem(self.root, self.under, self.pos,
                                                self.new_title, self.extra_titles)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
@@ -548,7 +543,7 @@ class PasteCommand(qtw.QUndoCommand):
         self.before = before
         self.below = below
         self.item = item        # where we are now
-        shared.log("init {} {}".format(description, self.item))
+        shared.log(f"init {description} {self.item}")
         super().__init__(description)
         ## self.parent = item.parent()
         self.key = int(self.item.text(1))  # on the root item this can be the editor
@@ -612,7 +607,7 @@ class PasteCommand(qtw.QUndoCommand):
         ## print(parent, pos)
         if pos == -1:
             pos = parent.childCount() - 1
-        shared.log('Taking child {} from parent {} {}'.format(pos, parent, parent.text(0)))
+        shared.log(f'Taking child {pos} from parent {parent} {parent.text(0)}')
         parent.takeChild(pos)
         # eventueel andere views weer aanpassen
         self.win.master.views = self.views
@@ -622,20 +617,14 @@ class PasteCommand(qtw.QUndoCommand):
         ## item.redo()
         if self.first_edit:
             self.win.master.set_project_dirty(False)
-        self.win.statusbar.showMessage('{} undone'.format(self.text()))
+        self.win.statusbar.showMessage(f'{self.text()} undone')
 
 
 class CopyCommand(qtw.QUndoCommand):
     """Notitie in copy buffer halen
     """
     def __init__(self, win, cut, retain, item, description=""):
-        if cut:
-            if retain:
-                description = "Cut"
-            else:
-                description = "Delete"
-        else:
-            description = "Copy"
+        description = "Copy" if not cut else "Cut" if retain else "Delete"
         super().__init__(description)
         self.undodata = None
         self.win = win      # treewidget
@@ -646,18 +635,16 @@ class CopyCommand(qtw.QUndoCommand):
         self.first_edit = not self.win.master.project_dirty
         self.cut = cut
         self.retain = retain
-        shared.log("init {} {} {}i {} {}".format(description, self.key, self.item, self.cut,
-                                                 self.retain))
+        shared.log(f"init {description} {self.key} {self.item} {self.cut} {self.retain}")
 
     def redo(self):
         """actie uitvoeren
         """
         data = self.win.master.itemdict[self.key]
-        shared.log('in copy.redo for item {} with key {} and data {}'.format(self.item, self.key,
-                                                                             data))
+        shared.log(f'in copy.redo for item {self.item} with key {self.key} and data {data}')
         self.oldstate = self.win.master.opts["ActiveItem"], self.win.master.views
-        shared.log('before (re)do: oldstate is {} {} {}'.format(
-            self.win.master.activeitem, self.win.master.opts["ActiveItem"], self.win.master.views))
+        shared.log(f'before (re)do: oldstate is {self.win.master.activeitem}'
+                   f' {self.win.master.opts["ActiveItem"]} {self.win.master.views}')
         ## def get_children(current):
             ## count = current.childCount()
             ## if count == 0:
@@ -669,12 +656,12 @@ class CopyCommand(qtw.QUndoCommand):
         ## state['current'] = current.text(0), current.text[1], get_children(current)
         ## print('state is', state)
         self.newstate = self.win.master.do_copyaction(self.cut, self.retain, self.item)
-        shared.log(' after (re)do: newstate is {}'.format(self.newstate))
+        shared.log(f' after (re)do: newstate is {self.newstate}')
 
     def undo(self):
         """actie ongedaan maken
         """
-        shared.log('Undo copy for {} with key {}'.format(self.item, self.key))
+        shared.log(f'Undo copy for {self.item} with key {self.key}')
         ## # self.cut_el = None
         ## if self.cut:
             ## item = PasteElementCommand(self.win, self.tag, self.data, self.parent,
@@ -686,16 +673,14 @@ class CopyCommand(qtw.QUndoCommand):
         ## copied_item, itemlist = self.tree.getsubtree(current)
         ## cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
         copied_items, oldloc, cut_from_itemdict = self.newstate
-        shared.log(' in undo: newstate is {}'.format(self.newstate))
+        shared.log(f' in undo: newstate is {self.newstate}')
         if self.cut:
-            shared.log('itemdict terugzetten in redo bij cut, cut_from_itemdict is {}'.format(
-                cut_from_itemdict))
+            shared.log(f'itemdict terugzetten in redo bij cut, {cut_from_itemdict=}')
             for key, value in cut_from_itemdict:
                 self.win.master.itemdict[key] = value
             parent, pos = oldloc
-            shared.log('na terugzetten, itemdict is {}'.format(self.win.master.itemdict))
-            shared.log('calling tree.putsubtree using parent, *copied_items ({}), pos'.format(
-                copied_items))
+            shared.log(f'na terugzetten, itemdict is {self.win.master.itemdict}')
+            shared.log(f'calling tree.putsubtree using parent, *copied_items ({copied_items}), pos')
             newitem = self.win.tree.putsubtree(parent, *copied_items, pos=pos - 1)
             self.win.master.activeitem = self.item = newitem
 
@@ -703,12 +688,12 @@ class CopyCommand(qtw.QUndoCommand):
         ## self.win.cut_from_itemdict = state['cut_from_itemdict']
         ## self.win.add_node_on_paste = state['add_node']
         self.win.master.opts["ActiveItem"], self.win.master.views = self.oldstate
-        shared.log(' after undo: restored old state to {} {} {}'.format(
-            self.win.master.activeitem, self.win.master.opts["ActiveItem"], self.win.master.views))
+        shared.log(f' after undo: restored old state to {self.win.master.activeitem}'
+                   ' {self.win.master.opts["ActiveItem"]} {self.win.master.views}')
 
         if self.first_edit:
             self.win.master.set_project_dirty(False)
-        self.win.statusbar.showMessage('{} undone'.format(self.text()))
+        self.win.statusbar.showMessage(f'{self.text()} undone')
         ## self.win.tree.setCurrentItem(self.item)
 
 
@@ -735,7 +720,7 @@ class TreePanel(qtw.QTreeWidget):
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.master.check_active()
         item = self.currentItem()
-        shared.log('current item is now {} {}'.format(item, item.text(0)))
+        shared.log(f'current item is now {item} {item.text(0)}')
         self.parent.master.activate_item(item)
         self.parent.master.set_window_title()
 
@@ -823,16 +808,14 @@ class TreePanel(qtw.QTreeWidget):
     def add_to_parent(self, itemkey, titel, parent, pos=-1):
         """add item to tree at a given location
         """
-        shared.log('in add_to_parent, itemkey is {}, titel is {}, parent is {},'.format(itemkey,
-                                                                                        titel,
-                                                                                        parent))
+        shared.log(f'in add_to_parent, itemkey is {itemkey}, titel is {titel}, parent is {parent},')
         new = qtw.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
         # save plain text on tree item to facilitate search
         # faster that using BeautifulSoup? Also, we don't need the import this way
         doc = gui.QTextDocument()
-        shared.log('   itemdict is {}'.format(self.parent.master.itemdict))
-        shared.log('   itemkey is {}, {}'.format(itemkey, type(itemkey)))
+        shared.log(f'   itemdict is {self.parent.master.itemdict}')
+        shared.log(f'   itemkey is {itemkey}, {type(itemkey)}')
         doc.setHtml(self.parent.master.itemdict[itemkey][1])
         rawtext = doc.toPlainText()
         new.setData(0, core.Qt.UserRole, rawtext)
@@ -840,8 +823,8 @@ class TreePanel(qtw.QTreeWidget):
         ## new.setIcon(0, gui.QIcon(str(HERE / 'icons/empty.png')))
         new.setText(1, str(itemkey))
         new.setToolTip(0, titel.rstrip())
-        shared.log('adding child {} ({}) to parent {} ({}) at pos {}'.format(
-            new, new.text(0), parent, parent.text(0), pos))
+        shared.log(f'adding child {new} ({new.text(0)}) to parent {parent} ({parent.text(0)})'
+                   ' at pos p{}')
         if pos == -1:
             parent.addChild(new)
         else:
@@ -867,12 +850,10 @@ class TreePanel(qtw.QTreeWidget):
     def getitemkey(item):
         "sleutel voor de itemdict ophalen"
         value = item.text(1)
-        shared.log('in tree.getitemkey, type voor omzetten is {}'.format(type(value), always=True))
-        try:
+        shared.log(f'in tree.getitemkey, type voor omzetten is {type(value)}', always=True)
+        with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
             value = int(value)
-        except ValueError:  # root item heeft tekst in plaats van itemdict key
-            pass
-        shared.log('in tree.getitemkey, type na omzetten is {}'.format(type(value), always=True))
+        shared.log(f'in tree.getitemkey, type na omzetten is {type(value)}', always=True)
         return value
 
     @staticmethod
@@ -897,10 +878,7 @@ class TreePanel(qtw.QTreeWidget):
     def getitemparentpos(item):
         "parent en positie van item onder parent bepalen"
         root = item.parent()
-        if root:
-            pos = root.indexOfChild(item)
-        else:
-            pos = -1
+        pos = root.indexOfChild(item) if root else -1
         return root, pos
 
     def getselecteditem(self):
@@ -927,7 +905,7 @@ class TreePanel(qtw.QTreeWidget):
 
     def removeitem(self, item, cut_from_itemdict):
         "removes current treeitem and returns the previous one"
-        shared.log('in removeitem {} {}'.format(item, cut_from_itemdict))
+        shared.log(f'in removeitem {item} {cut_from_itemdict}')
         ## parent = item.parent()               # gui-dependent
         ## pos = parent.indexOfChild(item)
         parent, pos = self.getitemparentpos(item)
@@ -941,12 +919,12 @@ class TreePanel(qtw.QTreeWidget):
             if prev is None:
                 prev = self.parent.root
         self.parent.master.popitems(item, cut_from_itemdict)
-        shared.log('  na popitem: cut_from_itemdict is {}'.format(cut_from_itemdict))
+        shared.log(f'  na popitem: cut_from_itemdict is {cut_from_itemdict}')
         ## parent.takeChild(pos)
         # bij een undo van een add moeten met " \ " toegevoegde items ook verwijderd worden
         to_remove = [(parent, pos)]
         while True:
-            shared.log('{} {} {}'.format(item, item.childCount(), item.child(0)))
+            shared.log(f'{item} {item.childCount()} {item.child(0)}')
             if item.childCount() == 0:
                 break
             to_remove.append((item, 0))  # er is er altijd maar één
@@ -961,8 +939,7 @@ class TreePanel(qtw.QTreeWidget):
 
     def putsubtree(self, parent, titel, key, subtree=None, pos=-1):
         "build a new part of the tree"
-        shared.log('in TreePanel.putsubtree met parent {}, titel {}, key {} of type {}'.format(
-            parent, titel, key, type(key)))
+        shared.log('in TreePanel.putsubtree met {parent=}, {titel=}, {key=} of type {type(key)}')
         shared.log('calling shared.putsubtree met parent, titel, key, subtree, pos)')
         return shared.putsubtree(self, parent, titel, key, subtree, pos)
 
@@ -986,6 +963,7 @@ class EditorPanel(qtw.QTextEdit):
         self.cursorPositionChanged.connect(self.cursorposition_changed)
         font = self.currentFont()
         self.setTabStopWidth(tabsize(font.pointSize()))
+        self.paragraph_increment = 100
 
     def canInsertFromMimeData(self, source):
         "reimplemented"
@@ -1123,7 +1101,7 @@ class EditorPanel(qtw.QTextEdit):
         ## fmt = gui.QTextBlockFormat()
         fmt = where.blockFormat()
         wid = fmt.indent()
-        fmt.setIndent(wid + 100)
+        fmt.setIndent(wid + self.paragraph_increment)
         # maar hier is geen merge methode voor, lijkt het...
 
     def indent_less(self):  # , event=None):
@@ -1132,8 +1110,8 @@ class EditorPanel(qtw.QTextEdit):
             return
         fmt = gui.QTextBlockFormat()
         wid = fmt.indent()
-        if wid > 100:
-            fmt.setIndent(wid - 100)
+        if wid > self.paragraph_increment:
+            fmt.setIndent(wid - self.paragraph_increment)
 
     def increase_parspacing(self):
         "not implemented in Qt"
@@ -1252,10 +1230,8 @@ class EditorPanel(qtw.QTextEdit):
         self.font_changed(fmt.font())
         self.color_changed(fmt.foreground().color())
         backg = fmt.background()
-        if int(backg.style()) == 0:  # nul betekent transparant
-            bgcol = core.Qt.white  # eigenlijk standaardkleur, niet per se wit
-        else:
-            bgcol = backg.color()
+        # eigenlijk standaardkleur, niet per se wit  # nul betekent transparant
+        bgcol = core.Qt.white if int(backg.style()) == 0 else backg.color()
         self.background_changed(bgcol)
 
     def cursorposition_changed(self):
@@ -1740,9 +1716,8 @@ class MainGui(qtw.QMainWindow):
             if menuitem == sender:
                 newview = sender.text()
                 sender.setChecked(True)
-            else:
-                if menuitem.isChecked():
-                    menuitem.setChecked(False)
+            elif menuitem.isChecked():
+                menuitem.setChecked(False)
         return newview
 
     def uncheck_viewmenu_option(self):
@@ -1755,7 +1730,7 @@ class MainGui(qtw.QMainWindow):
     def add_view_to_menu(self, newname):
         "update action text"
         action = self.viewmenu.actions()[self.master.opts["ActiveView"] + 7]
-        action.setText('{} {}'.format(str(action.text()).split()[0], newname))
+        action.setText(f'{action.text().split()[0]} {newname}')
 
     def check_next_viewmenu_option(self, prev=False):
         "find the currently checked option, uncheck it and check the next/previous one"
@@ -1782,7 +1757,7 @@ class MainGui(qtw.QMainWindow):
         for menuitem in menuitem_list[7:]:
             num, naam = str(menuitem.text()).split(None, 1)
             if removed:
-                menuitem.setText('&{} {}'.format(int(num[1:]) - 1, naam))
+                menuitem.setText(f'&{int(num[1:]) - 1} {naam}')
                 if not item_to_check:
                     item_to_check = menuitem
             if naam == viewname:
@@ -1824,7 +1799,7 @@ class MainGui(qtw.QMainWindow):
 
     def add_escape_action(self):
         "Add accelerator to for Esc key to close application"
-        if len(self.quit_action.shortcuts()) < 2:
+        if len(self.quit_action.shortcuts()) < len(['Ctrl-Q, Esc']):
             self.quit_action.setShortcuts(self.quit_shortcuts)
 
     def remove_escape_action(self):
