@@ -1,6 +1,6 @@
 """DocTree: data access using pickle
 """
-import pickle as pck
+import pickle
 import shutil
 import zipfile as zpf
 import bs4 as bs
@@ -20,23 +20,26 @@ def read_from_files(this_file, other_file, temp_imagepath):
         return [f"couldn't open {infile}"]
     with f_in:
         try:
-            nt_data = pck.load(f_in)
-        except (EOFError, pck.UnpicklingError):
+            nt_data = pickle.load(f_in)
+        except (EOFError, pickle.UnpicklingError):
             return [f"couldn't load data from {infile}"]
 
     # read/init/check settings if possible, otherwise cancel
     ## print(nt_data[0])
     try:
         test = nt_data[0].get("Application", None)
-        fail = test != 'DocTree'
-    except AttributeError:
+    except (TypeError, AttributeError, KeyError):
         fail = True
+    else:
+        fail = test != 'DocTree'
     if fail:
         return [f"{infile} is not a valid Doctree data file"]
 
     # read views
     try:
         views = list(nt_data[1])
+    except TypeError:
+        return [f"{infile} contains invalid data for views"]
     except KeyError:
         views = [[]]
 
@@ -51,16 +54,35 @@ def read_from_files(this_file, other_file, temp_imagepath):
         text_positions = nt_data[3]
     except KeyError:
         # initialize screen positions dict
-        text_positions = {x: 0 for x in itemdict}
+        try:
+            text_positions = {x: 0 for x in itemdict}
+        except TypeError:
+            return [f"{infile} contains invalid data for itemdict"]
+    else:
+        for x in itemdict:
+            try:
+                pos = text_positions[x]
+            except (TypeError, KeyError):
+                fail = True
+                break
+            else:
+                try:
+                    pos = int(pos)
+                except ValueError:
+                    fail = True
+                    break
+        if fail:
+            return [f"{infile} contains invalid data for text positions"]
 
-    imagelist = []
+
     if not other_file:
         try:
             with zpf.ZipFile(str(this_file.with_suffix('.zip'))) as f_in:
                 f_in.extractall(path=temp_imagepath)
-                imagelist = f_in.namelist()
         except FileNotFoundError:
-            pass
+            imagelist = []
+        else:
+            imagelist = f_in.namelist()
 
     return nt_data[0], views, itemdict, text_positions, imagelist
 
@@ -114,7 +136,7 @@ def write_to_files(filename, opts, views, itemdict, textpositions, temp_imagepat
             pass
     nt_data = {0: opts, 1: views, 2: itemdict, 3: textpositions}
     with filename.open("wb") as f_out:
-        pck.dump(nt_data, f_out)  # , protocol=2)`
+        pickle.dump(nt_data, f_out)  # , protocol=2)`
     if not save_images:
         return []
 
