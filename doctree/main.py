@@ -1067,9 +1067,9 @@ class MainWindow:
     def search_from(self, parent, loc=None):
         """recursive search in tree items
         assumes item.text(0) contains title, item.data(0) contains text without format
-        result is a list of 3 items:
+        result is a list of 3-tuples with items:
         - node address in the form of a series of sequence numbers
-        - indicatinon of where the string was found
+        - indication of where the string was found (title or text)
         - title of the itemdict item
         """
         result = []
@@ -1112,7 +1112,7 @@ class MainWindow:
             gui.show_message(self.gui, msg)
             return
         ## key, loc, type, text = self.search_results[self.srchno]
-        self.gui.goto_searchresult(self.search_results[self.srchno][:2])  # niet *self.srchno?
+        self.gui.goto_searchresult(self.search_results[self.srchno][0])  # [:2])  # niet *self.srchno?
 
     def info_page(self, *args):
         """help -> about"""
