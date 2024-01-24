@@ -1,3 +1,5 @@
+"""unittests for ./doctree/pickle_dml.py
+"""
 import pathlib
 import doctree.pickle_dml as testee
 
@@ -8,6 +10,8 @@ testdata = [{'Application': 'DocTree'},
 
 
 def test_write_to_files(tmp_path):
+    """unittest for pickle_dml.write_to_files
+    """
     (tmp_path / 'test_write').mkdir(exist_ok=True)
     testfile = tmp_path / 'test_write' / 'testfile.dtr'
     imgfile = testfile.with_suffix('.zip')
@@ -18,76 +22,137 @@ def test_write_to_files(tmp_path):
 
 
 def test_read_from_files(monkeypatch, capsys, tmp_path):
+    """unittest for pickle_dml.read_from_files
+    """
     class NotASequence:
-        pass
+        """stub
+        """
     class MockZipFileErr:
+        """stub
+        """
         def __init__(self, *args):
             print('called zipfile.ZipFile with args', args)
         def __enter__(self):
+            """stub
+            """
             print('called ZipFile.__enter__')
             return self
         def extractall(self, path):
+            """stub
+            """
             print(f'called ZipFile.extractall with arg `{path}`')
             raise FileNotFoundError
         def __exit__(self, *args):
+            """stub
+            """
             print('called ZipFile.__exit__')
             return False
     class MockZipFileOk:
+        """stub
+        """
         def __init__(self, *args):
             print('called zipfile.ZipFile with args', args)
         def __enter__(self):
+            """stub
+            """
             print('called ZipFile.__enter__')
             return self
         def extractall(self, path):
+            """stub
+            """
             print(f'called ZipFile.extractall with arg `{path}`')
         def __exit__(self, *args):
+            """stub
+            """
             print('called ZipFile.__exit__')
             return True
         def namelist(self):
+            """stub
+            """
             print('called ZipFile.namelist')
             return ['name', 'list']
     def mock_open_err(*args):
+        """stub
+        """
         print('called path.open with args', args)
         raise OSError
     def mock_open_ok(*args):
+        """stub
+        """
         print('called path.open with args', args)
         return args[0].open(args[1])
     def mock_load_err(*args):
+        """stub
+        """
         print('called pickle.load')
         raise testee.pickle.UnpicklingError
     def mock_load_err_wrong_type(*args):
+        """stub
+        """
         return 'not-a-dict'
     def mock_load_err_not_an_iterable(*args):
+        """stub
+        """
         return NotASequence()
     def mock_load_err_1st_item(*args):
+        """stub
+        """
         return {}
     def mock_load_err_1st_item_2(*args):
+        """stub
+        """
         return {0: 'not-a-dict'}
     def mock_load_err_1st_item_3(*args):
+        """stub
+        """
         return {0: {}}
     def mock_load_err_1st_item_4(*args):
+        """stub
+        """
         return {0: {'Application': 'not DocTree'}}
     def mock_load_err_2nd_item(*args):
+        """stub
+        """
         return {0: testdata[0]}
     def mock_load_err_2nd_item_2(*args):
+        """stub
+        """
         return {0: testdata[0], 1: {}}
     def mock_load_err_2nd_item_3(*args):
+        """stub
+        """
         return {0: testdata[0], 1: NotASequence()}
     def mock_load_err_3rd_item(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1]}
     def mock_load_err_3rd_item_2(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1], 2: {}}
     def mock_load_err_3rd_item_3(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1], 2: NotASequence}
     def mock_load_err_3rd_item_4(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1], 2: 'not-a-dict'}
     def mock_load_err_4th_item(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1], 2: testdata[2]}
     def mock_load_err_4th_item_2(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1], 2: testdata[2], 3: {}}
     def mock_load_err_4th_item_3(*args):
+        """stub
+        """
         return {0: testdata[0], 1: testdata[1], 2: testdata[2], 3: 'not-a-dict'}
     def mock_load_ok(*args):
+        """stub
+        """
         print('called pickle.load')
         return {0: testdata[0], 1: testdata[1], 2: testdata[2], 3: testdata[3]}
     (tmp_path / 'test_read').mkdir(exist_ok=True)

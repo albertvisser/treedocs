@@ -1,3 +1,5 @@
+"""unittests for ./doctree/mongo_dml.py
+"""
 import types
 import pytest
 import doctree.mongo_dml as dml
@@ -11,7 +13,11 @@ testdata = [{'Application': 'DocTree'},
 
 # ik weet niet of ik _add_doc en _update_doc nodig ga hebben
 def test_add_doc(monkeypatch, capsys):
+    """unittest for mongo_dml._add_doc
+    """
     def mock_insert_one(*args):
+        """stub
+        """
         print('called database.insert_one() with args', args)
         return types.SimpleNamespace(inserted_id='x')
     mycoll = dml.db['test']
@@ -21,7 +27,11 @@ def test_add_doc(monkeypatch, capsys):
 
 
 def test_update_doc(monkeypatch, capsys):
+    """unittest for mongo_dml._update_doc
+    """
     def mock_update(*args):
+        """stub
+        """
         print('called database.update_one() with args', args)
     mycoll = dml.db['test']
     monkeypatch.setattr(Collection, 'update_one', mock_update)
@@ -31,7 +41,11 @@ def test_update_doc(monkeypatch, capsys):
 
 
 def test_list_dtrees(monkeypatch, capsys):
+    """unittest for mongo_dml.list_dtrees
+    """
     def mock_list():
+        """stub
+        """
         print('called db.list_collection_names()')
         return 'names'
     monkeypatch.setattr(dml.db, 'list_collection_names', mock_list)
@@ -40,11 +54,19 @@ def test_list_dtrees(monkeypatch, capsys):
 
 
 def test_create_new_dtree(monkeypatch, capsys):
+    """unittest for mongo_dml.create_new_dtree
+    """
     def mock_find_one_exc(*args):
+        """stub
+        """
         return True
     def mock_find_one(*args):
+        """stub
+        """
         print('called database.find_one() with args', args)
     def mock_insert_one(*args):
+        """stub
+        """
         print('called database.insert_one() with args', args)
     monkeypatch.setattr(Collection, 'find_one', mock_find_one_exc)
     with pytest.raises(FileExistsError):
@@ -60,6 +82,8 @@ def test_create_new_dtree(monkeypatch, capsys):
 
 
 def test_read_dtree():
+    """unittest for mongo_dml.read_dtree
+    """
     info = dml.list_dtrees()
     if 'test' not in info:
         dml.create_new_dtree('test')
@@ -72,14 +96,24 @@ def test_read_dtree():
 
 
 def test_clear_dtree(monkeypatch, capsys):
+    """unittest for mongo_dml.clear_dtree
+    """
     def mock_find_one_not(*args):
+        """stub
+        """
         return False
     def mock_find_one(*args):
+        """stub
+        """
         print('called database.find_one() with args', args)
         return True
     def mock_drop(*args):
+        """stub
+        """
         print('called database.drop() with args', args)
     def mock_create_new_dtree(*args):
+        """stub
+        """
         print('called dml.create_new_tree() with args', args)
     monkeypatch.setattr(Collection, 'find_one', mock_find_one_not)
     with pytest.raises(FileNotFoundError):
@@ -100,12 +134,19 @@ def test_clear_dtree(monkeypatch, capsys):
 
 
 def test_rename_dtree(monkeypatch, capsys):
+    """unittest for mongo_dml.rename_dtree
+    """
     def mock_find_one(*args):
+        """stub
+        """
         return True
     def mock_find_none(*args):
+        """stub
+        """
         print('called database.find_one() with args', args)
-        return None
     def mock_rename(*args):
+        """stub
+        """
         print('called database.rename() with args', args)
     monkeypatch.setattr(Collection, 'find_one', mock_find_one)
     with pytest.raises(FileExistsError) as exc:
@@ -122,6 +163,8 @@ def test_rename_dtree(monkeypatch, capsys):
 
 
 def _test_rename_dtree():
+    """unittest for mongo_dml.rename_dtree
+    """
     info = dml.list_dtrees()
     if 'test' not in info:
         dml.create_new_dtree('test')
@@ -143,6 +186,8 @@ def _test_rename_dtree():
 
 
 def _test_write_to_files():  # testee moet nog aangepast worden
+    """unittest for mongo_dml.write_to_files
+    """
     filename = 'testfile'
     if filename in dml.list_dtrees():
         dml.clear_dtree(filename, recreate=True)
@@ -155,6 +200,8 @@ def _test_write_to_files():  # testee moet nog aangepast worden
 
 
 def _test_read_from_files():  # testee moet nog aangepast worden
+    """unittest for mongo_dml.read_from_files
+    """
     filename = 'testfile'
     if filename in dml.list_dtrees():
         dml.clear_dtree(filename, recreate=True)
