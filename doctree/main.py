@@ -817,7 +817,7 @@ class MainWindow:
             if len(data) == 1:
                 gui.show_message(self.gui, data[0])
                 return
-            opts, views, itemdict, positions = self.read(other_file=other_file)
+            opts, views, itemdict, positions = data
         else:
             opts = init_opts()
             opts['Version'] = self.opts.get('Version', None)
