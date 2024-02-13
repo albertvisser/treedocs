@@ -1063,7 +1063,7 @@ class EditorPanel(qtw.QTextEdit):
             return
         self.parent.styleactiondict["C&enter"].setChecked(False)
         self.parent.styleactiondict["Align &Right"].setChecked(False)
-        self.parent.styleactiondict["&Justify"].setChecked(False)
+        # self.parent.styleactiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignLeft | core.Qt.AlignAbsolute)
 
     def align_center(self):  # , event=None):
@@ -1072,7 +1072,7 @@ class EditorPanel(qtw.QTextEdit):
             return
         self.parent.styleactiondict["Align &Left"].setChecked(False)
         self.parent.styleactiondict["Align &Right"].setChecked(False)
-        self.parent.styleactiondict["&Justify"].setChecked(False)
+        # self.parent.styleactiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignHCenter)
 
     def align_right(self):  # , event=None):
@@ -1081,7 +1081,7 @@ class EditorPanel(qtw.QTextEdit):
             return
         self.parent.styleactiondict["Align &Left"].setChecked(False)
         self.parent.styleactiondict["C&enter"].setChecked(False)
-        self.parent.styleactiondict["&Justify"].setChecked(False)
+        # self.parent.styleactiondict["&Justify"].setChecked(False)
         self.setAlignment(core.Qt.AlignRight | core.Qt.AlignAbsolute)
 
     def text_justify(self):  # , event=None):
