@@ -75,12 +75,13 @@ def read_from_files(this_file, other_file, temp_imagepath):
             return [f"{infile} contains invalid data for text positions"]
 
 
+    imagelist = []
     if not other_file:
         try:
             with zpf.ZipFile(str(this_file.with_suffix('.zip'))) as f_in:
                 f_in.extractall(path=temp_imagepath)
         except FileNotFoundError:
-            imagelist = []
+            pass
         else:
             imagelist = f_in.namelist()
 
