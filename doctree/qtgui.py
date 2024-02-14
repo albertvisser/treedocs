@@ -258,7 +258,9 @@ class SearchDialog(qtw.QDialog):
             current uitzetten
             lijst en search backwards activeren
         """
-        if self.sender() == self.c_curr:
+        this_object = self.sender()
+        # other_object = self.c_titl if this_object == self.c_text else self.c_text
+        if this_object == self.c_curr:
             self.c_titl.setChecked(False)
             self.c_text.setChecked(False)
             ## self.c_richt.setEnabled(False)
@@ -365,7 +367,7 @@ class ResultsDialog(qtw.QDialog):
             new.setData(1, core.Qt.UserRole, oldloc)
             self.result_list.addTopLevelItem(new)
         oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
-        for ix, item in enumerate(self.parent.search_results):
+        for ix, item in enumerate(self.parent.master.search_results):
             loc, newtype, root, title = item
             if loc != oldloc:
                 if oldloc is not None:
@@ -407,8 +409,8 @@ class ResultsDialog(qtw.QDialog):
         if not self.prev_button.isEnabled():
             self.prev_button.setEnabled(True)
         selected = self.result_list.currentItem()
-        self.parent.srchno = selected.data(0, core.Qt.UserRole)
-        self.parent.go_to_result()
+        self.parent.master.srchno = selected.data(0, core.Qt.UserRole)
+        self.parent.master.go_to_result()
 
     def goto_and_close(self):
         "toon zoekresultaat en sluit dialoog"
@@ -1624,8 +1626,8 @@ class MainGui(qtw.QMainWindow):
                 item = parent.child(pos + 1)
                 self.tree.setCurrentItem(item)
                 return True
-            if any_level:
-                gp = parent.parent()
+            if any_level:             # #1018:
+                gp = parent.parent()  # dit recursief uitvoeren tot next gevonden of root bereikt
                 if gp is not None:
                     pos = gp.indexOfChild(parent)
                     if pos < gp.childCount() - 1:
