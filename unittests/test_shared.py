@@ -1,6 +1,5 @@
 """unittests for ./doctree/shared.py
 """
-import pytest
 import doctree.shared as testee
 
 
