@@ -159,7 +159,7 @@ class OptionsDialog(qtw.QDialog):
 class SearchDialog(qtw.QDialog):
     """search mode: 0 = current document, 1 = all titles, 2 = all texts
     """
-    def __init__(self, parent, mode=0):
+    def __init__(self, parent):  # , mode=0):
         self.parent = parent
         ## self.option = option
         super().__init__(parent)
@@ -231,12 +231,12 @@ class SearchDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
-        if mode == 0:
-            self.c_curr.setChecked(True)
-        elif mode == 1:
-            self.c_titl.setChecked(True)
-        elif mode == 2:
-            self.c_text.setChecked(True)
+        # if mode == 0:
+        #     self.c_curr.setChecked(True)
+        # elif mode == 1:
+        #     self.c_titl.setChecked(True)
+        # elif mode == 2:
+        #     self.c_text.setChecked(True)
         if self.parent.srchtext:
             self.t_zoek.setText(self.parent.srchtext)
         if self.parent.srchflags & gui.QTextDocument.FindCaseSensitively:
@@ -853,8 +853,11 @@ class TreePanel(qtw.QTreeWidget):
         "sleutel voor de itemdict ophalen"
         value = item.text(1)
         shared.log(f'in tree.getitemkey, type voor omzetten is {type(value)}', always=True)
-        with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
+        # with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
+        try:
             value = int(value)
+        except ValueError:
+            value = -1
         shared.log(f'in tree.getitemkey, type na omzetten is {type(value)}', always=True)
         return value
 
@@ -1582,7 +1585,7 @@ class MainGui(qtw.QMainWindow):
 
     def closeEvent(self, event):
         "reimplemented event handler"
-        if not self.master.save_needed(meld=False):
+        if not self.master.handle_save_needed():
             event.ignore()
         else:
             self.master.cleanup_files()
@@ -1729,7 +1732,7 @@ class MainGui(qtw.QMainWindow):
             if idx == self.master.opts["ActiveView"]:
                 menuitem.setChecked(False)
 
-    def add_view_to_menu(self, newname):
+    def rename_viewmenu_option(self, newname):
         "update action text"
         action = self.viewmenu.actions()[self.master.opts["ActiveView"] + 7]
         action.setText(f'{action.text().split()[0]} {newname}')

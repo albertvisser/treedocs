@@ -12,6 +12,32 @@ import doctree.pickle_dml as dml
 from doctree import gui
 from doctree import shared
 
+app_info = "\n".join(["DocTree door Albert Visser",
+    "Uitgebreid electronisch notitieblokje",
+    "PyQt versie"])
+help_info = "\n".join([
+    "Ctrl-N\t\t- nieuwe notitie onder huidige",
+    "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
+    "Insert\t\t- nieuwe notitie achter huidige",
+    "Ctrl-PgDn in editor of",
+    " CursorDown in tree\t- volgende notitie",
+    "Ctrl-PgUp in editor of",
+    " CursorUp in tree\t- vorige notitie",
+    "Ctrl-D of Delete in tree\t- verwijder notitie",
+    "Ctrl-S\t\t- alle notities opslaan",
+    "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
+    "Ctrl-R\t\t- alle notities opnieuw laden",
+    "Ctrl-O\t\t- ander bestand met notities laden",
+    "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
+    "Ctrl-Q, Esc\t\t- opslaan en sluiten",
+    "Ctrl-H\t\t- verbergen in system tray",
+    "",
+    "F1\t\t- deze (help)informatie",
+    "F2\t\t- wijzig notitie titel",
+    "Shift-F2\t\t- wijzig root titel",
+    "",
+    "See menu for editing keys"])
+
 
 def init_opts():
     """return dict of options and their initial values
@@ -24,8 +50,8 @@ def init_opts():
 
 def add_newitems(copied_item, cut_from_itemdict, itemdict):
     """met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
-        - voor elk item nieuwe key opvoeren met dezelfde data value
-        - bij elke bestaande key de nieuwe key onthouden
+    - voor elk item nieuwe key opvoeren met dezelfde data value
+    - bij elke bestaande key de nieuwe key onthouden
     kopie van copied_item maken met vervangen van oude key door nieuwe key
     """
     keymap = {}
@@ -33,13 +59,13 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         newkey = max(itemdict.keys()) + 1
     except ValueError:
         newkey = 0
-    shared.log(f"add_newitems: cut_from_itemdict is {cut_from_itemdict}")
+    # shared.log(f"add_newitems: cut_from_itemdict is {cut_from_itemdict}")
     for key, item in cut_from_itemdict:
         title, text = item
         itemdict[newkey] = (title, text)
         keymap[key] = newkey
         newkey += 1
-    shared.log(f"add_newitems: keymap is {keymap}")
+    # shared.log(f"add_newitems: keymap is {keymap}")
     copied_item = replace_keys(copied_item, keymap)
     used_keys = list(keymap.values())
     return copied_item, itemdict, used_keys
@@ -49,7 +75,7 @@ def replace_keys(item, keymap):
     """kopie van toe te voegen deelstructuur maken met vervangen van oude key
     door nieuwe key volgens keymap
     """
-    item = list(item)   # mutable maken
+    item = list(item)   # mutable maken (item is een tuple)
     oldkey = int(item[1])
     item[1] = keymap[oldkey]
     hlp = []
@@ -87,7 +113,7 @@ def reset_toolkit_file_if_needed():
 class MainWindow:
     "Primary application window (main screen)"
     def __init__(self, fname=''):
-        self.project_dirty = False  # need to set this directly here
+        self.project_dirty = False
         self.add_node_on_paste = False
         self.has_treedata = False
         self.imagelist = []
@@ -309,7 +335,7 @@ class MainWindow:
         self.has_treedata = True
         self.set_window_title()
         self.set_project_dirty(False)
-        self.opts = init_opts()
+        # self.opts = init_opts()  -- dubbele aanroep
         self.gui.set_version()
         self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         if self.gui.menu_disabled:
@@ -318,7 +344,7 @@ class MainWindow:
         self.gui.add_viewmenu_option('&1 Default')
         self.gui.init_app()
         self.activeitem = self.gui.rebuild_root()  # item_to_activate =
-        print('in new() - after creating self.activeitem:', self.activeitem)
+        # print('in new() - after creating self.activeitem:', self.activeitem)
         self.gui.editor.set_contents(self.opts["RootData"])
         self.gui.editor.openup(False)
         self.gui.set_focus_to_tree()
@@ -326,7 +352,7 @@ class MainWindow:
 
     def open(self, *args):
         "afhandelen Menu > Open / Ctrl-O"
-        if not self.save_needed():
+        if not self.handle_save_needed():
             return
         dirname = str(self.project_file)
         ok, filename = gui.get_filename(self.gui, "DocTree - choose file to open", dirname)
@@ -334,8 +360,8 @@ class MainWindow:
             return
         self.project_file = pathlib.Path(filename)
         err = self.read()
-        if err:
-            gui.show_message(self.gui, err)
+        if err:  # is alleen gevuld bij fout en is dan een 1-tuple
+            gui.show_message(self.gui, err[0])
         else:
             self.gui.show_statusmessage(f'{self.project_file} gelezen')
             if self.gui.menu_disabled:
@@ -343,7 +369,7 @@ class MainWindow:
 
     def reread(self, *args):
         """afhandelen Menu > Reload (Ctrl-R)"""
-        if not self.save_needed():
+        if not self.handle_save_needed():
             return
         ## if self._ok_to_reload():
         self.read()     # no need to check te result, should be ok when rereading?
@@ -418,7 +444,7 @@ class MainWindow:
         shared.log('*** in main.do_additem ***')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
-        while newkey in self.itemdict:
+        while newkey in self.itemdict:  # rekening houden met verwijderde items
             newkey += 1
         # voeg nieuw item toe aan itemdict
         self.itemdict[newkey] = (new_title, "")
@@ -540,7 +566,7 @@ class MainWindow:
             else:
                 new_title, extra_title = '(untitled)', []
             return new_title, extra_title
-        return None
+        return ()
 
     def expand_item(self, *args):
         "expand one level"
@@ -733,7 +759,7 @@ class MainWindow:
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
         if current == self.gui.root and not below:
-            gui.show_message(self.gui, 'Kan alleen *onder* de root kopiëren')
+            gui.show_message(self.gui, 'Can only copy *below* the root')
             return None
         if not self.copied_item:
             gui.show_message(self.gui, 'Nothing to paste')
@@ -888,7 +914,7 @@ class MainWindow:
     def set_options(self, *args):
         """check settings for showing various messages"""
         if gui.show_dialog(self.gui, gui.OptionsDialog):
-            self.set_escape_option()
+            self.set_escape_action()
 
     def add_view(self, *args):
         "handles Menu > View > New view"
@@ -920,7 +946,7 @@ class MainWindow:
         oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
         ok, newname = gui.get_text(self.gui, 'Geef een nieuwe naam voor de huidige view', oldname)
         if ok and newname != oldname:
-            self.gui.add_view_to_menu(newname)
+            self.gui.rename_viewmenu_option(newname)
             self.opts["ViewNames"][self.opts["ActiveView"]] = newname
             self.set_project_dirty(True)
 
@@ -954,7 +980,7 @@ class MainWindow:
         self.goto_view(goto_next=False)
 
     def goto_view(self, goto_next=True):
-        "handles menu -> goto next/ prevuious view"
+        "handles menu -> goto next/ previous view"
         if self.viewcount == 1:
             gui.show_message(self.gui, "This is the only view")
             return
@@ -1007,14 +1033,14 @@ class MainWindow:
         self.set_window_title()
         self.gui.tree.set_item_selected(tree_item)
 
-    def search(self, *args, mode=0):
+    def search(self, *args):  # , mode=0):
         """start search action
         """
-        print('starting new search, srchlist =', self.gui.srchlist)
+        # print('starting new search, srchlist =', self.gui.srchlist)
         if self.gui.srchlist:
             gui.show_message(self.gui, 'Cannot start new search while results screen is showing')
             return
-        ok = gui.show_dialog(self.gui, gui.SearchDialog, {'mode': mode})
+        ok = gui.show_dialog(self.gui, gui.SearchDialog)  # , {'mode': mode})
         if not ok:
             return
         if self.gui.srchtype == 0:
@@ -1116,42 +1142,18 @@ class MainWindow:
 
     def info_page(self, *args):
         """help -> about"""
-        info = ["DocTree door Albert Visser",
-                "Uitgebreid electronisch notitieblokje",
-                "PyQt versie"]
-        gui.show_message(self.gui, "\n".join(info))
+        gui.show_message(self.gui, app_info)
 
     def help_page(self, *args):
         """help -> keys"""
-        info = ["Ctrl-N\t\t- nieuwe notitie onder huidige",
-                "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
-                "Insert\t\t- nieuwe notitie achter huidige",
-                "Ctrl-PgDn in editor of",
-                " CursorDown in tree\t- volgende notitie",
-                "Ctrl-PgUp in editor of",
-                " CursorUp in tree\t- vorige notitie",
-                "Ctrl-D of Delete in tree\t- verwijder notitie",
-                "Ctrl-S\t\t- alle notities opslaan",
-                "Shift-Ctrl-S\t\t- alle notities opslaan onder andere\n\t\t  naam",
-                "Ctrl-R\t\t- alle notities opnieuw laden",
-                "Ctrl-O\t\t- ander bestand met notities laden",
-                "Shift-Ctrl-I\t\t- initialiseer (nieuw) notitiebestand",
-                "Ctrl-Q, Esc\t\t- opslaan en sluiten",
-                "Ctrl-H\t\t- verbergen in system tray",
-                "",
-                "F1\t\t- deze (help)informatie",
-                "F2\t\t- wijzig notitie titel",
-                "Shift-F2\t\t- wijzig root titel",
-                "",
-                "See menu for editing keys"]
-        gui.show_message(self.gui, "\n".join(info))
+        gui.show_message(self.gui, help_info)
 
     def set_project_dirty(self, value):
         "indicate that there have been changes"
         self.project_dirty = value
         self.set_window_title()
 
-    def save_needed(self, meld=True, always_check=True):
+    def handle_save_needed(self, always_check=True):
         """vraag of het bestand opgeslagen moet worden als er iets aan de
         verzameling notities is gewijzigd
 
@@ -1212,52 +1214,60 @@ class MainWindow:
                 item_to_activate = y
         return item_to_activate
 
-    def check_active(self, message=None):
+    def check_active(self):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
-        shared.log('*** in main.check_active ***')
+        # shared.log('*** in main.check_active ***')
         if self.activeitem:
             text = self.gui.tree.getitemtitle(self.activeitem)
-            shared.log(f'active item is {self.activeitem} ({text})')
+            # shared.log(f'active item is {self.activeitem} ({text})')
             ref = self.gui.tree.getitemkey(self.activeitem)
             pos = self.gui.editor.get_text_position()
-            try:
-                ref = int(ref)
-            except ValueError:
-                ref = -1
-            self.text_positions[ref] = pos
+            # try:
+            #     ref = int(ref)  # is dit niet altijd al een int?
+            # except ValueError:
+            #     ref = -1
+            if ref != -1:
+                self.text_positions[ref] = pos
             if self.gui.editor.check_dirty():
-                if message:
-                    gui.show_message(self, message)
-                shared.log(f'contents is {self.gui.tree.getitemdata(self.activeitem)}')
+                # shared.log(f'contents is {self.gui.tree.getitemdata(self.activeitem)}')
                 content = str(self.gui.editor.get_contents())
                 try:
-                    titel, tekst = self.itemdict[int(ref)]
-                except (KeyError, ValueError):
+                    # titel, tekst = self.itemdict[int(ref)]
+                    titel, tekst = self.itemdict[ref]
+                # except (KeyError, ValueError):
+                except KeyError:
                     if content:
                         self.gui.tree.setitemtext(self.gui.root, content)
                         self.opts["RootData"] = content
                 else:
-                    self.itemdict[int(ref)] = (titel, content)
+                    # self.itemdict[int(ref)] = (titel, content)
+                    self.itemdict[ref] = (titel, content)
                 self.gui.editor.mark_dirty(False)
                 self.set_project_dirty(True)
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
-        shared.log(f'*** in main.activate_item, item is {item}')
+        # shared.log(f'*** in main.activate_item, item is {item}')
         self.activeitem = item
         ref = self.gui.tree.getitemkey(item)
-        try:
-            titel, tekst = self.itemdict[ref]
-        except (KeyError, ValueError):
-            self.gui.editor.set_contents(str(ref))
-            ref = -1
+        # try:
+        #     titel, tekst = self.itemdict[ref]
+        # except (KeyError, ValueError):
+        #     self.gui.editor.set_contents(str(ref))
+        #     ref = -1
+        # else:
+        # self.gui.editor.set_contents(tekst)  # , titel)
+        if ref == -1:
+            tekst = self.opts['RootData']
         else:
-            self.gui.editor.set_contents(tekst)  # , titel)
-        try:
-            pos = self.text_positions[ref]
-            self.gui.editor.set_text_position(pos)
-        except KeyError:  # item is nieuw
-            self.text_positions[ref] = self.gui.editor.get_text_position()
+            tekst = self.itemdict[ref][1]
+            self.gui.editor.set_text_position(self.text_positions[ref])
+        self.gui.editor.set_contents(tekst)  # , titel)
+        # try:
+        #     pos = self.text_positions[ref]
+        #     self.gui.editor.set_text_position(pos)
+        # except KeyError:  # item is nieuw  <- onjuist: keyerror betekent root element geselecteerd
+        #     self.text_positions[ref] = self.gui.editor.get_text_position()
         self.gui.editor.openup(True)
 
     def cleanup_files(self):
@@ -1303,7 +1313,7 @@ class MainWindow:
             self.gui.set_window_split(self.opts['SashPosition'])
         except TypeError:
             gui.show_message(self.gui, 'Ignoring incompatible sash position')
-        self.set_escape_option()
+        self.set_escape_action()
 
         # afleiden hoogst uitgegeven image nummer
         if self.imagelist:
@@ -1327,9 +1337,9 @@ class MainWindow:
         self.gui.expand_root()
         if item_to_activate != self.activeitem:
             self.gui.tree.set_item_selected(item_to_activate)
-        return ''
+        return ''  # self.opts, self.views, self.itemdict, self.text_positions, self.imagelist
 
-    def set_escape_option(self):
+    def set_escape_action(self):
         "respect setting whether using escape shuts down the application or not"
         if self.opts['EscapeClosesApp']:
             self.gui.add_escape_action()
@@ -1362,7 +1372,6 @@ class MainWindow:
         if self.opts[setting]:
             gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
             # opslaan zonder vragen, backuppen en zippen
-
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
                                self.text_positions, self.temp_imagepath, backup=False,
                                save_images=False)

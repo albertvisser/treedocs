@@ -298,7 +298,13 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
 
     def getitemkey(self, item):
         "sleutel voor de itemdict ophalen"
-        return self.GetItemData(item)
+        # return self.GetItemData(item)
+        value = self.GetItemData(item)
+        try:
+            value = int(value)
+        expect ValueError:  # root element heeft geen numerieke key
+            value = -1
+        return value
 
     def setitemtitle(self, item, title):
         "titel (en tooltip instellen)"
@@ -1002,7 +1008,7 @@ class MainGui(wx.Frame):
 
     def afsl(self, event=None):
         """applicatie afsluiten"""
-        if not self.master.save_needed(meld=False):
+        if not self.master.handle_save_needed():
             return
         self.master.cleanup_files()
         if event:
@@ -1102,7 +1108,7 @@ class MainGui(wx.Frame):
             if idx == self.opts["ActiveView"]:
                 menuitem.Check(False)
 
-    def add_view_to_menu(self, newname):
+    def rename_viewmenu_option(self, newname):
         "update menuitem text"
         menuitem_list = list(self.viewmenu.GetMenuItems())
         for idx, menuitem in enumerate(menuitem_list[7:]):  # was 4
