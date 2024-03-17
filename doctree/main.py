@@ -1261,27 +1261,16 @@ class MainWindow:
             tekst = self.opts['RootData']
         else:
             tekst = self.itemdict[ref][1]
-            self.gui.editor.set_text_position(self.text_positions[ref])
+            try:
+                self.gui.editor.set_text_position(self.text_positions[ref])
+            except KeyError:  # item is nieuw
+                self.text_positions[ref] = self.gui.editor.get_text_position()
         self.gui.editor.set_contents(tekst)  # , titel)
-        # try:
-        #     pos = self.text_positions[ref]
-        #     self.gui.editor.set_text_position(pos)
-        # except KeyError:  # item is nieuw  <- onjuist: keyerror betekent root element geselecteerd
-        #     self.text_positions[ref] = self.gui.editor.get_text_position()
         self.gui.editor.openup(True)
 
     def cleanup_files(self):
         "remove temporary files on exit (as they have been zipped)"
         shutil.rmtree(self.temp_imagepath)
-        # dirname = str(self.project_file.parent)
-        # for name in self.imagelist:
-        #     if not name.startswith(dirname):
-        #         name = os.path.join(dirname, name)
-        #     try:
-        #         os.remove(name)
-        #     except FileNotFoundError:
-        #         # print('in cleanup_files, {} not found'.format(name))
-        #         pass
 
     def read(self, other_file=''):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
