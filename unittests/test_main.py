@@ -133,21 +133,26 @@ class MockTree:
         print(f'called Tree.getitemtitle with arg `{arg}`')
         return 'item title'
     def setitemtitle(self, *args):
-        print(f'called Tree.setitemtitle with args', args)
+        print('called Tree.setitemtitle with args', args)
     def getitemkey(self, arg):
         print(f'called Tree.getitemkey with arg `{arg}`')
         return arg
+    def setitemtext(self, *args):
+        print('called Tree.setitemtext with args', args)
     def getitemdata(self, arg):
+        print(f'called Tree.getitemdata with arg `{arg}`')
+        return 'item data'
+    def getitemuserdata(self, arg):
         print(f'called Tree.getitemdata with arg `{arg}`')
         return 'item data'
     def getitemkids(self, arg):
         print(f'called Tree.getitemkids with arg `{arg}`')
         return ['child1', 'child2']
     def getselecteditem(self):
-        print(f'called Tree.getselecteditem')
+        print('called Tree.getselecteditem')
         return 'selected_item'
     def get_selected_item(self):
-        print(f'called Tree.get_selected_item')
+        print('called Tree.get_selected_item')
         return ['selected_item']
     def set_item_selected(self, arg):
         print(f'called Tree.set_item_selected with arg `{arg}`')
@@ -155,6 +160,9 @@ class MockTree:
         print('called Tree.set_item_expanded with args', args)
     def set_item_collapsed(self, *args):
         print('called Tree.set_item_collapsed with args', args)
+    def add_to_parent(self, *args):
+        print('called Tree.add_to_parent with args', args)
+        return args[1]
 
 
 class MockEditor:
@@ -199,12 +207,17 @@ class MockEditor:
     def background_color(self):
         print('called Editor.backgound_color')
     def set_contents(self, arg):
-        print(f"called Editor.set_contents with arg `{arg}'")
+        print(f"called Editor.set_contents with arg '{arg}'")
+    def get_contents(self):
+        print(f"called Editor.get_contents")
+        return 'editor contents'
     def openup(self, value):
         print(f"called Editor.openup with arg '{value}'")
     def get_text_position(self):
         print('called Editor.get_text_position')
         return 9
+    def set_text_position(self, arg):
+        print(f"called Editor.set_text_position with arg '{arg}'")
     def search_from_start(self):
         print('called Editor.search_from_start')
         return False
@@ -215,6 +228,8 @@ class MockEditor:
     def check_dirty(self):
         print('called Editor.check_dirty')
         return False
+    def mark_dirty(self, value):
+        print(f"called Editor.mark_dirty with arg '{value}'")
 
 
 class MockGui:
@@ -259,8 +274,6 @@ class MockGui:
         print('called MainGui.set_prev_item with args', args, kwargs)
     def hide_me(self):
         print('called MainGui.hide_me')
-    def set_focus_to_tree(self):
-        print('called MainGui.set_focus_to_tree')
     def set_focus_to_editor(self):
         print('called MainGui.set_focus_to_editor')
     def clear_viewmenu(self):
@@ -277,19 +290,30 @@ class MockGui:
         print("called MainGui.uncheck_viewmenu_option")
     def check_viewmenu_option(self, *args):
         if not args:
-            print(f"called MainGui.check_viewmenu_option")
+            print("called MainGui.check_viewmenu_option")
             return "A New view"
         else:
             print(f"called MainGui.check_viewmenu_option with arg '{args[0]}'")
     def check_next_viewmenu_option(self, **kwargs):
         if not kwargs:
-            print(f"called MainGui.next_check_viewmenu_option")
+            print("called MainGui.next_check_viewmenu_option")
         else:
-            print(f"called MainGui.check_next_viewmenu_option with args", kwargs)
+            print("called MainGui.check_next_viewmenu_option with args", kwargs)
     def add_escape_action(self):
         print("called MainGui.add_escape_action")
     def remove_escape_action(self):
         print("called MainGui.remove_escape_action")
+    def get_screensize(self):
+        print("called MainGui.get_screensize")
+        return 10, 20
+    def get_splitterpos(self):
+        print("called MainGui.get_splitterpos")
+        return 100
+    def find_needle(self, arg):
+        print(f"called Gui.find_needle with arg '{arg}'")
+        return 'needle'
+    def goto_searchresult(self, arg):
+        print(f"called Gui.goto_searchresult with arg '{arg}'")
 
 
 class MockMainWindow:
@@ -503,6 +527,7 @@ def test_reset_toolkit_file_if_needed(monkeypatch, capsys, tmp_path):
     testee.reset_toolkit_file_if_needed()
     assert (path / 'toolkit.py').exists()
 
+
 class TestMainWindow:
     """unittest for main.MainWindow
     """
@@ -665,8 +690,8 @@ class TestMainWindow:
         testobj = self.setup_testobj(monkeypatch, capsys)
         menudata = testobj.get_menu_data()
         assert len(menudata) == 8
-        for name, items in menudata:
-            for item in items:
+        for items in menudata:
+            for item in items[1]:
                 assert len(item) in (0, 5)
 
     def test_set_window_title(self, monkeypatch, capsys):
@@ -739,7 +764,7 @@ class TestMainWindow:
                 "called MainGui.add_viewmenu_option with arg '&1 Default'\n"
                 "called MainGui.init_app\n"
                 "called MainGui.rebuild_root\n"
-                "called Editor.set_contents with arg `root data'\n"
+                "called Editor.set_contents with arg 'root data'\n"
                 "called Editor.openup with arg 'False'\n"
                 "called MainGui.set_focus_to_tree\n")
 
@@ -763,7 +788,7 @@ class TestMainWindow:
                 "called MainGui.add_viewmenu_option with arg '&1 Default'\n"
                 "called MainGui.init_app\n"
                 "called MainGui.rebuild_root\n"
-                "called Editor.set_contents with arg `root data'\n"
+                "called Editor.set_contents with arg 'root data'\n"
                 "called Editor.openup with arg 'False'\n"
                 "called MainGui.set_focus_to_tree\n")
 
@@ -1915,19 +1940,117 @@ class TestMainWindow:
         assert testobj.srchno == 0
         assert capsys.readouterr().out == "called MainWindow.go_to_result\n"
 
-    def _test_search_from(self, monkeypatch, capsys):
+    def test_search_from(self, monkeypatch, capsys):
         """unittest for MainWindow.search_from
         """
+        def mock_getitemkids(arg):
+            print(f"called Tree.getitemkids with arg '{arg}'")
+            if arg == 'parent':
+                return ['child1', 'child2']
+            if arg == 'child1':
+                return ['child3']
+            return []
+        def mock_getitemtitle(arg):
+            print(f'called Tree.getitemtitle with arg `{arg}`')
+            return f'{arg} title'
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.search_from(parent, loc=None) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.gui.tree.getitemkids = mock_getitemkids
+        testobj.gui.tree.getitemtitle = mock_getitemtitle
+        # testobj.first_title = 'first'
+        testobj.gui.srchtype = 1
+        assert testobj.search_from('parent') == [([0], 'title', 'child1 title', 'child1 title'),
+                                                 ([0, 0], 'title', 'child1 title', 'child3 title'),
+                                                 ([1], 'title', 'child2 title', 'child2 title')]
+        assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'parent'\n"
+                                           "called Tree.getitemtitle with arg `child1`\n"
+                                           "called Tree.getitemdata with arg `child1`\n"
+                                           "called Gui.find_needle with arg 'child1 title'\n"
+                                           "called Tree.getitemkids with arg 'child1'\n"
+                                           "called Tree.getitemtitle with arg `child3`\n"
+                                           "called Tree.getitemdata with arg `child3`\n"
+                                           "called Gui.find_needle with arg 'child3 title'\n"
+                                           "called Tree.getitemkids with arg 'child3'\n"
+                                           "called Tree.getitemtitle with arg `child2`\n"
+                                           "called Tree.getitemdata with arg `child2`\n"
+                                           "called Gui.find_needle with arg 'child2 title'\n"
+                                           "called Tree.getitemkids with arg 'child2'\n")
+        testobj.gui.srchtype = 2
+        assert testobj.search_from('parent') == [([0], 'text', 'child1 title', 'child1 title'),
+                                                 ([0, 0], 'text', 'child1 title', 'child3 title'),
+                                                 ([1], 'text', 'child2 title', 'child2 title')]
+        assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'parent'\n"
+                                           "called Tree.getitemtitle with arg `child1`\n"
+                                           "called Tree.getitemdata with arg `child1`\n"
+                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemkids with arg 'child1'\n"
+                                           "called Tree.getitemtitle with arg `child3`\n"
+                                           "called Tree.getitemdata with arg `child3`\n"
+                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemkids with arg 'child3'\n"
+                                           "called Tree.getitemtitle with arg `child2`\n"
+                                           "called Tree.getitemdata with arg `child2`\n"
+                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemkids with arg 'child2'\n")
+        testobj.gui.srchtype = 3
+        assert testobj.search_from('parent') == [([0], 'title', 'child1 title', 'child1 title'),
+                                                 ([0], 'text', 'child1 title', 'child1 title'),
+                                                 ([0, 0], 'title', 'child1 title', 'child3 title'),
+                                                 ([0, 0], 'text', 'child1 title', 'child3 title'),
+                                                 ([1], 'title', 'child2 title', 'child2 title'),
+                                                 ([1], 'text', 'child2 title', 'child2 title')]
+        assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'parent'\n"
+                                           "called Tree.getitemtitle with arg `child1`\n"
+                                           "called Tree.getitemdata with arg `child1`\n"
+                                           "called Gui.find_needle with arg 'child1 title'\n"
+                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemkids with arg 'child1'\n"
+                                           "called Tree.getitemtitle with arg `child3`\n"
+                                           "called Tree.getitemdata with arg `child3`\n"
+                                           "called Gui.find_needle with arg 'child3 title'\n"
+                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemkids with arg 'child3'\n"
+                                           "called Tree.getitemtitle with arg `child2`\n"
+                                           "called Tree.getitemdata with arg `child2`\n"
+                                           "called Gui.find_needle with arg 'child2 title'\n"
+                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemkids with arg 'child2'\n")
 
-    def _test_go_to_result(self, monkeypatch, capsys):
+    def test_go_to_result(self, monkeypatch, capsys):
         """unittest for MainWindow.go_to_result
         """
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.go_to_result() == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.search_results = [['x'], ['y'], ['z']]
+        testobj.gui.srchwrap = False
+        testobj.srchno = 0
+        testobj.go_to_result()
+        assert testobj.srchno == 0
+        assert capsys.readouterr().out == "called Gui.goto_searchresult with arg 'x'\n"
+        testobj.srchno = -1
+        testobj.go_to_result()
+        assert testobj.srchno == 0
+        assert capsys.readouterr().out == (
+                f"called gui.show_message with args ({testobj.gui}, 'No prior result')\n")
+        testobj.gui.srchwrap = True
+        testobj.srchno = -1
+        testobj.go_to_result()
+        assert testobj.srchno == 2
+        assert capsys.readouterr().out == "called Gui.goto_searchresult with arg 'z'\n"
+        testobj.gui.srchwrap = False
+        testobj.srchno = 2
+        testobj.go_to_result()
+        assert testobj.srchno == 2
+        assert capsys.readouterr().out == ("called Gui.goto_searchresult with arg 'z'\n")
+        testobj.srchno = 3
+        testobj.go_to_result()
+        assert testobj.srchno == 2
+        assert capsys.readouterr().out == (
+                f"called gui.show_message with args ({testobj.gui}, 'No next result')\n")
+        testobj.gui.srchwrap = True
+        testobj.srchno = 3
+        testobj.go_to_result()
+        assert testobj.srchno == 0
+        assert capsys.readouterr().out == ("called Gui.goto_searchresult with arg 'x'\n")
 
     def test_info_page(self, monkeypatch, capsys):
         """unittest for MainWindow.info_page
@@ -2034,33 +2157,130 @@ class TestMainWindow:
                 "called gui.ask_yncquestion with args"
                 f" ({testobj.gui}, 'Data changed - save current file before continuing?')\n")
 
-    def _test_treetoview(self, monkeypatch, capsys):
+    def test_treetoview(self, monkeypatch, capsys):
         """unittest for MainWindow.treetoview
         """
+        counter = 0
+        def mock_getitemkids(arg):
+            nonlocal counter
+            print(f"called Tree.getitemkids with arg '{arg}'")
+            counter += 1
+            if counter == 1:
+                return ['child1', 'child2']
+            return []
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.treetoview() == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.gui.tree.getitemkids = mock_getitemkids
+        testobj.opts = {'ActiveItem': ['', ''], 'ActiveView': 1}
+        testobj.activeitem = 'child1'
+        testobj.gui.root = 'xxx'
+        assert testobj.treetoview() == [('child1', []), ('child2', [])]
+        assert testobj.opts == {'ActiveItem': ['', 'child1'], 'ActiveView': 1}
+        assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'xxx'\n"
+                                           "called Tree.getitemkey with arg `child1`\n"
+                                           "called Tree.getitemkids with arg 'child1'\n"
+                                           "called Tree.getitemkey with arg `child2`\n"
+                                           "called Tree.getitemkids with arg 'child2'\n")
 
-    def _test_viewtotree(self, monkeypatch, capsys):
+    def test_viewtotree(self, monkeypatch, capsys):
         """unittest for MainWindow.viewtotree
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.viewtotree() == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.itemdict = {1: ('x', 'xxx'), 2: ('y', 'yyy'), 3: ('z', 'zzz')}
+        testobj.gui.root = 'gui root'
+        testobj.opts = {'ActiveItem': ['child1', ''], 'ActiveView': 1}
+        testobj.views = [[(1,
+                           [(2, None),
+                            (3, [])])],
+                         [(3,
+                           [(1, []),
+                            (2, None)])]]
+        assert testobj.viewtotree() is None
+        assert capsys.readouterr().out == (
+                "called Tree.add_to_parent with args (3, 'z', 'gui root')\n"
+                "called Tree.add_to_parent with args (1, 'x', 'z')\n"
+                "called Tree.add_to_parent with args (2, 'y', 'z')\n")
+        testobj.opts = {'ActiveItem': [2, 1], 'ActiveView': 1}
+        assert testobj.viewtotree() == 'x'
+        assert capsys.readouterr().out == (
+                "called Tree.add_to_parent with args (3, 'z', 'gui root')\n"
+                "called Tree.add_to_parent with args (1, 'x', 'z')\n"
+                "called Tree.add_to_parent with args (2, 'y', 'z')\n")
 
-    def _test_check_active(self, monkeypatch, capsys):
+    def test_check_active(self, monkeypatch, capsys):
         """unittest for MainWindow.check_active
         """
+        def mock_getitemkey(arg):
+            print(f'called Tree.getitemkey with arg `{arg}`')
+            return 1
+        def mock_getitemkey_2(arg):
+            print(f'called Tree.getitemkey with arg `{arg}`')
+            return -1
+        def check_2():
+            print('called Editor.check_dirty')
+            return True
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.check_active() == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.set_project_dirty = self.mocker.set_dirty
+        testobj.gui.tree.getitemkey = mock_getitemkey
+        testobj.activeitem = None
+        testobj.gui.root = 'gui root'
+        testobj.check_active()
+        assert capsys.readouterr().out == ""
 
-    def _test_activate_item(self, monkeypatch, capsys):
+        testobj.opts = {'RootData': 'root data'}
+        testobj.itemdict = {1: ('item title', 'item text')}
+        testobj.text_positions = [0, 1]
+        testobj.activeitem = 'active item'
+        testobj.check_active()
+        assert capsys.readouterr().out == ("called Tree.getitemtitle with arg `active item`\n"
+                                           "called Tree.getitemkey with arg `active item`\n"
+                                           "called Editor.get_text_position\n"
+                                           "called Editor.check_dirty\n")
+        testobj.gui.editor.check_dirty = check_2
+        testobj.check_active()
+        assert capsys.readouterr().out == ("called Tree.getitemtitle with arg `active item`\n"
+                                           "called Tree.getitemkey with arg `active item`\n"
+                                           "called Editor.get_text_position\n"
+                                           "called Editor.check_dirty\n"
+                                           "called Editor.get_contents\n"
+                                           "called Editor.mark_dirty with arg 'False'\n"
+                                           "called MainWindow.set_project_dirty with arg True\n")
+        testobj.gui.tree.getitemkey = mock_getitemkey_2
+        testobj.check_active()
+        assert testobj.opts['RootData'] == 'editor contents'
+        assert capsys.readouterr().out == (
+                "called Tree.getitemtitle with arg `active item`\n"
+                "called Tree.getitemkey with arg `active item`\n"
+                "called Editor.get_text_position\n"
+                "called Editor.check_dirty\n"
+                "called Editor.get_contents\n"
+                "called Tree.setitemtext with args ('gui root', 'editor contents')\n"
+                "called Editor.mark_dirty with arg 'False'\n"
+                "called MainWindow.set_project_dirty with arg True\n")
+
+    def test_activate_item(self, monkeypatch, capsys):
         """unittest for MainWindow.activate_item
         """
+        def mock_getitemkey(arg):
+            print(f'called Tree.getitemkey with arg `{arg}`')
+            return 1
+        def mock_getitemkey_2(arg):
+            print(f'called Tree.getitemkey with arg `{arg}`')
+            return -1
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.activate_item(item) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.opts = {'RootData': 'root data'}
+        testobj.itemdict = {1: ('item title', 'item text')}
+        testobj.text_positions = [0, 1]
+        testobj.gui.tree.getitemkey = mock_getitemkey
+        testobj.activate_item('item')
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `item`\n"
+                                           "called Editor.set_text_position with arg '1'\n"
+                                           "called Editor.set_contents with arg 'item text'\n"
+                                           "called Editor.openup with arg 'True'\n")
+        testobj.gui.tree.getitemkey = mock_getitemkey_2
+        testobj.activate_item('item')
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `item`\n"
+                                           "called Editor.set_contents with arg 'root data'\n"
+                                           "called Editor.openup with arg 'True'\n")
 
     def test_cleanup_files(self, monkeypatch, capsys):
         """unittest for MainWindow.cleanup_files
@@ -2091,12 +2311,57 @@ class TestMainWindow:
         testobj.set_escape_action()
         assert capsys.readouterr().out == ("called MainGui.remove_escape_action\n")
 
-    def _test_write(self, monkeypatch, capsys):
+    def test_write(self, monkeypatch, capsys):
         """unittest for MainWindow.write
         """
+        def mock_write(*args, **kwargs):
+            print('called dml.write_to_files with args', args, kwargs)
+            return ['images']
+        def mock_confirm(**kwargs):
+            print("called MainWindow.confirm with args", kwargs)
+        monkeypatch.setattr(testee.dml, 'write_to_files', mock_write)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.write(meld=True) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.project_file = 'test.trd'
+        testobj.opts = {'ActiveView': 1}
+        testobj.views = ['', '']
+        testobj.itemdict = {1: 'xxx'}
+        testobj.text_positions = [1]
+        testobj.temp_imagepath = 'path_to_images'
+        testobj.images_embedded = False
+        testobj.check_active = self.mocker.check
+        testobj.treetoview = self.mocker.treetoview
+        testobj.set_project_dirty = self.mocker.set_dirty
+        testobj.confirm = mock_confirm
+        testobj.write()
+        assert testobj.opts == {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100}
+        assert testobj.views == ['', 'A view']
+        assert testobj.imagelist == ['images']
+        assert capsys.readouterr().out == (
+                "called MainGui.get_screensize\n"
+                "called MainGui.get_splitterpos\n"
+                "called MainWindow.check_active\n"
+                "called MainWindow.treetoview\n"
+                "called dml.write_to_files with args"
+                " ('test.trd', {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100},"
+                " ['', 'A view'], {1: 'xxx'}, [1], 'path_to_images') {'save_images': True}\n"
+                "called MainWindow.set_project_dirty with arg False\n"
+                "called MainWindow.confirm with args"
+                " {'setting': 'NotifyOnSave', 'textitem': 'test.trd is opgeslagen'}\n"
+                "called MainGui.show_statusmessage with args ('test.trd is opgeslagen',)\n")
+        testobj.write(meld=False)
+        assert testobj.opts == {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100}
+        assert testobj.views == ['', 'A view']
+        assert testobj.imagelist == ['images']
+        assert capsys.readouterr().out == (
+                "called MainGui.get_screensize\n"
+                "called MainGui.get_splitterpos\n"
+                "called MainWindow.check_active\n"
+                "called MainWindow.treetoview\n"
+                "called dml.write_to_files with args"
+                " ('test.trd', {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100},"
+                " ['', 'A view'], {1: 'xxx'}, [1], 'path_to_images') {'save_images': True}\n"
+                "called MainWindow.set_project_dirty with arg False\n"
+                "called MainGui.show_statusmessage with args ('test.trd is opgeslagen',)\n")
 
     def test_confirm(self, monkeypatch, capsys):
         """unittest for MainWindow.confirm
