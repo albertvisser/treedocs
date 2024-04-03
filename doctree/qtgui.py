@@ -835,7 +835,7 @@ class TreePanel(qtw.QTreeWidget):
 
     def getitemdata(self, item):
         "titel + data in de visual tree ophalen"
-        return item.text(0), self.getitemkey(item)  # str(item.text(1))  # kan integer zijn
+        return self.getitemtitle(), self.getitemkey(item)
 
     @staticmethod
     def getitemuserdata(item):
@@ -854,6 +854,7 @@ class TreePanel(qtw.QTreeWidget):
         value = item.text(1)
         shared.log(f'in tree.getitemkey, type voor omzetten is {type(value)}', always=True)
         # with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
+        # maar uit de displays blijkt dat praktisch altijd omgezet wordt van str naar int
         try:
             value = int(value)
         except ValueError:

@@ -286,7 +286,8 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
 
     def getitemdata(self, item):
         "titel + data in de visual tree ophalen"
-        return self.GetItemText(item), self.GetItemData(item)
+        return self.GetItemText(item), self.getitemkey() # laatste was self.GetItemData(item)
+                                                         # aangepast in overeenstemming met qt versie
 
     def getitemuserdata(self, item):
         "data in de visual tree ophalen"
