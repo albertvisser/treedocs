@@ -475,8 +475,7 @@ class UndoRedoStack(qtw.QUndoStack):
 class AddCommand(qtw.QUndoCommand):
     """Nieuwe notitie toevoegen
     """
-    def __init__(self, win, root, under, new_title, extra_titles,
-                 description='Add'):
+    def __init__(self, win, root, under, new_title, extra_titles, description='Add'):
         # root is self.parent.root in geval van "nieuw item onder root"
         # anders is deze None en moet deze bepaald worden op self.win.item
         shared.log('in AddCommand.__init__')
@@ -835,7 +834,7 @@ class TreePanel(qtw.QTreeWidget):
 
     def getitemdata(self, item):
         "titel + data in de visual tree ophalen"
-        return self.getitemtitle(), self.getitemkey(item)
+        return self.getitemtitle(item), self.getitemkey(item)
 
     @staticmethod
     def getitemuserdata(item):
