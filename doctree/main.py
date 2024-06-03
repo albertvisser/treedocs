@@ -13,8 +13,8 @@ from doctree import gui
 from doctree import shared
 
 app_info = "\n".join(["DocTree door Albert Visser",
-    "Uitgebreid electronisch notitieblokje",
-    "PyQt versie"])
+                      "Uitgebreid electronisch notitieblokje",
+                      "PyQt versie"])
 help_info = "\n".join([
     "Ctrl-N\t\t- nieuwe notitie onder huidige",
     "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
@@ -43,12 +43,12 @@ def init_opts():
     """return dict of options and their initial values
     """
     return {"Application": "DocTree", "NotifyOnSave": True, 'NotifyOnLoad': True,
-            "AskBeforeHide": True, "EscapeClosesApp": True, "SashPosition": 180,
+            "AskBeforeHide": True, "EscapeClosesApp": True, "SashPosition": (180, 0),
             "ScreenSize": (800, 500), "ActiveItem": [0], "ActiveView": 0, "ViewNames": ["Default"],
             "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
 
 
-def add_newitems(copied_item, cut_from_itemdict, itemdict):
+def add_newitems(cut_from_itemdict, itemdict):
     """met behulp van cut_from_itemdict nieuwe toevoegingen aan itemdict maken
     - voor elk item nieuwe key opvoeren met dezelfde data value
     - bij elke bestaande key de nieuwe key onthouden
@@ -66,9 +66,7 @@ def add_newitems(copied_item, cut_from_itemdict, itemdict):
         keymap[key] = newkey
         newkey += 1
     # shared.log(f"add_newitems: keymap is {keymap}")
-    copied_item = replace_keys(copied_item, keymap)
-    used_keys = list(keymap.values())
-    return copied_item, itemdict, used_keys
+    return itemdict, keymap
 
 
 def replace_keys(item, keymap):
@@ -101,6 +99,39 @@ def add_item_to_view(item, view):
     for child in children:
         add_to_view(child, struct)
     view.append((int(key), struct))
+
+
+def add_subitem_to_view(view, ref, newitem):
+    """zoeken waar het subitem moet worden toegevoegd en het toevoegen"""
+    retval = ""
+    for itemref, subview in view:
+        if itemref == ref:
+            subview.append(newitem)
+            retval = 'Stop'
+        else:
+            retval = add_subitem_to_view(subview, ref, newitem)
+        if retval == 'Stop':
+            break
+    return retval
+
+
+def remove_item_from_view(view, to_remove):
+    "recursieve routine om een view bij te werken"
+    klaar = False
+    for idx, item in reversed(list(enumerate(view))):
+        itemref, subview = item
+        if itemref in to_remove:
+            remove_item_from_view(subview, to_remove)
+            if not subview:
+                view.pop(idx)
+            else:
+                view[idx] = subview[0]
+            klaar = True
+        else:
+            klaar = remove_item_from_view(subview, to_remove)
+        ## if klaar:
+            ## break
+    return klaar
 
 
 def reset_toolkit_file_if_needed():
@@ -137,7 +168,7 @@ class MainWindow:
             else:
                 err = self.read()
                 if err:
-                    gui.show_message(self.gui, err)
+                    gui.show_message(self.gui, err[0])
         else:
             self.new(ask_ok=False)  # fname='' forces filename dialog
         reset_toolkit_file_if_needed()
@@ -372,8 +403,10 @@ class MainWindow:
         if not self.handle_save_needed():
             return
         ## if self._ok_to_reload():
-        self.read()     # no need to check te result, should be ok when rereading?
-        self.gui.show_statusmessage(f'{self.project_file} herlezen')
+        self.read()     # no need to check te result, should be ok when rereading
+        load_text = f'{self.project_file} herlezen'
+        self.confirm(setting="NotifyOnLoad", textitem=load_text)
+        self.gui.show_statusmessage(load_text)
 
     def save(self, *args):
         """afhandelen Menu > save"""
@@ -421,7 +454,7 @@ class MainWindow:
         "nieuw item toevoegen"
         new_title, extra_titles = self.get_item_title()
         if new_title:
-            # pos = -1  # doesn't matter for now - will be determined in do_additem
+            # pos = -1  # doesn't matter for now - will be determined in do_addaction
             # log('under is {}, pos is {}'.format(under, pos))
             self.gui.start_add(root, under, new_title, extra_titles)
 
@@ -438,10 +471,9 @@ class MainWindow:
         self.check_active()
         return new_title, extra_titles
 
-    def do_additem(self, root, under, origpos, new_title, extra_titles):
+    def do_addaction(self, root, under, origpos, new_title, extra_titles):
         """toevoegen nieuw item
         """
-        shared.log('*** in main.do_additem ***')
         # bepaal nieuwe key in itemdict
         newkey = len(self.itemdict)
         while newkey in self.itemdict:  # rekening houden met verwijderde items
@@ -449,30 +481,7 @@ class MainWindow:
         # voeg nieuw item toe aan itemdict
         self.itemdict[newkey] = (new_title, "")
         # voeg nieuw item toe aan visual tree
-        # bepaal eerst de parent voor het nieuwe item
-        if not root:
-            root = self.activeitem or self.gui.root
-            shared.log(f'no root provided, using either active ({self.activeitem})'
-                       f' or root ({self.gui.root})')
-        text = self.gui.tree.getitemtitle(root)
-        shared.log(f'root is {root} ({text}), under is {under}, origpos is {origpos}')
-        if under:
-            parent = root
-            pos = -1
-        else:
-            ## root, pos = getitemparentpos(self.activeitem)
-            parent, pos = self.gui.tree.getitemparentpos(root)
-            shared.log(f"na getitemparentpos: root, pos is {parent}, {pos}")
-            shared.log(f'comparing to origpos: {origpos}')
-            if origpos == -1:
-                pos += 1    # we want to insert after, not before
-                if pos == len(self.gui.tree.getitemkids(parent)):
-                    pos = -1
-            else:
-                pos = origpos
-        ## print(parent, parent.__dict__)
-        text = self.gui.tree.getitemtitle(parent)
-        shared.log(f'parent, pos is {parent} ({text}), {pos}')
+        parent, pos = self.get_add_dest(root, under, origpos)
         item = self.gui.tree.add_to_parent(newkey, new_title, parent, pos)
         new_item = item
         # doe hetzelfde met het via \ toegevoegde item
@@ -501,20 +510,26 @@ class MainWindow:
         # resultaat t.b.v. undo/redo mechanisme
         return newkey, extra_keys, new_item, subitem
 
+    def get_add_dest(self, root, under, origpos):
+        """bepaal de parent voor het nieuwe item en op welke plek eronder het moet komen
+        """
+        if not root:
+            root = self.activeitem or self.gui.root
+        if under:
+            parent = root
+            pos = -1
+        else:
+            parent, pos = self.gui.tree.getitemparentpos(root)
+            if origpos == -1:
+                pos += 1    # we want to insert after, not before
+                if pos == len(self.gui.tree.getitemkids(parent)):
+                    pos = -1
+            else:
+                pos = origpos
+        return parent, pos
+
     def rename_item(self, *args):
         """titel van item wijzigen"""
-        def check_item(view, ref, newitem):
-            """zoeken waar het subitem moet worden toegevoegd"""
-            retval = ""
-            for itemref, subview in view:
-                if itemref == ref:
-                    subview.append(newitem)
-                    retval = 'Stop'
-                else:
-                    retval = check_item(subview, ref, newitem)
-                if retval == 'Stop':
-                    break
-            return retval
         root = item = self.activeitem
         self.check_active()
         new = self.ask_title('Nieuwe titel voor het huidige item:',
@@ -550,7 +565,7 @@ class MainWindow:
                 subitem = [(subkey, subitem)]
             for idx, view in enumerate(self.views):
                 if idx != self.opts["ActiveView"]:
-                    check_item(view, ref, subitem[0])
+                    add_subitem_to_view(view, ref, subitem[0])
             self.gui.tree.set_item_expanded(root)
         self.gui.tree.set_item_selected(item)
 
@@ -670,34 +685,15 @@ class MainWindow:
 
     def do_copyaction(self, cut, retain, current):  # to_other_file):
         "do the copying"
-        def updateview(view, removed):
-            "recursieve routine om een view bij te werken"
-            klaar = False
-            for idx, item in reversed(list(enumerate(view))):
-                itemref, subview = item
-                if itemref in removed:
-                    updateview(subview, removed)
-                    if not subview:
-                        view.pop(idx)
-                    else:
-                        view[idx] = subview[0]
-                    klaar = True
-                else:
-                    klaar = updateview(subview, removed)
-                ## if klaar:
-                    ## break
-            return klaar
-
         # create a copy buffer
-        # self.cut_from_itemdict = []
-        copied_item, itemlist = self.gui.tree.getsubtree(current)
-        shared.log(f'in main.do_copyaction na getsubtree, copied_item is {copied_item},'
-                   f' itemlist is {itemlist}')
+        item_to_copy, itemlist = self.gui.tree.getsubtree(current)
+        # shared.log(f'in main.do_copyaction na getsubtree, copied_item is {copied_item},'
+        #            f' itemlist is {itemlist}')
         cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
-        shared.log(f'  cut_from_itemdict wordt dan {cut_from_itemdict}')
+        # shared.log(f'  cut_from_itemdict wordt dan {cut_from_itemdict}')
         oldloc = None  # alleen interessant bij undo van cut/delete
         if retain:
-            self.copied_item = copied_item
+            self.copied_item = item_to_copy
             self.cut_from_itemdict = cut_from_itemdict
             self.add_node_on_paste = True
         if cut:
@@ -714,13 +710,13 @@ class MainWindow:
                     self.opts["ActiveItem"][ix] = self.gui.tree.getitemkey(prev)
             for ix, view in enumerate(self.views):
                 if ix != self.opts["ActiveView"]:
-                    updateview(view, removed)
+                    remove_item_from_view(view, removed)
 
             # finish up
             self.set_project_dirty(True)
             self.gui.tree.set_item_selected(prev)
 
-        return copied_item, oldloc, cut_from_itemdict
+        return item_to_copy, oldloc, cut_from_itemdict
 
     def popitems(self, current, itemlist):
         """recursieve routine om de structuur uit de itemdict en de
@@ -754,7 +750,7 @@ class MainWindow:
             self.gui.start_paste(before, below, current)
 
     def get_paste_dest(self, below):  # , before
-        "can we paste here?)"
+        "can we paste here?"
         current = self.gui.tree.getselecteditem()
         # als het geselecteerde item het top item is moet het automatisch below worden
         # maar dan wel als eerste  - of het moet niet mogen
@@ -766,17 +762,17 @@ class MainWindow:
             return None
         return current
 
-    def do_pasteitem(self, before, below, current):
+    def do_pasteaction(self, before, below, current):
         "do the pasting"
         # items toevoegen aan itemdict
         if not self.add_node_on_paste:
             pasted_item = self.copied_item
             used_keys = self.add_items_back()
         else:
-            pasted_item, self.itemdict, used_keys = add_newitems(self.copied_item,
-                                                                 self.cut_from_itemdict,
-                                                                 self.itemdict)
-        # items toevoegen aan visual tree
+            self.itemdict, keymap = add_newitems(self.cut_from_itemdict, self.itemdict)
+            pasted_item = replace_keys(self.copied_item, keymap)
+            used_keys = list(keymap.values())
+       # items toevoegen aan visual tree
         if below:
             self.gui.tree.putsubtree(current, *pasted_item)
             used_parent = (current, -1)
@@ -838,6 +834,8 @@ class MainWindow:
         if other_file == self.project_file:
             gui.show_message(self.gui, 'Destination file is the same as origin file')
             return
+
+        # opts, views, itemdict, positions = read_or_init_other_file(other_file)
         if other_file.exists():
             data = self.read(other_file=other_file)
             if len(data) == 1:
@@ -864,12 +862,15 @@ class MainWindow:
                                                                          other_file)
 
         # 4. paste action on the other file
-        #     note that these functions mutate their arguments (by design)...
 
-        self.copied_item, itemdict, new_keys = add_newitems(self.copied_item, self.cut_from_itemdict,
-                                                            itemdict)
+        itemdict, keymap = add_newitems(self.cut_from_itemdict, itemdict)
+        new_copied_item = replace_keys(self.copied_item, keymap)
         for view in views:
-            add_item_to_view(self.copied_item, view)
+            add_item_to_view(new_copied_item, view)
+        positions = {}
+        for key, value in keymap.items():
+            positions[value] = self.text_positions[key]
+            self.text_positions.pop(key)
 
         # 5. write back the updated structure
 
@@ -1275,7 +1276,7 @@ class MainWindow:
     def read(self, other_file=''):
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         if not other_file:
-            self.has_treedata = False
+            self.has_treedata = False  # wordt deze ergens onderwater gebruikt? Ivm terugzetten
         self.opts = init_opts()
         nt_data = dml.read_from_files(self.project_file, other_file, self.temp_imagepath)
         if len(nt_data) == 1:
@@ -1284,41 +1285,24 @@ class MainWindow:
         if other_file:
             return nt_data[:-1]  # zonder imagelist
 
-        # make settings, views and itemdict into attributes
         for key, value in nt_data[0].items():
             if key == 'RootData' and value is None:
                 value = ""
             self.opts[key] = value
         self.views, self.itemdict, self.text_positions, self.imagelist = nt_data[1:]
         self.viewcount = len(self.views)
-
-        # finish up (set up necessary attributes etc)
-        self.gui.set_version()
-        self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
-        if len(self.opts['SashPosition']) == 1:
-            righthand_size = self.opts['ScreenSize'][0] - self.opts['SashPosition']
-            self.opts['SashPosition'] = (self.opts['SashPosition'], righthand_size)
-        try:
-            self.gui.set_window_split(self.opts['SashPosition'])
-        except TypeError:
-            gui.show_message(self.gui, 'Ignoring incompatible sash position')
-        self.set_escape_action()
-
-        # afleiden hoogst uitgegeven image nummer
         if self.imagelist:
             self.opts['ImageCount'] = int(max(self.imagelist).split('.')[0])
+
+        self.gui.set_version()
+        self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
+        self.set_windowsplit()
+        self.set_escape_action()
 
         self.activeitem = self.gui.rebuild_root()  # item_to_activate =
         self.gui.init_app()
         self.gui.editor.set_contents(self.opts["RootData"])
-        self.gui.clear_viewmenu()
-        for idx, name in enumerate(self.opts["ViewNames"]):
-            action = self.gui.add_viewmenu_option(f'&{idx + 1} {name}')
-            if idx == self.opts["ActiveView"]:
-                self.gui.check_viewmenu_option(action)
-        ## log('Itemdict items:')
-        ## for x, y in self.master.itemdict.items():
-            ## log('  {} ({}): {} ({})'.format(x, type(x), y, type(y)))
+        self.setup_viewmenu()
         self.gui.set_focus_to_tree()
         item_to_activate = self.viewtotree()
         self.has_treedata = True
@@ -1326,7 +1310,20 @@ class MainWindow:
         self.gui.expand_root()
         if item_to_activate != self.activeitem:
             self.gui.tree.set_item_selected(item_to_activate)
-        return ''  # self.opts, self.views, self.itemdict, self.text_positions, self.imagelist
+        return []  # self.opts, self.views, self.itemdict, self.text_positions, self.imagelist
+
+    def set_windowsplit(self):
+        "set and/or correct sash position"
+        if isinstance(self.opts['SashPosition'], int):  # compatibility old version
+            righthand_size = self.opts['ScreenSize'][0] - self.opts['SashPosition']
+            self.opts['SashPosition'] = (self.opts['SashPosition'], righthand_size)
+        elif len(self.opts['SashPosition']) == 1:
+            righthand_size = self.opts['ScreenSize'][0] - self.opts['SashPosition'][0]
+            self.opts['SashPosition'] = (self.opts['SashPosition'][0], righthand_size)
+        try:
+            self.gui.set_window_split(self.opts['SashPosition'])
+        except TypeError:
+            gui.show_message(self.gui, 'Ignoring incompatible sash position')
 
     def set_escape_action(self):
         "respect setting whether using escape shuts down the application or not"
@@ -1334,6 +1331,14 @@ class MainWindow:
             self.gui.add_escape_action()
         else:
             self.gui.remove_escape_action()
+
+    def setup_viewmenu(self):
+        "set new viewmenu options"
+        self.gui.clear_viewmenu()
+        for idx, name in enumerate(self.opts["ViewNames"]):
+            action = self.gui.add_viewmenu_option(f'&{idx + 1} {name}')
+            if idx == self.opts["ActiveView"]:
+                self.gui.check_viewmenu_option(action)
 
     def write(self, meld=True):
         """settings en tree data in een structuur omzetten en opslaan"""

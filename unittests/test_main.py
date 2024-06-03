@@ -3,7 +3,6 @@
 import datetime
 from doctree import main as testee
 
-
 def mock_ask_yn(*args):
     """stub for doctree.gui.ask_ynquestion: No answer
     """
@@ -122,6 +121,8 @@ def mock_init_opts():
 
 
 class MockDateTime:
+    """stub for datetime.datetime
+    """
     def today():
         return datetime.datetime(2000, 1, 1)
 
@@ -137,6 +138,9 @@ class MockTree:
     def getitemkey(self, arg):
         print(f'called Tree.getitemkey with arg `{arg}`')
         return arg
+    def getitemparentpos(self, arg):
+        print(f'called Tree.getitemparentpos with arg `{arg}`')
+        return 'add_to', 1
     def setitemtext(self, *args):
         print('called Tree.setitemtext with args', args)
     def getitemdata(self, arg):
@@ -163,6 +167,8 @@ class MockTree:
     def add_to_parent(self, *args):
         print('called Tree.add_to_parent with args', args)
         return args[1]
+    def putsubtree(self, *args, **kwargs):
+        print('called Tree.putsubtree with args', args, kwargs)
 
 
 class MockEditor:
@@ -178,7 +184,7 @@ class MockEditor:
         print('called Editor.copy')
     def paste(self):
         print('called Editor.paste')
-    def select_all (self):
+    def select_all(self):
         print('called Editor.select_all')
     def clear(self):
         print('called Editor.clear')
@@ -209,7 +215,7 @@ class MockEditor:
     def set_contents(self, arg):
         print(f"called Editor.set_contents with arg '{arg}'")
     def get_contents(self):
-        print(f"called Editor.get_contents")
+        print("called Editor.get_contents")
         return 'editor contents'
     def openup(self, value):
         print(f"called Editor.openup with arg '{value}'")
@@ -254,8 +260,11 @@ class MockGui:
         print("called MainGui.disable_menu" + extra)
     def init_app(self):
         print("called MainGui.init_app")
+    def expand_root(self):
+        print("called MainGui.expand_root")
     def rebuild_root(self):
         print("called MainGui.rebuild_root")
+        return 'new root'
     def reorder_items(self, *args, **kwargs):
         print("called MainGui.reorder_items with args", args, kwargs)
     def set_focus_to_tree(self):
@@ -292,8 +301,8 @@ class MockGui:
         if not args:
             print("called MainGui.check_viewmenu_option")
             return "A New view"
-        else:
-            print(f"called MainGui.check_viewmenu_option with arg '{args[0]}'")
+        print(f"called MainGui.check_viewmenu_option with arg '{args[0]}'")
+        return None
     def check_next_viewmenu_option(self, **kwargs):
         if not kwargs:
             print("called MainGui.next_check_viewmenu_option")
@@ -374,6 +383,12 @@ class MockMainWindow:
         """
         print("called MainWindow.new_item with args", args, kwargs)
 
+    def get_add_dest(self, *args, **kwargs):
+        """stub for MainWindow.get_add_dest
+        """
+        print("called MainWindow.get_add_dest with args", args, kwargs)
+        return 'parent', 1
+
     def get_copy_item(self, *args, **kwargs):
         """stub for MainWindow.get_copy_item
         """
@@ -383,6 +398,11 @@ class MockMainWindow:
         """stub for MainWindow.put_paste_item
         """
         print("called MainWindow.put_paste_item with args", args, kwargs)
+
+    def remove(self, *args):
+        """stub for MainWindow.remove_item_from_view
+        """
+        print("called MainWindow.remove_item_from_view with args", args)
 
     def check(self):
         """stub for MainWindow.check_active
@@ -400,6 +420,12 @@ class MockMainWindow:
         """
         print('called MainWindow.ask_title with args', args)
         return ('xx', ['yyy', 'zzz'])
+
+    def ask_title_3(self, *args):
+        """stub for MainWindow.ask_title: not canceled
+        """
+        print('called MainWindow.ask_title with args', args)
+        return ('xx', [])
 
     def reorder(self, *args, **kwargs):
         """stub for MainWindow.reorder
@@ -464,47 +490,37 @@ class MockMainWindow:
         print('called MainWindow.search with args', kwargs)
 
 
-def test_init_opts(monkeypatch, capsys):
+def test_init_opts():
     """unittest for main.init_opts
     """
     assert testee.init_opts() == {
             "Application": "DocTree", "NotifyOnSave": True, 'NotifyOnLoad': True,
-            "AskBeforeHide": True, "EscapeClosesApp": True, "SashPosition": 180,
+            "AskBeforeHide": True, "EscapeClosesApp": True, "SashPosition": (180, 0),
             "ScreenSize": (800, 500), "ActiveItem": [0], "ActiveView": 0, "ViewNames": ["Default"],
             "RootTitle": "MyNotes", "RootData": "", "ImageCount": 0}
 
 
-def test_add_newitems(monkeypatch, capsys):
+def test_add_newitems():
     """unittest for main.add_newitems
     """
-    def mock_replace(*args):
-        print('called main.replace_keys with args', args)
-        return 'copied-item-after-replace'
-    copied_item = 'copied-item'
     cut_from_itemdict = [(2, ('2', 'xx')), (3, ('3', 'xxx'))]
     itemdict = {1: ('1', 'x'), 2: ('2', 'xx'), 4: ('4', 'xxxx')}
-    monkeypatch.setattr(testee, 'replace_keys', mock_replace)
-    assert testee.add_newitems(copied_item, cut_from_itemdict, itemdict) == (
-            'copied-item-after-replace',
+    assert testee.add_newitems(cut_from_itemdict, itemdict) == (
             {1: ('1', 'x'), 2: ('2', 'xx'), 4: ('4', 'xxxx'), 5: ('2', 'xx'), 6: ('3', 'xxx')},
-            [5, 6])
-    assert capsys.readouterr().out == (
-            "called main.replace_keys with args ('copied-item', {2: 5, 3: 6})\n")
+            {2: 5, 3: 6})
     itemdict = {}
-    assert testee.add_newitems(copied_item, cut_from_itemdict, itemdict) == (
-            'copied-item-after-replace', {0: ('2', 'xx'), 1: ('3', 'xxx')}, [0, 1])
-    assert capsys.readouterr().out == (
-            "called main.replace_keys with args ('copied-item', {2: 0, 3: 1})\n")
+    assert testee.add_newitems(cut_from_itemdict, itemdict) == (
+            {0: ('2', 'xx'), 1: ('3', 'xxx')}, {2: 0, 3: 1})
 
 
-def test_replace_keys(monkeypatch, capsys):
+def test_replace_keys():
     """unittest for main.replace_keys
     """
     assert testee.replace_keys((1, 1, [(2, 2, []), (3, 3, [])]), {1: 6, 2: 4, 3: 5}) == (
             (1, 6, [(2, 4, []), (3, 5, [])]))
 
 
-def test_add_item_to_view(monkeypatch, capsys):
+def test_add_item_to_view():
     """unittest for main.add_item_to_view
     """
     view = []
@@ -512,7 +528,30 @@ def test_add_item_to_view(monkeypatch, capsys):
     assert view == [(1, [(2, [(4, [])]), (3, [])])]
 
 
-def test_reset_toolkit_file_if_needed(monkeypatch, capsys, tmp_path):
+def test_add_subitem_to_view():
+    """unittest for main.add_subitem_to_view
+    """
+    view = [(1, [(2, [(4, [])]), (3, [])])]
+    assert testee.add_subitem_to_view(view, 4, (5, [])) == 'Stop'
+    assert view == [(1, [(2, [(4, [(5, [])])]), (3, [])])]
+
+
+def test_remove_item_from_view():
+    """unittest for main.remove_item_from_view
+    """
+    view = [(1, [(2, [(4, [])]), (3, [])])]
+    assert testee.remove_item_from_view(view, (4, []))
+    assert view == [(1, [(2, []), (3, [])])]
+    view = [(1, [(2, [(4, [])]), (3, [])])]
+    assert testee.remove_item_from_view(view, (2, []))
+    assert view == [(1, [(4, []), (3, [])])]
+    # dit klopt toch niet; 4 zou toch ook verwijderd moeten zijn?
+    view = [(1, [(2, [(4, [])]), (3, [])])]
+    assert testee.remove_item_from_view(view, (2, [(4, ())]))
+    assert view == [(1, [(4, []), (3, [])])]
+
+
+def test_reset_toolkit_file_if_needed(monkeypatch, tmp_path):
     """unittest for main.reset_toolkit_file_if_needed
     """
     path = tmp_path / 'doctree'
@@ -566,9 +605,6 @@ class TestMainWindow:
         def mock_exists_2(arg):
             print('called path.exists with arg', arg)
             return True
-        def mock_read_err(arr):
-            print("called MainWindow.read")
-            return 'error'
         monkeypatch.setattr(testee, 'reset_toolkit_file_if_needed', mock_reset)
         monkeypatch.setattr(testee.gui, 'MainGui', MockGui)
         monkeypatch.setattr(testee.gui, 'ask_ynquestion', mock_ask_yn)
@@ -663,7 +699,7 @@ class TestMainWindow:
                 "called MainGui.go\n")
 
         monkeypatch.setattr(testee.pathlib.Path, 'exists', mock_exists_2)
-        monkeypatch.setattr(testee.MainWindow, 'read', mock_read_err)
+        monkeypatch.setattr(testee.MainWindow, 'read', self.mocker.read_error)
         testobj = testee.MainWindow('test.trd')
         assert not testobj.project_dirty
         assert not testobj.add_node_on_paste
@@ -854,6 +890,7 @@ class TestMainWindow:
         testobj.project_file = 'test.trd'
         testobj.handle_save_needed = self.mocker.handle
         testobj.read = self.mocker.read
+        testobj.confirm = self.mocker.confirm
         testobj.reread()
         assert capsys.readouterr().out == "called MainWindow.handle_save_needed\n"
         testobj.handle_save_needed = self.mocker.handle_2
@@ -861,6 +898,8 @@ class TestMainWindow:
         assert capsys.readouterr().out == (
                 "called MainWindow.handle_save_needed\n"
                 "called MainWindow.read\n"
+                "called MainWindow.confirm with args"
+                " () {'setting': 'NotifyOnLoad', 'textitem': 'test.trd herlezen'}\n"
                 "called MainGui.show_statusmessage with args ('test.trd herlezen',)\n")
 
     def test_save(self, monkeypatch, capsys):
@@ -1008,19 +1047,131 @@ class TestMainWindow:
                 " ('Geef een titel op voor het nieuwe item', '01-01-2000 00:00:00')\n"
                 "called MainWindow.check_active\n")
 
-    def _test_do_additem(self, monkeypatch, capsys):
-        """unittest for MainWindow.do_additem
+    def test_do_addaction(self, monkeypatch, capsys):
+        """unittest for MainWindow.do_addaction
         """
+        monkeypatch.setattr(testee.MainWindow, 'set_project_dirty', self.mocker.set_dirty)
+        monkeypatch.setattr(testee.MainWindow, 'get_add_dest', self.mocker.get_add_dest)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.do_additem(root, under, origpos, new_title, extra_titles) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.itemdict = {0: 'x', 1: 'y', 3: 'z'}
+        testobj.views = [[(0, [(1, []), (3, [])])], [(0, []), (1, []), (3, [])]]
+        testobj.opts = {'ActiveView': 0}
+        testobj.gui.root = 'gui root'
+        assert testobj.do_addaction('root', 'under', 'origpos', 'new_title', []) == (
+                4, [], 'new_title', [])
+        assert capsys.readouterr().out == (
+                "called MainWindow.get_add_dest with args ('root', 'under', 'origpos') {}\n"
+                "called Tree.add_to_parent with args (4, 'new_title', 'parent', 1)\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_expanded with args ('parent',)\n"
+                "called Tree.set_item_selected with arg `new_title`\n"
+                "called MainGui.set_focus_to_editor\n")
+        testobj.itemdict = {0: 'x', 1: 'y', 3: 'z'}
+        testobj.views = [[(0, [(1, []), (3, [])])], [(0, []), (1, []), (3, [])]]
+        assert testobj.do_addaction('root', 'under', 'origpos', 'new_title', ['extra', 'titles']) == (
+                4, [5, 6], 'new_title', [(5, [(6, [])])])
+        assert capsys.readouterr().out == (
+                "called MainWindow.get_add_dest with args ('root', 'under', 'origpos') {}\n"
+                "called Tree.add_to_parent with args (4, 'new_title', 'parent', 1)\n"
+                "called Tree.add_to_parent with args (5, 'extra', 'new_title')\n"
+                "called Tree.add_to_parent with args (6, 'titles', 'extra')\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_expanded with args ('parent',)\n"
+                "called Tree.set_item_selected with arg `titles`\n"
+                "called MainGui.set_focus_to_editor\n")
 
-    def _test_rename_item(self, monkeypatch, capsys):
-        """unittest for MainWindow.rename_item
+    def test_get_add_dest(self, monkeypatch, capsys):
+        """unittest for MainWindow.get_add_dest
+        """
+        def mock_get_above(item):
+            print(f'called item.getitemparentpos with arg {item}')
+            return 'parent', 1
+        def mock_get_above_2(item):
+            print(f'called item.getitemparentpos with arg {item}')
+            return 'parent', 2
+        def mock_get_under(item):
+            print(f'called item.getitemkids with arg {item}')
+            return ['a', 'b']
+        assert capsys.readouterr().out == ("")
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.activeitem = None
+        testobj.gui.root = 'gui_root'
+        testobj.gui.tree.getitemparentpos = mock_get_above
+        testobj.gui.tree.getitemkids = mock_get_under
+        assert testobj.get_add_dest(None, True, 1) == ('gui_root', -1)
+        assert capsys.readouterr().out == ("")
+        testobj.activeitem = 'item_x'
+        assert testobj.get_add_dest(None, False, -1) == ('parent', -1)
+        assert capsys.readouterr().out == ("called item.getitemparentpos with arg item_x\n"
+                                           "called item.getitemkids with arg parent\n")
+        item = 'item_y'
+        testobj.gui.tree.getitemparentpos = mock_get_above_2
+        assert testobj.get_add_dest(item, False, -1) == ('parent', 3)
+        assert capsys.readouterr().out == ("called item.getitemparentpos with arg item_y\n"
+                                           "called item.getitemkids with arg parent\n")
+        assert testobj.get_add_dest(item, False, 1) == ('parent', 1)
+        assert capsys.readouterr().out == "called item.getitemparentpos with arg item_y\n"
+
+    def test_rename_item(self, monkeypatch, capsys):
+        """unittest fo?r MainWindow.rename_item
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.rename_item(*args) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.itemdict = {0: ('x', 'xxx'), 1: ('y', 'yyy'), 2: ('z', 'zzz')}
+        testobj.views = [[(0, [(1, []), (2, [])])], [(0, []), (1, []), (2, [])]]
+        testobj.opts = {'ActiveView': 0, 'RootTitle': '...'}
+        testobj.gui.root = 'gui root'
+        testobj.activeitem = 1
+        testobj.check_active = self.mocker.check
+        testobj.set_project_dirty = self.mocker.set_dirty
+        testobj.ask_title = self.mocker.ask_title
+        testobj.rename_item()
+        assert testobj.opts['RootTitle'] == '...'
+        assert capsys.readouterr().out == (
+                "called MainWindow.check_active\n"
+                "called Tree.getitemtitle with arg `1`\n"
+                "called MainWindow.ask_title with args"
+                " ('Nieuwe titel voor het huidige item:', 'item title')\n")
+
+        testobj.ask_title = self.mocker.ask_title_3
+        testobj.rename_item()
+        assert testobj.opts['RootTitle'] == '...'
+        assert capsys.readouterr().out == (
+                "called MainWindow.check_active\n"
+                "called Tree.getitemtitle with arg `1`\n"
+                "called MainWindow.ask_title with args"
+                " ('Nieuwe titel voor het huidige item:', 'item title')\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.setitemtitle with args (1, 'xx')\n"
+                "called Tree.getitemkey with arg `1`\n"
+                "called Tree.set_item_selected with arg `1`\n")
+
+        testobj.ask_title = self.mocker.ask_title_3
+        testobj.gui.root = 1
+        testobj.rename_item()
+        assert testobj.opts['RootTitle'] == 'xx'
+        assert capsys.readouterr().out == (
+                "called MainWindow.check_active\n"
+                "called Tree.getitemtitle with arg `1`\n"
+                "called MainWindow.ask_title with args"
+                " ('Nieuwe titel voor het huidige item:', 'item title')\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.setitemtitle with args (1, 'xx')\n")
+
+        testobj.ask_title = self.mocker.ask_title_2
+        testobj.gui.root = 'gui root'
+        testobj.rename_item()
+        assert capsys.readouterr().out == (
+                "called MainWindow.check_active\n"
+                "called Tree.getitemtitle with arg `1`\n"
+                "called MainWindow.ask_title with args"
+                " ('Nieuwe titel voor het huidige item:', 'item title')\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.setitemtitle with args (1, 'xx')\n"
+                "called Tree.getitemkey with arg `1`\n"
+                "called Tree.add_to_parent with args (3, 'yyy', 1)\n"
+                "called Tree.add_to_parent with args (4, 'zzz', 'yyy')\n"
+                "called Tree.set_item_expanded with args (1,)\n"
+                "called Tree.set_item_selected with arg `zzz`\n")
 
     def test_ask_title(self, monkeypatch, capsys):
         """unittest for MainWindow.ask_title
@@ -1271,12 +1422,74 @@ class TestMainWindow:
         assert testobj.get_copy_source(True, True, 'xxx') == "xxx"
         assert capsys.readouterr().out == ("")
 
-    def _test_do_copyaction(self, monkeypatch, capsys):
+    def test_do_copyaction(self, monkeypatch, capsys):
         """unittest for MainWindow.do_copyaction
         """
+        def mock_get(arg):
+            print(f'called Tree.getsubtree with arg {arg}')
+            return 'x', ['1', '2']
+        def mock_remove(*args):
+            print('called Tree.removeitem wth args', args)
+            return 'old loc', 'prev'
+        def mock_get_key(arg):
+            print(f'called Tree.getitemkey with arg {arg}')
+            return 'itemkey'
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.do_copyaction(cut, retain, current) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.itemdict = {1: ('y', 'yy'), 2: ('z', 'zz'), 3: ('q', 'qq')}
+        testobj.gui.tree.getsubtree = mock_get
+        testobj.set_project_dirty = self.mocker.set_dirty
+        testobj.opts = {'ActiveItem': [1, 3], 'ActiveView': 1}
+        testobj.views = [(0, [(1, [(2, [])]), (3, [])]), (0, [(1, []), (2, []), (3, [])])]
+        testobj.copied_item = ''
+        testobj.cut_from_itemdict = []
+        testobj.activeitem = 'x'
+        assert testobj.do_copyaction(False, True, 'current') == ('x', None, [(1, ('y', 'yy')),
+                                                                             (2, ('z', 'zz'))])
+        assert testobj.copied_item == 'x'
+        assert testobj.cut_from_itemdict == [(1, ('y', 'yy')), (2, ('z', 'zz'))]
+        assert testobj.add_node_on_paste
+        assert testobj.activeitem == 'x'
+        assert capsys.readouterr().out == "called Tree.getsubtree with arg current\n"
+
+        testobj.copied_item = ''
+        testobj.cut_from_itemdict = []
+        testobj.activeitem = 'x'
+        testobj.gui.tree.removeitem = mock_remove
+        testobj.gui.tree.getitemkey = mock_get_key
+        testee.remove_item_from_view = self.mocker.remove
+        assert testobj.do_copyaction(True, False, 'current') == ('x', 'old loc', [(1, ('y', 'yy')),
+                                                                                  (2, ('z', 'zz'))])
+        assert testobj.copied_item == ''
+        assert testobj.cut_from_itemdict == []
+        assert not testobj.add_node_on_paste
+        assert testobj.activeitem is None
+        assert testobj.opts['ActiveItem'] == ['itemkey', 3]
+        assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
+                                           "called Tree.removeitem wth args"
+                                           " ('current', [(1, ('y', 'yy')), (2, ('z', 'zz'))])\n"
+                                           "called Tree.getitemkey with arg prev\n"
+                                           "called MainWindow.remove_item_from_view with args"
+                                           " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
+                                           "called MainWindow.set_project_dirty with arg True\n"
+                                           "called Tree.set_item_selected with arg `prev`\n")
+
+        testobj.copied_item = ''
+        testobj.cut_from_itemdict = []
+        testobj.activeitem = 'x'
+        assert testobj.do_copyaction(True, True, 'current') == ('x', 'old loc', [(1, ('y', 'yy')),
+                                                                                 (2, ('z', 'zz'))])
+        assert testobj.copied_item == 'x'
+        assert testobj.cut_from_itemdict == [(1, ('y', 'yy')), (2, ('z', 'zz'))]
+        assert not testobj.add_node_on_paste
+        assert testobj.activeitem is None
+        assert testobj.opts['ActiveItem'] == ['itemkey', 3]
+        assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
+                                           "called Tree.removeitem wth args"
+                                           " ('current', [(1, ('y', 'yy')), (2, ('z', 'zz'))])\n"
+                                           "called MainWindow.remove_item_from_view with args"
+                                           " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
+                                           "called MainWindow.set_project_dirty with arg True\n"
+                                           "called Tree.set_item_selected with arg `prev`\n")
 
     def test_popitems(self, monkeypatch, capsys):
         """unittest for MainWindow.popitems
@@ -1416,12 +1629,68 @@ class TestMainWindow:
         assert testobj.get_paste_dest(True) == 'selected_item'
         assert capsys.readouterr().out == "called Tree.getselecteditem\n"
 
-    def _test_do_pasteitem(self, monkeypatch, capsys):
+    def test_do_pasteaction(self, monkeypatch, capsys):
         """unittest for MainWindow.do_pasteitem
         """
+        def mock_add_back():
+            print('called MainWindow.add_items_back')
+            return []
+        def mock_add_new(*args):
+            print('called add_newitems with args', args)
+            return {}, {}
+        def mock_replace(*args):
+            print('called replace_keys with args', args)
+            return ('pasted', 'item')
+        def mock_add_item(*args):
+            print('called add_item_to_view with args', args)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.do_pasteitem(before, below, current) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.add_node_on_paste = True
+        testobj.copied_item = ''
+        testobj.cut_from_itemdict = [(1, ('y', 'yy')), (2, ('z', 'zz'))]
+        testobj.itemdict = {0: ('x', 'xx'), 1: ('y', 'yy'), 3: ('z', 'zz')}
+        testobj.views = [[(0, [(1, []), (3, [])])], [(0, []), (1, []), (3, [])]]
+        testobj.opts = {'ActiveView': 1}
+        testobj.add_items_back = mock_add_back
+        testobj.set_project_dirty = self.mocker.set_dirty
+        monkeypatch.setattr(testee, 'add_newitems', mock_add_new)
+        monkeypatch.setattr(testee, 'replace_keys', mock_replace)
+        monkeypatch.setattr(testee, 'add_item_to_view', mock_add_item)
+        assert testobj.do_pasteaction(True, False, 'current') == ([], ('add_to', 1))
+        assert capsys.readouterr().out == (
+                "called add_newitems with args ([(1, ('y', 'yy')), (2, ('z', 'zz'))],"
+                " {0: ('x', 'xx'), 1: ('y', 'yy'), 3: ('z', 'zz')})\n"
+                "called replace_keys with args ('', {})\n"
+                "called Tree.getitemparentpos with arg `current`\n"
+                "called Tree.putsubtree with args ('add_to', 'pasted', 'item') {'pos': 1}\n"
+                "called add_item_to_view with args (('pasted', 'item'), [(0, [(1, []), (3, [])])])\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_expanded with args ('current',)\n"
+                "called Tree.set_item_selected with arg `current`\n")
+
+        testobj.add_node_on_paste = False
+        assert testobj.do_pasteaction(False, True, 'current') == ([], ('current', -1))
+        assert capsys.readouterr().out == ("called MainWindow.add_items_back\n"
+                                           "called Tree.putsubtree with args ('current',) {}\n"
+                                           "called MainWindow.set_project_dirty with arg True\n"
+                                           "called Tree.set_item_expanded with args ('current',)\n"
+                                           "called Tree.set_item_selected with arg `current`\n")
+
+        testobj.add_node_on_paste = False
+        assert testobj.do_pasteaction(True, True, 'current') == ([], ('current', -1))
+        assert capsys.readouterr().out == ("called MainWindow.add_items_back\n"
+                                           "called Tree.putsubtree with args ('current',) {}\n"
+                                           "called MainWindow.set_project_dirty with arg True\n"
+                                           "called Tree.set_item_expanded with args ('current',)\n"
+                                           "called Tree.set_item_selected with arg `current`\n")
+
+        testobj.add_node_on_paste = False
+        assert testobj.do_pasteaction(False, False, 'current') == ([], ('add_to', 2))
+        assert capsys.readouterr().out == ("called MainWindow.add_items_back\n"
+                                           "called Tree.getitemparentpos with arg `current`\n"
+                                           "called Tree.putsubtree with args ('add_to',) {'pos': 2}\n"
+                                           "called MainWindow.set_project_dirty with arg True\n"
+                                           "called Tree.set_item_expanded with args ('current',)\n"
+                                           "called Tree.set_item_selected with arg `current`\n")
 
     def test_add_items_back(self, monkeypatch, capsys):
         """unittest for MainWindow.add_items_back
@@ -1432,12 +1701,125 @@ class TestMainWindow:
         assert testobj.add_items_back() == [2]
         assert testobj.itemdict == {1: ('x', 'xx'), 2: ('y', 'yy')}
 
-    def _test_move_to_file(self, monkeypatch, capsys):
+    def test_move_to_file(self, monkeypatch, capsys):
         """unittest for MainWindow.move_to_file
         """
+        def mock_get_same_filename(*args, **kwargs):
+            """stub for Doctree.gui.get_filename: dialog was accepted
+            """
+            print('called gui.get_filename with args', args, kwargs)
+            return True, 'path/to/data.trd'
+        def mock_read(*args, **kwargs):
+            print("called MainWindow.read with args", args, kwargs)
+            return ('read error',)
+        def mock_read_2(*args, **kwargs):
+            print("called MainWindow.read with args", args, kwargs)
+            return {'opts': 'dict'}, ['views', 'list'], {'item': 'dict'}, {'text': 'positions'}
+        def mock_verify(*args, **kwargs):
+            print('called dml.verify_imagenames with args', args, kwargs)
+            return {'cut': ('from', 'itemdict')}, ['images']
+        def mock_write(*args, **kwargs):
+            print('called dml.write_to_files with args', args, kwargs)
+        def mock_init():
+            print('called Editor.init_opts')
+            return {}
+        def mock_add_newitems(*args):
+            print('called add_newitems with args', args)
+            return {'item': 'dict'}, {1: 4, 2: 5}
+        def mock_replace(*args):
+            print('called replace_keys with args', args)
+            return ['new', 'copied', 'item']
+        def mock_add_item(*args):
+            print('called add_item_to_view with args', args)
+        monkeypatch.setattr(testee, 'init_opts', mock_init)
+        monkeypatch.setattr(testee, 'add_newitems', mock_add_newitems)
+        monkeypatch.setattr(testee, 'replace_keys', mock_replace)
+        monkeypatch.setattr(testee, 'add_item_to_view', mock_add_item)
+        monkeypatch.setattr(testee.dml, 'verify_imagenames', mock_verify)
+        monkeypatch.setattr(testee.dml, 'write_to_files', mock_write)
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
+        monkeypatch.setattr(testee.gui, 'get_filename', mock_get_filename)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.move_to_file(*args) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.project_file = testee.pathlib.Path('path/to/data.trd')
+        testobj.temp_imagepath = testee.pathlib.Path('/tmp/path/to/imagefiles')
+        testobj.images_embedded = False
+        testobj.copied_item = 'copied item'
+        testobj.opts = {'Version': 'xx'}
+        testobj.cut_from_itemdict = [('copied', 'items')]
+        testobj.text_positions = {1: 1, 2: 2}
+        testobj.get_copy_item = self.mocker.get_copy_item
+        testobj.read = mock_read
+
+        testobj.gui.root = 'selected_item'
+        testobj.move_to_file()
+        assert capsys.readouterr().out == (
+                "called Tree.getselecteditem\n"
+                f'called gui.show_message with args ({testobj.gui}, "Can\'t do this with root")\n')
+
+        testobj.gui.root = 'gui root'
+        testobj.move_to_file()
+        assert capsys.readouterr().out == (
+                "called Tree.getselecteditem\n"
+                f"called gui.get_filename with args ({testobj.gui},"
+                " 'DocTree - choose file to move the item to', 'path/to') {}\n")
+
+        monkeypatch.setattr(testee.gui, 'get_filename', mock_get_same_filename)
+        testobj.move_to_file()
+        assert capsys.readouterr().out == (
+                "called Tree.getselecteditem\n"
+                f"called gui.get_filename with args ({testobj.gui},"
+                " 'DocTree - choose file to move the item to', 'path/to') {}\n"
+                f"called gui.show_message with args ({testobj.gui},"
+                " 'Destination file is the same as origin file')\n")
+
+        monkeypatch.setattr(testee.gui, 'get_filename', mock_get_filename_2)
+        monkeypatch.setattr(testee.pathlib.Path, 'exists', lambda x: False)
+        testobj.move_to_file()
+        assert capsys.readouterr().out == (
+                "called Tree.getselecteditem\n"
+                f"called gui.get_filename with args ({testobj.gui},"
+                " 'DocTree - choose file to move the item to', 'path/to') {}\n"
+                "called Editor.init_opts\n"
+                "called MainWindow.get_copy_item with args"
+                " () {'cut': True, 'to_other_file': 'selected_item'}\n"
+                "called dml.verify_imagenames with args ([('copied', 'items')],"
+                " PosixPath('/tmp/path/to/imagefiles'), PosixPath('newname.trd')) {}\n"
+                "called add_newitems with args ({'cut': ('from', 'itemdict')}, {})\n"
+                "called replace_keys with args ('copied item', {1: 4, 2: 5})\n"
+                "called add_item_to_view with args (['new', 'copied', 'item'], [])\n"
+                "called dml.write_to_files with args (PosixPath('newname.trd'),"
+                " {'Version': 'xx'}, [[]], {'item': 'dict'}, {4: 1, 5: 2},"
+                " PosixPath('/tmp/path/to/imagefiles'), ['images']) {'save_images': True}\n")
+
+        monkeypatch.setattr(testee.gui, 'get_filename', mock_get_filename_2)
+        monkeypatch.setattr(testee.pathlib.Path, 'exists', lambda x: True)
+        testobj.images_embedded = True
+        testobj.move_to_file()
+        assert capsys.readouterr().out == (
+                "called Tree.getselecteditem\n"
+                f"called gui.get_filename with args ({testobj.gui},"
+                " 'DocTree - choose file to move the item to', 'path/to') {}\n"
+                "called MainWindow.read with args () {'other_file': PosixPath('newname.trd')}\n"
+                f"called gui.show_message with args ({testobj.gui}, 'read error')\n")
+
+        testobj.read = mock_read_2
+        testobj.images_embedded = True
+        testobj.text_positions = {1: 1, 2: 2}
+        testobj.move_to_file()
+        assert capsys.readouterr().out == (
+                "called Tree.getselecteditem\n"
+                f"called gui.get_filename with args ({testobj.gui},"
+                " 'DocTree - choose file to move the item to', 'path/to') {}\n"
+                "called MainWindow.read with args () {'other_file': PosixPath('newname.trd')}\n"
+                "called MainWindow.get_copy_item with args"
+                " () {'cut': True, 'to_other_file': 'selected_item'}\n"
+                "called add_newitems with args ({'cut': ('from', 'itemdict')}, {'item': 'dict'})\n"
+                "called replace_keys with args ('copied item', {1: 4, 2: 5})\n"
+                "called add_item_to_view with args (['new', 'copied', 'item'], 'views')\n"
+                "called add_item_to_view with args (['new', 'copied', 'item'], 'list')\n"
+                "called dml.write_to_files with args (PosixPath('newname.trd'),"
+                " {'opts': 'dict'}, ['views', 'list'], {'item': 'dict'}, {4: 1, 5: 2},"
+                " PosixPath('/tmp/path/to/imagefiles'), []) {'save_images': False}\n")
 
     def test_order_top(self, monkeypatch, capsys):
         """unittest for MainWindow.order_top
@@ -1821,6 +2203,10 @@ class TestMainWindow:
         def search_from_start_2():
             print('called Editor.search_from_start')
             return True
+        def mock_search_from_3(self, *args):
+            print('called MainWindow.search_from with args', args)
+            self.gui.srchlist = True
+            return ['result', 'list']
         monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog)
         monkeypatch.setattr(testee.gui, 'show_nonmodal', mock_show_nonmodal)
@@ -1880,13 +2266,20 @@ class TestMainWindow:
                 "called MainWindow.go_to_result\n")
 
         # mislukte poging om r. 1060 nog gecovered te krijgen
-        testobj.search_from = self.mocker.search_from_3
+        monkeypatch.setattr(testee.MainWindow, 'search_from', mock_search_from_3)
+        monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
+        monkeypatch.setattr(testee.gui, 'show_nonmodal', mock_show_nonmodal)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.root = 'gui root'
+        testobj.gui.srchlist = False
+        testobj.gui.srchtype = 1
         testobj.search()
+        assert testobj.gui.srchlist
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
                 f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
-                "called MainWindow.go_to_result\n")
+                f"called gui.show_nonmodal with args ({testobj.gui}, {testee.gui.ResultsDialog})\n")
 
     def test_search_texts(self, monkeypatch, capsys):
         """unittest for MainWindow.search_texts
@@ -2266,6 +2659,9 @@ class TestMainWindow:
         def mock_getitemkey_2(arg):
             print(f'called Tree.getitemkey with arg `{arg}`')
             return -1
+        def mock_set(arg):
+            print(f"called Editor.set_text_position with arg '{arg}'")
+            raise KeyError
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.opts = {'RootData': 'root data'}
         testobj.itemdict = {1: ('item title', 'item text')}
@@ -2281,6 +2677,14 @@ class TestMainWindow:
         assert capsys.readouterr().out == ("called Tree.getitemkey with arg `item`\n"
                                            "called Editor.set_contents with arg 'root data'\n"
                                            "called Editor.openup with arg 'True'\n")
+        testobj.gui.tree.getitemkey = mock_getitemkey
+        testobj.gui.editor.set_text_position = mock_set
+        testobj.activate_item('item')
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `item`\n"
+                                           "called Editor.set_text_position with arg '1'\n"
+                                           "called Editor.get_text_position\n"
+                                           "called Editor.set_contents with arg 'item text'\n"
+                                           "called Editor.openup with arg 'True'\n")
 
     def test_cleanup_files(self, monkeypatch, capsys):
         """unittest for MainWindow.cleanup_files
@@ -2293,12 +2697,135 @@ class TestMainWindow:
         testobj.cleanup_files()
         assert capsys.readouterr().out == "called shutil.rmtree with arg 'path_to_images'\n"
 
-    def _test_read(self, monkeypatch, capsys):
+    def test_read(self, monkeypatch, capsys):
         """unittest for MainWindow.read
         """
+        def mock_init():
+            print('called Editor.init_opts')
+            return {'ImageCount': 0}
+        def mock_set_split():
+            print('called Editor.set_windowsplit')
+        def mock_set_escape():
+            print('called Editor.set_escape_action')
+        def mock_setup_menu():
+            print('called Editor.setup_viewmenu')
+        def mock_viewtotree():
+            print('called Editor.viewtotree')
+            return 'item to activate'
+        def mock_viewtotree_2():
+            print('called Editor.viewtotree')
+            return 'new root'
+        def mock_set_dirty(value):
+            print(f'called Editor.set_project_dirty with arg {value}')
+        def mock_read(*args):
+            print('called dml.read_from_files with args', args)
+            return ('error',)
+        def mock_read_2(*args):
+            print('called dml.read_from_files with args', args)
+            return ({'RootData': None, 'ScreenSize': (5, 10)}, ['views'], {'item': 'dict'},
+                    {'text': 'positions'}, [])
+        def mock_read_3(*args):
+            print('called dml.read_from_files with args', args)
+            return ({'RootData': 'asdf', 'ScreenSize': (5, 10)}, ['views'], {'item': 'dict'},
+                    {'text': 'positions'}, ['00005.png'])
+        monkeypatch.setattr(testee, 'init_opts', mock_init)
+        monkeypatch.setattr(testee.dml, 'read_from_files', mock_read)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.read(other_file='') == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.project_file = 'xxxx'
+        testobj.temp_imagepath = 'yyyy'
+        testobj.set_windowsplit = mock_set_split
+        testobj.set_escape_action = mock_set_escape
+        testobj.setup_viewmenu = mock_setup_menu
+        testobj.viewtotree = mock_viewtotree
+        testobj.set_project_dirty = mock_set_dirty
+        assert testobj.read() == ('error',)
+        assert capsys.readouterr().out == (
+                "called Editor.init_opts\n"
+                "called dml.read_from_files with args ('xxxx', '', 'yyyy')\n")
+
+        monkeypatch.setattr(testee.dml, 'read_from_files', mock_read_2)
+        assert testobj.read(other_file='qqqq') == ({'RootData': None, 'ScreenSize': (5, 10)},
+                                                   ['views'], {'item': 'dict'}, {'text': 'positions'})
+        assert capsys.readouterr().out == (
+                "called Editor.init_opts\n"
+                "called dml.read_from_files with args ('xxxx', 'qqqq', 'yyyy')\n")
+
+        assert testobj.read() == []
+        assert testobj.opts['ImageCount'] == 0
+        assert testobj.activeitem is not None
+        assert testobj.has_treedata
+        assert capsys.readouterr().out == (
+                "called Editor.init_opts\n"
+                "called dml.read_from_files with args ('xxxx', '', 'yyyy')\n"
+                "called MainGui.set_version with args ()\n"
+                "called MainGui.set_window_dimensions with args (5, 10)\n"
+                "called Editor.set_windowsplit\n"
+                "called Editor.set_escape_action\n"
+                "called MainGui.rebuild_root\n"
+                "called MainGui.init_app\n"
+                "called Editor.set_contents with arg ''\n"
+                "called Editor.setup_viewmenu\n"
+                "called MainGui.set_focus_to_tree\n"
+                "called Editor.viewtotree\n"
+                "called Editor.set_project_dirty with arg False\n"
+                "called MainGui.expand_root\n"
+                "called Tree.set_item_selected with arg `item to activate`\n")
+
+        monkeypatch.setattr(testee.dml, 'read_from_files', mock_read_3)
+        testobj.viewtotree = mock_viewtotree_2
+        assert testobj.read() == []
+        assert testobj.opts['ImageCount'] == 5
+        assert testobj.activeitem is not None
+        assert testobj.has_treedata
+        assert capsys.readouterr().out == (
+                "called Editor.init_opts\n"
+                "called dml.read_from_files with args ('xxxx', '', 'yyyy')\n"
+                "called MainGui.set_version with args ()\n"
+                "called MainGui.set_window_dimensions with args (5, 10)\n"
+                "called Editor.set_windowsplit\n"
+                "called Editor.set_escape_action\n"
+                "called MainGui.rebuild_root\n"
+                "called MainGui.init_app\n"
+                "called Editor.set_contents with arg 'asdf'\n"
+                "called Editor.setup_viewmenu\n"
+                "called MainGui.set_focus_to_tree\n"
+                "called Editor.viewtotree\n"
+                "called Editor.set_project_dirty with arg False\n"
+                "called MainGui.expand_root\n")
+
+    def test_set_windowsplit(self, monkeypatch, capsys):
+        """unittest for MainWindow.set_windowsplit
+        """
+        def mock_set_split(value):
+            print(f'called EditorGui.set_window_split with arg {value}')
+        def mock_set_split_2(value):
+            print(f'called EditorGui.set_window_split with arg {value}')
+            raise TypeError
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.set_window_split = mock_set_split
+        testobj.opts = {'SashPosition': 5, 'ScreenSize': (10, 10)}
+        testobj.set_windowsplit()
+        assert testobj.opts['SashPosition'] == (5, 5)
+        assert capsys.readouterr().out == "called EditorGui.set_window_split with arg (5, 5)\n"
+
+        testobj.opts = {'SashPosition': (5,), 'ScreenSize': (10, 10)}
+        testobj.set_windowsplit()
+        assert testobj.opts['SashPosition'] == (5, 5)
+        assert capsys.readouterr().out == "called EditorGui.set_window_split with arg (5, 5)\n"
+
+        testobj.opts = {'SashPosition': (5, 6), 'ScreenSize': (10, 10)}
+        testobj.set_windowsplit()
+        assert testobj.opts['SashPosition'] == (5, 6)
+        assert capsys.readouterr().out == "called EditorGui.set_window_split with arg (5, 6)\n"
+
+        testobj.opts = {'SashPosition': ()}
+        testobj.gui.set_window_split = mock_set_split_2
+        testobj.set_windowsplit()
+        assert testobj.opts['SashPosition'] == ()
+        assert capsys.readouterr().out == ("called EditorGui.set_window_split with arg ()\n"
+                                           f"called gui.show_message with args ({testobj.gui},"
+                                           " 'Ignoring incompatible sash position')\n")
 
     def test_set_escape_action(self, monkeypatch, capsys):
         """unittest for MainWindow.set_escape_action
@@ -2310,6 +2837,25 @@ class TestMainWindow:
         testobj.opts = {'EscapeClosesApp': False}
         testobj.set_escape_action()
         assert capsys.readouterr().out == ("called MainGui.remove_escape_action\n")
+
+    def test_setup_viewmenu(self, monkeypatch, capsys):
+        """unittest for MainWindow.setup_viewmenu
+        """
+        counter = 0
+        def mock_add(arg):
+            nonlocal counter
+            print(f"called MainGui.add_viewmenu_option with arg '{arg}'")
+            counter += 1
+            return f'action-{counter}'
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.opts = {'ViewNames': ['a view', 'also a view',], 'ActiveView': 1}
+        testobj.gui.add_viewmenu_option = mock_add
+        testobj.setup_viewmenu()
+        assert capsys.readouterr().out == (
+                "called MainGui.clear_viewmenu\n"
+                "called MainGui.add_viewmenu_option with arg '&1 a view'\n"
+                "called MainGui.add_viewmenu_option with arg '&2 also a view'\n"
+                "called MainGui.check_viewmenu_option with arg 'action-2'\n")
 
     def test_write(self, monkeypatch, capsys):
         """unittest for MainWindow.write
