@@ -99,4 +99,7 @@ def main(fname, *, donot_filter_html=False, to_files=False):
         else:
             print('itemdict', file=_out)
             pprint.pprint(itemdict, width=200, stream=_out)
+
+        text_positions = nt_data[3]
+        pprint.pprint(text_positions, width=200, stream=_out)
         return 'done.'
