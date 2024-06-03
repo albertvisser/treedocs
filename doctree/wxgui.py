@@ -303,7 +303,7 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
         value = self.GetItemData(item)
         try:
             value = int(value)
-        expect ValueError:  # root element heeft geen numerieke key
+        except ValueError:  # root element heeft geen numerieke key
             value = -1
         return value
 
@@ -1022,7 +1022,7 @@ class MainGui(wx.Frame):
         """nieuw item toevoegen (default: onder het geselecteerde)
         """
         origpos = -1  # is dit niet te beperkt?
-        self.master.do_additem(root, under, origpos, new_title, extra_titles)
+        self.master.do_addaction(root, under, origpos, new_title, extra_titles)
 
     def set_next_item(self, any_level=False):
         "for go to next"
@@ -1050,7 +1050,7 @@ class MainGui(wx.Frame):
     def start_paste(self, before=True, below=False, dest=None):
         """start paste actie
         """
-        self.master.do_pasteitem(before, below, dest)
+        self.master.do_pasteaction(before, below, dest)
 
     def reorder_items(self, root, recursive=False):
         "(re)order_items"

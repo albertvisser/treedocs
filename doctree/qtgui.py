@@ -480,7 +480,7 @@ class AddCommand(qtw.QUndoCommand):
         # anders is deze None en moet deze bepaald worden op self.win.item
         shared.log('in AddCommand.__init__')
         self.win = win
-        # bepalen root en pos gebeurt eigenlijk in do_additem maar ik heb ze hier al nodig
+        # bepalen root en pos gebeurt eigenlijk in do_addaction maar ik heb ze hier al nodig
         self.root = root if root is not None else self.win.master.activeitem
         if root == self.win.root:
             description += " top level item"
@@ -499,8 +499,8 @@ class AddCommand(qtw.QUndoCommand):
         """
         shared.log('in AddCommand.redo')
         shared.log(f"root, under zijn {self.root} ({self.root.text(0)}) en {self.under}")
-        self.data = self.win.master.do_additem(self.root, self.under, self.pos,
-                                               self.new_title, self.extra_titles)
+        self.data = self.win.master.do_addaction(self.root, self.under, self.pos,
+                                                 self.new_title, self.extra_titles)
         # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
         #             en kan ik deze dus ook niet terugstoppen
 
@@ -568,8 +568,8 @@ class PasteCommand(qtw.QUndoCommand):
         # items toevoegen aan visual tree
         # indien nodig het copied_item in eventuele andere views ook toevoegen
         # afmaken
-        self.used_keys, self.used_parent = self.win.master.do_pasteitem(self.before, self.below,
-                                                                        self.item)
+        self.used_keys, self.used_parent = self.win.master.do_pasteaction(self.before, self.below,
+                                                                          self.item)
 
         ## # kennelijk wordt self.win.copied_item wel veranderd en wel van
         ## #    ('drijfsijzen', '14', []) in ('drijfsijzen', 15, [])
@@ -1698,7 +1698,7 @@ class MainGui(qtw.QMainWindow):
     def clear_viewmenu(self):
         "remove all view actions from viewmenu"
         menuitem_list = [x for x in self.viewmenu.actions()]
-        for menuitem in menuitem_list[7:]:
+        for menuitem in menuitem_list[8:]:
             self.viewmenu.removeAction(menuitem)
 
     def add_viewmenu_option(self, optiontext):
