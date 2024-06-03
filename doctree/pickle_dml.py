@@ -96,7 +96,7 @@ def verify_imagenames(items_to_move, temp_imagepath, other_file):
     zipfile = other_file.with_suffix('.zip')
     with zpf.ZipFile(str(zipfile)) as zipped:
         names_in_target = zipped.namelist()
-    highest = int(max(names_in_target).split('.')[0])
+    highest = int(max(names_in_target).split('.')[0]) if names_in_target else 0
 
     imagelist = []
     for ix, item in enumerate(items_to_move):
