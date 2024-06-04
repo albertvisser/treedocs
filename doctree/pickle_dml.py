@@ -74,7 +74,6 @@ def read_from_files(this_file, other_file, temp_imagepath):
         if fail:
             return [f"{infile} contains invalid data for text positions"]
 
-
     imagelist = []
     if not other_file:
         try:
@@ -90,13 +89,11 @@ def read_from_files(this_file, other_file, temp_imagepath):
 
 def verify_imagenames(items_to_move, temp_imagepath, other_file):
     """controleer of namen van te verplaatsen images al in het doelbestand voorkomen
+    (voor het gemak vullen we gaten in de nummering niet op)
     zo ja, wijzig de naam dan in iets dat nog niet gebruikt is en pas de tekst waarin
     naar het image verwezen wordt ook aan
     """
-    zipfile = other_file.with_suffix('.zip')
-    with zpf.ZipFile(str(zipfile)) as zipped:
-        names_in_target = zipped.namelist()
-    highest = int(max(names_in_target).split('.')[0]) if names_in_target else 0
+    names_in_target, highest = determine_highest_in_zipfile(other_file)
 
     imagelist = []
     for ix, item in enumerate(items_to_move):
@@ -120,6 +117,16 @@ def verify_imagenames(items_to_move, temp_imagepath, other_file):
             items_to_move[ix] = (key, (title, str(soup)))
 
     return items_to_move, imagelist
+
+
+def determine_highest_in_zipfile(filename):
+    """loop de namen van de imagefiles langs en bepaal het hoogst gebruikte volgnummer
+    """
+    zipfile = filename.with_suffix('.zip')
+    with zpf.ZipFile(str(zipfile)) as zipped:
+        names_in_target = zipped.namelist()
+    highest = int(max(names_in_target).split('.')[0]) if names_in_target else 0
+    return names_in_target, highest
 
 
 def write_to_files(filename, opts, views, itemdict, textpositions, temp_imagepath,
