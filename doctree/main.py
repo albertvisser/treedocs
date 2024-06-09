@@ -1034,14 +1034,14 @@ class MainWindow:
         self.set_window_title()
         self.gui.tree.set_item_selected(tree_item)
 
-    def search(self, *args):  # , mode=0):
+    def search(self, *args, mode=0):
         """start search action
         """
         # print('starting new search, srchlist =', self.gui.srchlist)
         if self.gui.srchlist:
             gui.show_message(self.gui, 'Cannot start new search while results screen is showing')
             return
-        ok = gui.show_dialog(self.gui, gui.SearchDialog)  # , {'mode': mode})
+        ok = gui.show_dialog(self.gui, gui.SearchDialog, {'mode': mode})
         if not ok:
             return
         if self.gui.srchtype == 0:

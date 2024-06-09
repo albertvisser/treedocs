@@ -2224,21 +2224,21 @@ class TestMainWindow:
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n")
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n")
 
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
-        testobj.gui.srchtype = 4
-        testobj.search()
+        testobj.gui.srchtype = 4  # wordt eigenlijk ingesteld door SearchDialog
+        testobj.search(mode=4)
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 4}})\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Wrong search type')\n")
 
         testobj.gui.srchtype = 0
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
                 "called Editor.search_from_start\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Search string not found')\n")
 
@@ -2246,14 +2246,14 @@ class TestMainWindow:
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
                 "called Editor.search_from_start\n")
 
         testobj.gui.srchtype = 1
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Search string not found')\n")
 
@@ -2261,11 +2261,10 @@ class TestMainWindow:
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 "called MainWindow.go_to_result\n")
 
-        # mislukte poging om r. 1060 nog gecovered te krijgen
         monkeypatch.setattr(testee.MainWindow, 'search_from', mock_search_from_3)
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
         monkeypatch.setattr(testee.gui, 'show_nonmodal', mock_show_nonmodal)
@@ -2277,7 +2276,7 @@ class TestMainWindow:
         assert testobj.gui.srchlist
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>)\n"
+                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 f"called gui.show_nonmodal with args ({testobj.gui}, {testee.gui.ResultsDialog})\n")
 

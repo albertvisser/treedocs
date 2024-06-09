@@ -2,7 +2,7 @@
 """
 import os
 import sys
-import contextlib
+# import contextlib
 import PyQt5.QtGui as gui
 import PyQt5.QtWidgets as qtw
 import PyQt5.QtCore as core
@@ -23,8 +23,8 @@ def ask_ynquestion(win, text):
 
 def ask_yncquestion(win, text):
     "ask a yes/no answerable question with possibilty to cancel"
-    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.Yes |
-                                      qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
+    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.Yes
+                                      | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
                                       defaultButton=qtw.QMessageBox.Yes)
     return result == qtw.QMessageBox.Yes, result == qtw.QMessageBox.Cancel
 
@@ -159,7 +159,7 @@ class OptionsDialog(qtw.QDialog):
 class SearchDialog(qtw.QDialog):
     """search mode: 0 = current document, 1 = all titles, 2 = all texts
     """
-    def __init__(self, parent):  # , mode=0):
+    def __init__(self, parent, mode=0):
         self.parent = parent
         ## self.option = option
         super().__init__(parent)
@@ -231,12 +231,12 @@ class SearchDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
-        # if mode == 0:
-        #     self.c_curr.setChecked(True)
-        # elif mode == 1:
-        #     self.c_titl.setChecked(True)
-        # elif mode == 2:
-        #     self.c_text.setChecked(True)
+        if mode == 0:
+            self.c_curr.setChecked(True)
+        elif mode == 1:
+            self.c_titl.setChecked(True)
+        elif mode == 2:
+            self.c_text.setChecked(True)
         if self.parent.srchtext:
             self.t_zoek.setText(self.parent.srchtext)
         if self.parent.srchflags & gui.QTextDocument.FindCaseSensitively:
@@ -853,7 +853,7 @@ class TreePanel(qtw.QTreeWidget):
         value = item.text(1)
         shared.log(f'in tree.getitemkey, type voor omzetten is {type(value)}', always=True)
         # with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
-        # maar uit de displays blijkt dat praktisch altijd omgezet wordt van str naar int
+        # maar uit de displays blijkt dat dat praktisch altijd omgezet wordt van str naar int
         try:
             value = int(value)
         except ValueError:
@@ -1335,8 +1335,8 @@ class EditorPanel(qtw.QTextEdit):
     def find_next(self):
         "search forward in textarea"
         if self.find(self.parent.srchtext,
-                     self.parent.srchflags & (gui.QTextDocument.FindCaseSensitively |
-                                              gui.QTextDocument.FindWholeWords)):
+                     self.parent.srchflags & (gui.QTextDocument.FindCaseSensitively
+                                              | gui.QTextDocument.FindWholeWords)):
             self.ensureCursorVisible()
 
     def find_prev(self):
@@ -1440,7 +1440,7 @@ class MainGui(qtw.QMainWindow):
                         self.redo_item = action
                 if shortcut:
                     # print('  item is', item, 'shortcut is', shortcut)
-                    keys = [x for x in shortcut.split(",")]
+                    keys = list(shortcut.split(","))
                     action.setShortcuts(keys)
                     if menudef == menudata[0][1][-1]:
                         self.quit_action = action
@@ -1657,7 +1657,7 @@ class MainGui(qtw.QMainWindow):
                 item = get_prev_child_if_any(parent.child(pos - 1))
                 self.tree.setCurrentItem(item)
                 return True
-            elif pos > 0:
+            if pos > 0:
                 item = parent.child(pos - 1)
                 self.tree.setCurrentItem(item)
                 return True
@@ -1697,7 +1697,7 @@ class MainGui(qtw.QMainWindow):
 
     def clear_viewmenu(self):
         "remove all view actions from viewmenu"
-        menuitem_list = [x for x in self.viewmenu.actions()]
+        menuitem_list = list(self.viewmenu.actions())
         for menuitem in menuitem_list[8:]:
             self.viewmenu.removeAction(menuitem)
 
@@ -1716,7 +1716,7 @@ class MainGui(qtw.QMainWindow):
             action.setChecked(True)
             return ''
         sender = self.sender()
-        menuitem_list = [x for x in self.viewmenu.actions()]
+        menuitem_list = list(self.viewmenu.actions())
         for menuitem in menuitem_list[7:]:
             if menuitem == sender:
                 newview = sender.text()
@@ -1727,7 +1727,7 @@ class MainGui(qtw.QMainWindow):
 
     def uncheck_viewmenu_option(self):
         "uncheck the active viewmenu action"
-        menuitem_list = [x for x in self.viewmenu.actions()]
+        menuitem_list = list(self.viewmenu.actions())
         for idx, menuitem in enumerate(menuitem_list[7:]):
             if idx == self.master.opts["ActiveView"]:
                 menuitem.setChecked(False)
@@ -1739,7 +1739,7 @@ class MainGui(qtw.QMainWindow):
 
     def check_next_viewmenu_option(self, prev=False):
         "find the currently checked option, uncheck it and check the next/previous one"
-        menuitem_list = [x for x in self.viewmenu.actions()][7:]
+        menuitem_list = list(self.viewmenu.actions())[7:]
         if prev:
             menuitem_list.reverse()
         found_item = False
@@ -1756,7 +1756,7 @@ class MainGui(qtw.QMainWindow):
 
     def remove_viewmenu_option(self, viewname):
         "find the currently checked option, remove it and check the next one"
-        menuitem_list = [x for x in self.viewmenu.actions()]
+        menuitem_list = list(self.viewmenu.actions())
         removed = False
         item_to_check = None
         for menuitem in menuitem_list[7:]:
