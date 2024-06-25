@@ -799,7 +799,10 @@ class MainGui(wx.Frame):
         toolbar1.Realize()
 
         self.splitter.SplitVertically(self.tree, self.editor)
-        self.splitter.SetSashPosition(self.master.opts['SashPosition'], True)
+        try:
+            self.splitter.SetSashPosition(self.master.opts['SashPosition'], True)
+        except TypeError:
+            self.splitter.SetSashPosition(self.master.opts['SashPosition'][0], True)
         ## ## self.splitter.Bind(wx.EVT_KEY_DOWN, self.on_key)
         ## ## self.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.Bind(wx.EVT_CLOSE, self.afsl)
