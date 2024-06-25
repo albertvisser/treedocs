@@ -14,7 +14,7 @@ from doctree import shared
 
 app_info = "\n".join(["DocTree door Albert Visser",
                       "Uitgebreid electronisch notitieblokje",
-                      "PyQt versie"])
+                      "{} versie"])
 help_info = "\n".join([
     "Ctrl-N\t\t- nieuwe notitie onder huidige",
     "Shift-Ctrl-N\t\t- nieuwe notitie onder hoogste niveau",
@@ -1143,7 +1143,8 @@ class MainWindow:
 
     def info_page(self, *args):
         """help -> about"""
-        gui.show_message(self.gui, app_info)
+        tkname = {"qt": "PyQt", "wx": "wxPython"}
+        gui.show_message(self.gui, app_info.format(tkname[gui.toolkit]))
 
     def help_page(self, *args):
         """help -> keys"""

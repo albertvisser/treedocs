@@ -1,6 +1,7 @@
 """unittests for ./doctree/main.py
 """
 import datetime
+import pytest
 from doctree import main as testee
 
 def mock_ask_yn(*args):
@@ -2447,12 +2448,20 @@ class TestMainWindow:
     def test_info_page(self, monkeypatch, capsys):
         """unittest for MainWindow.info_page
         """
-        monkeypatch.setattr(testee, 'app_info', 'app info')
+        monkeypatch.setattr(testee, 'app_info', 'app info for {}')
+        monkeypatch.setattr(testee.gui, 'toolkit', 'qt')
         monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.info_page()
         assert capsys.readouterr().out == (
-                f"called gui.show_message with args ({testobj.gui}, 'app info')\n")
+                f"called gui.show_message with args ({testobj.gui}, 'app info for PyQt')\n")
+        monkeypatch.setattr(testee.gui, 'toolkit', 'wx')
+        testobj.info_page()
+        assert capsys.readouterr().out == (
+                f"called gui.show_message with args ({testobj.gui}, 'app info for wxPython')\n")
+        monkeypatch.setattr(testee.gui, 'toolkit', 'x')
+        with pytest.raises(KeyError):
+            testobj.info_page()
 
     def test_help_page(self, monkeypatch, capsys):
         """unittest for MainWindow.help_page
