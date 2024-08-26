@@ -124,11 +124,11 @@ def test_read_from_files(monkeypatch, capsys, tmp_path):
     def mock_load_err_3rd_item_3(*args):
         """stub
         """
-        return {0: testdata[0], 1: testdata[1], 2: NotASequence}
-    # def mock_load_err_3rd_item_4(*args):
-    #     """stub
-    #     """
-    #     return {0: testdata[0], 1: testdata[1], 2: 'not-a-dict'}
+        return {0: testdata[0], 1: testdata[1], 2: NotASequence()}
+    def mock_load_err_3rd_item_4(*args):
+        """stub
+        """
+        return {0: testdata[0], 1: testdata[1], 2: 'not-a-dict'}
     def mock_load_err_4th_item(*args):
         """stub
         """
@@ -141,6 +141,10 @@ def test_read_from_files(monkeypatch, capsys, tmp_path):
         """stub
         """
         return {0: testdata[0], 1: testdata[1], 2: testdata[2], 3: 'not-a-dict'}
+    def mock_load_err_4th_item_4(*args):
+        """stub
+        """
+        return {0: testdata[0], 1: testdata[1], 2: testdata[2], 3: NotASequence()}
     def mock_load_ok(*args):
         """stub
         """
@@ -163,84 +167,82 @@ def test_read_from_files(monkeypatch, capsys, tmp_path):
     assert capsys.readouterr().out == 'called pickle.load\n'
     # mogelijke fouten in data
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_wrong_type)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " is not a valid Doctree data file"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} is not a valid Doctree data file"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_not_an_iterable)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " is not a valid Doctree data file"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} is not a valid Doctree data file"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_1st_item)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " is not a valid Doctree data file"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} is not a valid Doctree data file"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_1st_item_2)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " is not a valid Doctree data file"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} is not a valid Doctree data file"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_1st_item_3)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " is not a valid Doctree data file"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} is not a valid Doctree data file"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_1st_item_4)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " is not a valid Doctree data file"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} is not a valid Doctree data file"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_2nd_item)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'}, [[]], {},
-                                                             {}, [])
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [[]], {}, {}, [])
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_2nd_item_2)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'}, [], {},
-                                                             {}, [])
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [], {}, {}, [])
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_2nd_item_3)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " contains invalid data for views"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} contains invalid data for views"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_3rd_item)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'},
-                                                             [[(0, [(1, [])])]], {}, {}, [])
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [[(0, [(1, [])])]], {}, {}, [])
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_3rd_item_2)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'},
-                                                             [[(0, [(1, [])])]], {}, {}, [])
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [[(0, [(1, [])])]], {}, {}, [])
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_3rd_item_3)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-                                                             " contains invalid data for itemdict"]
-    # monkeypatch.setattr(testee.pickle, 'load', mock_load_err_3rd_item_4)
-    # assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile}"
-    #                                                         " contains invalid data for itemdict"]
-    # voorgaande test failt: 'not-a-dict' wordt door de code ongemoeid gelaten en de textpositions
-    # dict wordt {'n': 0, 'o': 0, 't': 0, '-': 0, 'a': 0, 'd': 0, 'i': 0, 'c': 0}
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} contains invalid data for itemdict"]
+    monkeypatch.setattr(testee.pickle, 'load', mock_load_err_3rd_item_4)
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} contains invalid data for itemdict"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_4th_item)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'},
-                                                             [[(0, [(1, [])])]],
-                                                             {0: ('text1', 'this is one text'),
-                                                              1: ('text2', 'this is another')},
-                                                             {0: 0, 1: 0}, [])
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [[(0, [(1, [])])]],
+            {0: ('text1', 'this is one text'), 1: ('text2', 'this is another')}, {0: 0, 1: 0}, [])
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_4th_item_2)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile} contains"
-                                                             " invalid data for text positions"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} contains invalid data for text positions"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_err_4th_item_3)
-    assert testee.read_from_files(testfile, '', imagepath) == [f"{testfile} contains"
-                                                             " invalid data for text positions"]
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} contains invalid data for text positions"]
+    monkeypatch.setattr(testee.pickle, 'load', mock_load_err_4th_item_4)
+    assert testee.read_from_files(testfile, '', imagepath) == [
+            f"{testfile} contains invalid data for text positions"]
     monkeypatch.setattr(testee.pickle, 'load', mock_load_ok)
     monkeypatch.setattr(testee.zpf, 'ZipFile', MockZipFileErr)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'},
-                                                             [[(0, [(1, [])])]],
-                                                             {0: ('text1', 'this is one text'),
-                                                              1: ('text2', 'this is another')},
-                                                             {0: 0, 1: 0}, [])
-    assert capsys.readouterr().out == ('called pickle.load\n'
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [[(0, [(1, [])])]],
+            {0: ('text1', 'this is one text'), 1: ('text2', 'this is another')}, {0: 0, 1: 0}, [])
+    assert capsys.readouterr().out == (
+            'called pickle.load\n'
             f"called zipfile.ZipFile with args ('{testfile.with_suffix('.zip')}',)\n"
             'called ZipFile.__enter__\n'
             f'called ZipFile.extractall with arg `{imagepath}`\n'
             'called ZipFile.__exit__\n')
     monkeypatch.setattr(testee.zpf, 'ZipFile', MockZipFileOk)
-    assert testee.read_from_files(testfile, '', imagepath) == ({'Application': 'DocTree'},
-                                                             [[(0, [(1, [])])]],
-                                                             {0: ('text1', 'this is one text'),
-                                                              1: ('text2', 'this is another')},
-                                                             {0: 0, 1: 0}, ['name', 'list'])
-    assert capsys.readouterr().out == ('called pickle.load\n'
+    assert testee.read_from_files(testfile, '', imagepath) == (
+            {'Application': 'DocTree'}, [[(0, [(1, [])])]],
+            {0: ('text1', 'this is one text'), 1: ('text2', 'this is another')},
+            {0: 0, 1: 0}, ['name', 'list'])
+    assert capsys.readouterr().out == (
+            'called pickle.load\n'
             f"called zipfile.ZipFile with args ('{testfile.with_suffix('.zip')}',) {{}}\n"
             'called ZipFile.__enter__\n'
             f'called ZipFile.extractall with arg `{imagepath}`\n'
             'called ZipFile.__exit__\n'
             'called ZipFile.namelist\n')
 
-    # fout tijdens openen
+    # fout tijdens openen (aan het eind zodat ik de monkeypatch niet ongedaan hoef te maken)
     monkeypatch.setattr(pathlib.Path, 'open', mock_open_err)
     assert testee.read_from_files(testfile, '', imagepath) == [f"couldn't open {testfile}"]
     assert capsys.readouterr().out == f"called path.open with args ({testfile!r}, 'rb')\n"

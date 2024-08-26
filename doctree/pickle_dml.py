@@ -48,16 +48,16 @@ def read_from_files(this_file, other_file, temp_imagepath):
         itemdict = nt_data[2]
     except KeyError:
         itemdict = {}
+    else:
+        if not hasattr(itemdict, 'items'):
+            return [f"{infile} contains invalid data for itemdict"]
 
     # read text positions
     try:
         text_positions = nt_data[3]
     except KeyError:
         # initialize screen positions dict
-        try:
-            text_positions = {x: 0 for x in itemdict}
-        except TypeError:
-            return [f"{infile} contains invalid data for itemdict"]
+        text_positions = {x: 0 for x in itemdict}
     else:
         for x in itemdict:
             try:
