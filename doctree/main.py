@@ -1356,6 +1356,7 @@ class MainWindow:
                                             self.text_positions, self.temp_imagepath,
                                             save_images=not self.images_embedded)
         self.set_project_dirty(False)
+        self.gui.undo_stack.setClean()
         save_text = f"{self.project_file} is opgeslagen"
         if meld:
             ## print('In save - notify is', self.opts['NotifyOnSave'])
