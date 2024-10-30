@@ -72,7 +72,7 @@ def show_dialog(win, cls, kwargs=None):
 
 def show_nonmodal(win, cls):
     "show dialog and return to ongoing business"
-    #TODO
+    # TODO
 
 
 def get_hotkeys_from_text(label):
@@ -177,7 +177,7 @@ class OptionsDialog(wx.Dialog):
             self.parent.master.opts[keyvalue] = control.GetValue()
 
 
-class SearchDialog(wx.Dialog):  #FIXME
+class SearchDialog(wx.Dialog):  # FIXME
     """search mode: 0 = current document, 1 = all titles, 2 = all texts
     """
     def __init__(self, parent, mode=0):
@@ -197,7 +197,7 @@ class SearchDialog(wx.Dialog):  #FIXME
         "afsluiten met bijwerken"
 
 
-class ResultsDialog(wx.Dialog):  #FIXME
+class ResultsDialog(wx.Dialog):  # FIXME
     "Present search results in a non-modal dialog"
     def __init__(self, parent):
         pass
@@ -286,7 +286,7 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
 
     def getitemdata(self, item):
         "titel + data in de visual tree ophalen"
-        return self.GetItemText(item), self.getitemkey() # laatste was self.GetItemData(item)
+        return self.GetItemText(item), self.getitemkey()  # laatste was self.GetItemData(item)
                                                          # aangepast in overeenstemming met qt versie
 
     def getitemuserdata(self, item):
@@ -584,8 +584,8 @@ class EditorPanel(rt.RichTextCtrl):
             if self.HasSelection():
                 range = self.GetSelectionRange()
             if attr.GetParagraphSpacingAfter() >= self.parspace_increment:
-                attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter() -
-                                              self.parspace_increment)
+                attr.SetParagraphSpacingAfter(attr.GetParagraphSpacingAfter()
+                                              - self.parspace_increment)
                 attr.SetFlags(wx.TEXT_ATTR_PARA_SPACING_AFTER)
                 self.SetStyle(range, attr)
 
@@ -651,7 +651,7 @@ class EditorPanel(rt.RichTextCtrl):
     def shrink_text(self, evt):
         "letters kleiner maken"  # TODO
 
-    def text_color(self, evt):
+    def select_text_color(self, evt):
         "tekstkleur instellen"
         colour = evt.GetEventObject().GetValue()
         if colour:
@@ -676,7 +676,7 @@ class EditorPanel(rt.RichTextCtrl):
             attr.SetTextColour(colour)
             self.SetStyle(range, attr)
 
-    def background_color(self, evt):
+    def select_background_color(self, evt):
         "achtergrondkleur voor tekst instellen"
         colour = evt.GetEventObject().GetValue()
         if colour:
@@ -853,10 +853,16 @@ class MainGui(wx.Frame):
                 toolbar.AddSeparator()
             for menudef in data:
                 label = ''
+                prev = ''
                 if not menudef:
-                    submenu.AppendSeparator()
+                    if prev != 'spacer':
+                        prev = 'spacer'
+                        submenu.AppendSeparator()
                     continue
                 label, handler, shortcut, icon, info = menudef
+                # (nog) niet in wx geïmplementeerde menukeuzes overslaan
+                if 'justify' in label.lower() or 'indent' in label.lower():
+                    continue
                 # icon is mede bedoeld om van hieruit de toolbar op te zetten
                 if shortcut:
                     firstkey = shortcut.split(',', 1)[0].replace('PgDown', 'PgDn')

@@ -203,16 +203,32 @@ class MockEditor:
         print('called Editor.align_center')
     def align_right(self):
         print('called Editor.align_right')
+    def text_justify(self):
+        print('called Editor.text_justify')
+    def indent_more(self):
+        print('called Editor.indent_more')
+    def indent_less(self):
+        print('called Editor.indent_less')
+    def increase_parspacing(self):
+        print('called Editor.increase_parspacing')
+    def decrease_parspacing(self):
+        print('called Editor.decrease_parspacing')
+    def set_linespacing_10(self):
+        print('called Editor.set_linespacing_10')
+    def set_linespacing_15(self):
+        print('called Editor.set_linespacing_15')
+    def set_linespacing_20(self):
+        print('called Editor.set_linespacing_20')
     def text_font(self):
         print('called Editor.text_font')
     def enlarge_text(self):
         print('called Editor.enlarge_text')
     def shrink_text(self):
         print('called Editor.shrink_text')
-    def text_color(self):
-        print('called Editor.text_color')
-    def background_color(self):
-        print('called Editor.backgound_color')
+    def select_text_color(self):
+        print('called Editor.select_text_color')
+    def select_background_color(self):
+        print('called Editor.select_backgound_color')
     def set_contents(self, arg):
         print(f"called Editor.set_contents with arg '{arg}'")
     def get_contents(self):
@@ -239,6 +255,13 @@ class MockEditor:
         print(f"called Editor.mark_dirty with arg '{value}'")
 
 
+class MockStack:
+    """stub for doctree.gui.UndoRedoStack
+    """
+    def setClean(self):
+        print('called UndoStack.setClean')
+
+
 class MockGui:
     """stub for doctree.gui.MainGui
     """
@@ -246,6 +269,7 @@ class MockGui:
         print("called MainGui.__init__ with args", args, kwargs)
         self.tree = MockTree()
         self.editor = MockEditor()
+        self.undo_stack = MockStack()
     def setup_screen(self):
         print("called MainGui.setup_screen")
     def go(self):
@@ -2899,6 +2923,7 @@ class TestMainWindow:
                 " ('test.trd', {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100},"
                 " ['', 'A view'], {1: 'xxx'}, [1], 'path_to_images') {'save_images': True}\n"
                 "called MainWindow.set_project_dirty with arg False\n"
+                "called UndoStack.setClean\n"
                 "called MainWindow.confirm with args"
                 " {'setting': 'NotifyOnSave', 'textitem': 'test.trd is opgeslagen'}\n"
                 "called MainGui.show_statusmessage with args ('test.trd is opgeslagen',)\n")
@@ -2915,6 +2940,7 @@ class TestMainWindow:
                 " ('test.trd', {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100},"
                 " ['', 'A view'], {1: 'xxx'}, [1], 'path_to_images') {'save_images': True}\n"
                 "called MainWindow.set_project_dirty with arg False\n"
+                "called UndoStack.setClean\n"
                 "called MainGui.show_statusmessage with args ('test.trd is opgeslagen',)\n")
 
     def test_confirm(self, monkeypatch, capsys):

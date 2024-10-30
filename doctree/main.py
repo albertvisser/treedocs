@@ -291,33 +291,29 @@ class MainWindow:
                  'icons/format-justify-center.png', 'Check'),
                 ('Align &Right', self.gui.editor.align_right, 'Shift+Ctrl+R',
                  'icons/format-justify-right.png', 'Check'),
-                # niet implemented in wx - vind ik ook eigenlijk niet nodig
-                # ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
-                #  'icons/format-justify-fill.png', 'Check'),
+                ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
+                 'icons/format-justify-fill.png', 'Check'),
                 (),
-                # in wx nog niet duidelijk hoe goed te krijgen
-                # ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
-                #  'icons/format-indent-more.png', 'Increase indentation'),
-                # ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
-                #  'icons/format-indent-less.png', 'Decrease indentation'),
-                # (),
-                # niet implemented in qt - vind ik oom eigenlijk niet nodig
-                # ("Increase Paragraph &Spacing", self.gui.editor.increaseparspacing, ''),
-                # ("Decrease &Paragraph Spacing", self.gui.editor.decreaseparspacing, ''),
-                # (),
-                # niet implemented in qt - vind ik oom eigenlijk niet nodig
-                # ("Normal Line Spacing", self.gui.editor.set_linespacing_10, ''),
-                # ("1.5 Line Spacing", self.gui.editor.set_linespacing_15,''),
-                # ("Double Line Spacing", self.gui.editor.set_linespacing_20, ''),
-                # (),
+                ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
+                 'icons/format-indent-more.png', 'Increase indentation'),
+                ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
+                 'icons/format-indent-less.png', 'Decrease indentation'),
+                (),
+                ("Increase Paragraph Spacing", self.gui.editor.increase_parspacing, '', '', ''),
+                ("Decrease Paragraph Spacing", self.gui.editor.decrease_parspacing, '', '', ''),
+                (),
+                ("Normal Line Spacing", self.gui.editor.set_linespacing_10, '', '', ''),
+                ("1.5 Line Spacing", self.gui.editor.set_linespacing_15, '', '', ''),
+                ("Double Line Spacing", self.gui.editor.set_linespacing_20, '', '', ''),
+                (),
                 ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
                 ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl++', '',
                  'Use bigger letters'),
                 ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+-', '',
                  'Use smaller letters'),
                 (),
-                ("&Color...", self.gui.editor.text_color, '', '', 'Set/change colour'),
-                ("&Background...", self.gui.editor.background_color, '', '',
+                ("&Color...", self.gui.editor.select_text_color, '', '', 'Set/change colour'),
+                ("&Background...", self.gui.editor.select_background_color, '', '',
                  'Set/change background colour'))),
             ('&Search', (
                 ('&Current text', self.search, 'Ctrl+F', '', "Search in current text"),
@@ -969,6 +965,7 @@ class MainWindow:
         action_to_check = self.gui.remove_viewmenu_option(viewname)
         self.gui.check_viewmenu_option(action_to_check)
         self.gui.rebuild_root()
+        self.activeitem = None
         self.set_project_dirty(True)
         self.gui.tree.set_item_selected(self.viewtotree())
 
@@ -1022,6 +1019,7 @@ class MainWindow:
 
     def select_view(self):
         "handles Menu > View > <view name>"
+        # uitvoeren is eigenlijk niet nodig als de reeds geselecteerde view geselecteerd wordt
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.gui.editor.clear()
