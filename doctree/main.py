@@ -623,21 +623,37 @@ class MainWindow:
         """move to next item"""
         if not self.gui.set_next_item():
             gui.show_message(self.gui, "Geen volgend item op dit niveau")
+            return
+        if self.gui.in_editor:
+            ref = self.gui.tree.getitemkey(self.activeitem)
+            self.gui.editor.set_text_position(self.text_positions[ref])
 
     def prev_note(self, *args):
         """move to previous item"""
         if not self.gui.set_prev_item():
             gui.show_message(self.gui, "Geen vorig item op dit niveau")
+            return
+        if self.gui.in_editor:
+            ref = self.gui.tree.getitemkey(self.activeitem)
+            self.gui.editor.set_text_position(self.text_positions[ref])
 
     def next_note_any(self, *args):
         """move to next item"""
         if not self.gui.set_next_item(any_level=True):
             gui.show_message(self.gui, "Geen volgend item")
+            return
+        if self.gui.in_editor:
+            ref = self.gui.tree.getitemkey(self.activeitem)
+            self.gui.editor.set_text_position(self.text_positions[ref])
 
     def prev_note_any(self, *args):
         """move to previous item"""
         if not self.gui.set_prev_item(any_level=True):
             gui.show_message(self.gui, "Geen vorig item")
+            return
+        if self.gui.in_editor:
+            ref = self.gui.tree.getitemkey(self.activeitem)
+            self.gui.editor.set_text_position(self.text_positions[ref])
 
     def cut_item(self, *args):
         "cut = copy with removing item from tree"
@@ -1261,11 +1277,13 @@ class MainWindow:
             tekst = self.opts['RootData']
         else:
             tekst = self.itemdict[ref][1]
+        self.gui.editor.set_contents(tekst)  # , titel)
+        if ref != -1:
             try:
                 self.gui.editor.set_text_position(self.text_positions[ref])
             except KeyError:  # item is nieuw
                 self.text_positions[ref] = self.gui.editor.get_text_position()
-        self.gui.editor.set_contents(tekst)  # , titel)
+        # self.gui.editor.set_contents(tekst)  # , titel)
         self.gui.editor.openup(True)
 
     def cleanup_files(self):

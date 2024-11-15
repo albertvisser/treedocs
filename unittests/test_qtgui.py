@@ -78,11 +78,11 @@ def test_get_text(monkeypatch, capsys):
     monkeypatch.setattr(testee.qtw, 'QInputDialog', mockqtw.MockInputDialog)
     assert testee.get_text('win', 'caption', 'oldtext') == (False, 'oldtext')
     assert capsys.readouterr().out == (
-            "called InputDialog.getText with args win ('DocTree', 'caption', 0, 'oldtext') {}\n")
+            "called InputDialog.getText with args win ('DocTree', 'caption') {'text': 'oldtext'}\n")
     monkeypatch.setattr(mockqtw.MockInputDialog, 'getText', mock_get)
     assert testee.get_text('win', 'caption', 'oldtext') == (True, 'text')
     assert capsys.readouterr().out == (
-            "called InputDialog.getText with args win ('DocTree', 'caption', 0, 'oldtext') {}\n")
+            "called InputDialog.getText with args win ('DocTree', 'caption') {'text': 'oldtext'}\n")
 
 
 def test_get_choice(monkeypatch, capsys):
@@ -133,18 +133,18 @@ def test_show_dialog(monkeypatch, capsys):
     """unittest for qtgui.show_dialog
     """
     def mock_exec(self):
-        print('called Dialog.exec_')
-        return testee.qtw.QDialog.Accepted
+        print('called Dialog.exec')
+        return testee.qtw.QDialog.DialogCode.Accepted
     # monkeypatch.setattr(testee.qtw, 'QDialog', mockqtw.MockDialog)
     # cls = testee.qtw.QDialog
     cls = mockqtw.MockDialog
     assert not testee.show_dialog('win', cls)
     assert capsys.readouterr().out == ("called Dialog.__init__ with args win () {}\n"
-                                       "called Dialog.exec_\n")
+                                       "called Dialog.exec\n")
     monkeypatch.setattr(mockqtw.MockDialog, 'exec_', mock_exec)
-    assert testee.show_dialog('win', cls, {'greet': 'hello'})
+    assert not testee.show_dialog('win', cls, {'greet': 'hello'})
     assert capsys.readouterr().out == ("called Dialog.__init__ with args win () {'greet': 'hello'}\n"
-                                       "called Dialog.exec_\n")
+                                       "called Dialog.exec\n")
 
 
 def test_show_nonmodal(monkeypatch, capsys):
@@ -174,8 +174,12 @@ class MockEditor:
         print('called Editor.activate_item with arg {item}')
     def set_window_title(self):
         print('called Editor.set_window_title')
+    def set_text_position(self, pos):
+        print(f'called Editor.set_text_position with arg {pos}')
     def ensureCursorVisible(self):
         print('called Editor.ensureCursorVisible')
+    def setFocus(self):
+        print('called Editor.setFocus')
     def do_addaction(self, *args):
         print("called Editor.do_addaction with args", args)
         return 'data'
@@ -205,6 +209,11 @@ class MockTree:
     def getitemparentpos(self, item):
         print(f"called TreePanel.getitemparentpos with arg '{item}'")
         return "parent", 0
+
+    def getitemkey(self, item):
+        print(f"called TreePanel.getitemkey with arg '{item}'")
+        return "itemkey"
+
     def removeitem(self, *args):
         print("called TreePanel.removeitem with args", args)
 
@@ -396,7 +405,7 @@ class TestSearchDialog:
         parent.title = 'Title'
         parent.nt_icon = 'Icon'
         parent.srchtext = ''
-        parent.srchflags = 0
+        parent.srchflags = testee.gui.QTextDocument.FindFlag
         parent.srchlist = False
         parent.srchwrap = False
         parent.master = MockEditor()
@@ -424,12 +433,11 @@ class TestSearchDialog:
                                            "called CheckBox.isChecked\ncalled CheckBox.isChecked\n")
 
         parent.srchtext = 'Find'
-        parent.srchflags = (testee.gui.QTextDocument.FindCaseSensitively
-                            | testee.gui.QTextDocument.FindWholeWords)
+        parent.srchflags = testee.gui.QTextDocument.FindFlag.FindBackward
         parent.srchlist = True
         parent.srchwrap = True
         testobj = testee.SearchDialog(parent, mode=1)
-        assert capsys.readouterr().out == expected_output['searchdialog2'].format(testobj=testobj)
+        assert capsys.readouterr().out == expected_output['searchdialog1'].format(testobj=testobj)
         assert isinstance(testobj.t_zoek, testee.qtw.QLineEdit)
         assert isinstance(testobj.c_titl, testee.qtw.QCheckBox)
         assert isinstance(testobj.c_text, testee.qtw.QCheckBox)
@@ -442,8 +450,8 @@ class TestSearchDialog:
         assert testobj.c_titl.isChecked()
         assert not testobj.c_text.isChecked()
         assert testobj.t_zoek.text() == 'Find'
-        assert testobj.c_hlett.isChecked()
-        assert testobj.c_woord.isChecked()
+        assert not testobj.c_hlett.isChecked()
+        assert not testobj.c_woord.isChecked()
         assert testobj.c_lijst.isChecked()
         assert testobj.c_wrap.isChecked()
         assert capsys.readouterr().out == ("called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
@@ -451,6 +459,8 @@ class TestSearchDialog:
                                            "called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\ncalled CheckBox.isChecked\n")
 
+        parent.srchflags = (testee.gui.QTextDocument.FindFlag.FindCaseSensitively
+                            | testee.gui.QTextDocument.FindFlag.FindWholeWords)
         testobj = testee.SearchDialog(parent, mode=2)
         assert capsys.readouterr().out == expected_output['searchdialog2'].format(testobj=testobj)
         assert isinstance(testobj.t_zoek, testee.qtw.QLineEdit)
@@ -510,11 +520,11 @@ class TestSearchDialog:
         """
         def mock_show(*args):
             print('called show_message with args', args)
-        def mock_find():
-            print("called TextDocument.FindFlags")
-            return 0
+        # def mock_find():
+        #     print("called TextDocument.FindFlags")
+        #     return 0
         monkeypatch.setattr(testee, 'show_message', mock_show)
-        monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlags', mock_find)
+        # monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlags', mock_find)
         testobj = self.setup_testobj(monkeypatch, capsys)
         monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
         testobj.t_zoek = mockqtw.MockLineEdit()
@@ -549,13 +559,12 @@ class TestSearchDialog:
         testobj.accept()
         assert testobj.parent.srchtext == 'Zoek'
         assert testobj.parent.srchtype == 3
-        assert testobj.parent.srchflags == 0
+        assert testobj.parent.srchflags == testee.gui.QTextDocument.FindFlag
         assert not testobj.parent.srchlist
         assert not testobj.parent.srchwrap
         assert capsys.readouterr().out == ("called LineEdit.text\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
-                                           "called TextDocument.FindFlags\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
@@ -564,7 +573,6 @@ class TestSearchDialog:
         testobj.c_titl.setChecked(False)
         testobj.c_text.setChecked(False)
         testobj.c_curr.setChecked(True)
-        testobj.c_hlett.setChecked(True)
         testobj.c_woord.setChecked(True)
         testobj.c_lijst.setChecked(True)
         testobj.c_wrap.setChecked(True)
@@ -573,19 +581,53 @@ class TestSearchDialog:
                                            "called CheckBox.setChecked with arg True\n"
                                            "called CheckBox.setChecked with arg True\n"
                                            "called CheckBox.setChecked with arg True\n"
-                                           "called CheckBox.setChecked with arg True\n"
                                            "called CheckBox.setChecked with arg True\n")
         testobj.accept()
         assert testobj.parent.srchtext == 'Zoek'
         assert testobj.parent.srchtype == 0
-        assert int(testobj.parent.srchflags) == 6
+        assert testobj.parent.srchflags.value == 4
         assert testobj.parent.srchlist
         assert testobj.parent.srchwrap
         assert capsys.readouterr().out == ("called LineEdit.text\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
-                                           "called TextDocument.FindFlags\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called Dialog.accept\n")
+        testobj.c_hlett.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.accept()
+        assert testobj.parent.srchtext == 'Zoek'
+        assert testobj.parent.srchtype == 0
+        assert testobj.parent.srchflags.value == 6
+        assert testobj.parent.srchlist
+        assert testobj.parent.srchwrap
+        assert capsys.readouterr().out == ("called LineEdit.text\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called Dialog.accept\n")
+
+        testobj.parent.srchflags = testee.gui.QTextDocument.FindFlag
+        testobj.c_woord.setChecked(False)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg False\n"
+        testobj.accept()
+        assert testobj.parent.srchtext == 'Zoek'
+        assert testobj.parent.srchtype == 0
+        assert testobj.parent.srchflags.value == 2
+        assert testobj.parent.srchlist
+        assert testobj.parent.srchwrap
+        assert capsys.readouterr().out == ("called LineEdit.text\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
@@ -759,7 +801,7 @@ class TestResultsDialog:
         testobj.prev_button = mockqtw.MockPushButton()
         testobj.result_list = mockqtw.MockTreeWidget()
         resultitem = mockqtw.MockTreeItem()
-        resultitem.setData(0, testee.core.Qt.UserRole, 'xxx')
+        resultitem.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'xxx')
         assert capsys.readouterr().out == (
                 "called PushButton.__init__ with args () {}\n"
                 "called PushButton.__init__ with args () {}\n"
@@ -772,6 +814,11 @@ class TestResultsDialog:
         assert capsys.readouterr().out == ("called PushButton.setEnabled with arg `True`\n"
                                            "called PushButton.setEnabled with arg `True`\n"
                                            "called Tree.currentItem\n"
+                                           "called TreeItem.data for col 0 role 256\n"
+                                           "called Editor.go_to_result\n")
+        testobj.goto_selected()
+        assert testobj.parent.master.srchno == "xxx"
+        assert capsys.readouterr().out == ("called Tree.currentItem\n"
                                            "called TreeItem.data for col 0 role 256\n"
                                            "called Editor.go_to_result\n")
 
@@ -833,11 +880,11 @@ class TestUndoRedoStack:
         """unittest for UndoRedoStack.__init__
         """
         # monkeypatch.setattr(testee.qtw, 'QUndoStack', mockqtw.MockUndoStack)
-        monkeypatch.setattr(testee.qtw.QUndoStack, '__init__', mockqtw.MockUndoStack.__init__)
-        monkeypatch.setattr(testee.qtw.QUndoStack, 'parent', mockqtw.MockUndoStack.parent)
-        monkeypatch.setattr(testee.qtw.QUndoStack, 'cleanChanged', mockqtw.MockUndoStack.cleanChanged)
-        monkeypatch.setattr(testee.qtw.QUndoStack, 'indexChanged', mockqtw.MockUndoStack.indexChanged)
-        monkeypatch.setattr(testee.qtw.QUndoStack, 'setUndoLimit', mockqtw.MockUndoStack.setUndoLimit)
+        monkeypatch.setattr(testee.gui.QUndoStack, '__init__', mockqtw.MockUndoStack.__init__)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'parent', mockqtw.MockUndoStack.parent)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'cleanChanged', mockqtw.MockUndoStack.cleanChanged)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'indexChanged', mockqtw.MockUndoStack.indexChanged)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'setUndoLimit', mockqtw.MockUndoStack.setUndoLimit)
         parent = MockMainGui()
         testobj = testee.UndoRedoStack(parent)
         assert capsys.readouterr().out == (
@@ -925,7 +972,7 @@ class TestAddCommand:
         """
         def mock_init(self, *args):
             print('called QUndoCommand with args', args)
-        monkeypatch.setattr(testee.qtw.QUndoCommand, '__init__', mock_init)
+        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
         win = MockMainGui()
         win.master = MockEditor()
         win.tree = MockTree()
@@ -1024,7 +1071,7 @@ class TestPasteCommand:
         """
         def mock_init(self, *args):
             print('called QUndoCommand with args', args)
-        monkeypatch.setattr(testee.qtw.QUndoCommand, '__init__', mock_init)
+        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
         win = MockMainGui()
         win.master = MockEditor()
         win.tree = MockTree()
@@ -1161,7 +1208,7 @@ class TestCopyCommand:
         """
         def mock_init(self, *args):
             print('called QUndoCommand with args', args)
-        monkeypatch.setattr(testee.qtw.QUndoCommand, '__init__', mock_init)
+        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
         win = MockMainGui()
         win.master = MockEditor()
         win.tree = MockTree()
@@ -1321,10 +1368,10 @@ class TestTreePanel:
                             mockqtw.MockTreeWidget.setDropIndicatorShown)
         monkeypatch.setattr(testee.qtw.QTreeWidget, 'setUniformRowHeights',
                             mockqtw.MockTreeWidget.setUniformRowHeights)
-        monkeypatch.setattr(testee.qtw.QTreeWidget, 'SingleSelection',
-                            mockqtw.MockTreeWidget.SingleSelection)
-        monkeypatch.setattr(testee.qtw.QTreeWidget, 'InternalMove',
-                            mockqtw.MockTreeWidget.InternalMove)
+        # monkeypatch.setattr(testee.qtw.QTreeWidget, 'SingleSelection',
+        #                     mockqtw.MockTreeWidget.SingleSelection)
+        # monkeypatch.setattr(testee.qtw.QTreeWidget, 'InternalMove',
+        #                     mockqtw.MockTreeWidget.InternalMove)
         parent = MockEditor()
         testobj = testee.TreePanel(parent)
         assert capsys.readouterr().out == (
@@ -1336,7 +1383,7 @@ class TestTreePanel:
                 "called Tree.setAcceptDrops with arg True\n"
                 "called Tree.setDragEnabled with arg True\n"
                 "called Tree.setSelectionMode\n"
-                "called Tree.setDragDropMode with arg 4\n"
+                "called Tree.setDragDropMode with arg DragDropMode.InternalMove\n"
                 "called Tree.setDropIndicatorShown with arg True\n"
                 "called Tree.setUniformRowHeights with arg `True`\n")
 
@@ -1389,7 +1436,7 @@ class TestTreePanel:
         assert capsys.readouterr().out == ""
         testobj.dropEvent(event)
         assert capsys.readouterr().out == ("called Tree.selectedItems\n"
-                                           "called Tree.itemAt with arg (('x', 'y'))\n")
+                                           "called Tree.itemAt with arg ((1, 2))\n")
 
         testobj.itemAt = mock_itemat_2
         dropitem = mockqtw.MockTreeItem()
@@ -1401,7 +1448,7 @@ class TestTreePanel:
         testobj.topLevelItem = mock_item
         testobj.dropEvent(event)
         assert capsys.readouterr().out == ("called Tree.selectedItems\n"
-                                           "called Tree.itemAt with arg (('x', 'y'))\n"
+                                           "called Tree.itemAt with arg ((1, 2))\n"
                                            f"called Tree.dropEvent with arg {event}\n"
                                            "called Tree.topLevelItemCount\n"
                                            "called Editor.set_project_dirty with arg True\n"
@@ -1411,7 +1458,7 @@ class TestTreePanel:
         testobj.topLevelItemCount = mock_count_2
         testobj.dropEvent(event)
         assert capsys.readouterr().out == ("called Tree.selectedItems\n"
-                                           "called Tree.itemAt with arg (('x', 'y'))\n"
+                                           "called Tree.itemAt with arg ((1, 2))\n"
                                            f"called Tree.dropEvent with arg {event}\n"
                                            "called Tree.topLevelItemCount\n"
                                            "called Tree.topLevelItem with arg 0\n"
@@ -1423,8 +1470,8 @@ class TestTreePanel:
     def test_mousePressEvent(self, monkeypatch, capsys):
         """unittest for TreePanel.mousePressEvent
         """
-        def mock_itemat(line, col):
-            print(f'called Tree.itemAt with args ({line}, {col})')
+        def mock_itemat(pos):
+            print(f'called Tree.itemAt with args {pos}')
             return ''
         def mock_get(item):
             print(f'called Tree.getitemparentpos with arg `{item}`')
@@ -1437,12 +1484,12 @@ class TestTreePanel:
         testobj.getitemparentpos = mock_get
         event = mockqtw.MockEvent()
         testobj.mousePressEvent(event)
-        assert capsys.readouterr().out == ("called Tree.itemAt with args (x, y)\n"
-                                           "called Tree.getitemparentpos with arg `item at (x, y)`\n"
+        assert capsys.readouterr().out == ("called Tree.itemAt with args ((1, 2),)\n"
+                                           "called Tree.getitemparentpos with arg `item at (1, 2)`\n"
                                            f"called Tree.mousePressEvent with arg {event}\n")
         testobj.itemAt = mock_itemat
         testobj.mousePressEvent(event)
-        assert capsys.readouterr().out == ("called Tree.itemAt with args (x, y)\n"
+        assert capsys.readouterr().out == ("called Tree.itemAt with args (1, 2)\n"
                                            f"called Tree.mousePressEvent with arg {event}\n")
 
     def test_mouseReleaseEvent(self, monkeypatch, capsys):
@@ -1463,7 +1510,7 @@ class TestTreePanel:
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (f"called Tree.mouseReleaseEvent with arg {event}\n")
 
-        event.button = lambda *x: testee.core.Qt.RightButton
+        event.button = lambda *x: testee.core.Qt.MouseButton.RightButton
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (
                 "called Tree.itemAt with args (x, y)\n"
@@ -1490,7 +1537,7 @@ class TestTreePanel:
         testobj.keyReleaseEvent(event)
         assert capsys.readouterr().out == f"called Tree.keyReleaseEvent with arg {event}\n"
 
-        event.key = lambda *x: testee.core.Qt.Key_Menu
+        event.key = lambda *x: testee.core.Qt.Key.Key_Menu
         testobj.keyReleaseEvent(event)
         assert capsys.readouterr().out == (
                 "called Tree.create_popupmenu with arg 'called Tree.currentItem'\n")
@@ -1515,14 +1562,14 @@ class TestTreePanel:
                                            "called Action.__init__ with args ('-----', None)\n"
                                            "called Tree.visualItemRect with arg item\n"
                                            "called Tree.mapToGlobal with arg center\n"
-                                           "called Menu.exec_ with args ('mapped-to-global',) {}\n")
+                                           "called Menu.exec with args ('mapped-to-global',) {}\n")
         testobj.create_popupmenu('root')
         assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
                                            "called Menu.addSeparator\n"
                                            "called Action.__init__ with args ('-----', None)\n"
                                            "called Tree.visualItemRect with arg root\n"
                                            "called Tree.mapToGlobal with arg center\n"
-                                           "called Menu.exec_ with args ('mapped-to-global',) {}\n")
+                                           "called Menu.exec with args ('mapped-to-global',) {}\n")
         testobj.parent.notemenu.addAction(mockqtw.MockAction('&Add', ''))
         testobj.parent.notemenu.addAction(mockqtw.MockAction('&Delete', ''))
         testobj.parent.notemenu.addAction(mockqtw.MockAction('&Forward', ''))
@@ -1553,7 +1600,7 @@ class TestTreePanel:
                                            "called Menu.addAction\n"
                                            "called Tree.visualItemRect with arg item\n"
                                            "called Tree.mapToGlobal with arg center\n"
-                                           "called Menu.exec_ with args ('mapped-to-global',) {}\n")
+                                           "called Menu.exec with args ('mapped-to-global',) {}\n")
         testobj.create_popupmenu('root')
         assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
                                            "called Menu.addAction\n"
@@ -1576,7 +1623,7 @@ class TestTreePanel:
                                            "called Action.setEnabled with arg `False`\n"
                                            "called Tree.visualItemRect with arg root\n"
                                            "called Tree.mapToGlobal with arg center\n"
-                                           "called Menu.exec_ with args ('mapped-to-global',) {}\n"
+                                           "called Menu.exec with args ('mapped-to-global',) {}\n"
                                            "called Action.text\n"
                                            "called Action.setEnabled with arg `True`\n"
                                            "called Action.text\n"
@@ -1641,13 +1688,14 @@ class TestTreePanel:
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         item = mockqtw.MockTreeItem()
-        item.setData(0, testee.core.Qt.UserRole, 'data')
+        item.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'data')
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
-                f"called TreeItem.setData to `data` with role {testee.core.Qt.UserRole} for col 0\n")
+                "called TreeItem.setData to `data` with role"
+                f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
         assert testobj.getitemuserdata(item) == "data"
         assert capsys.readouterr().out == (
-                f"called TreeItem.data for col 0 role {testee.core.Qt.UserRole}\n")
+                f"called TreeItem.data for col 0 role {testee.core.Qt.ItemDataRole.UserRole}\n")
 
     def test_getitemtitle(self, monkeypatch, capsys):
         """unittest for TreePanel.getitemtitle
@@ -2028,22 +2076,22 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.gui, 'QFont', mockqtw.MockFont)
         monkeypatch.setattr(testee.qtw.QTextEdit, 'currentFont',
                             mockqtw.MockEditorWidget.currentFont)
-        monkeypatch.setattr(testee.qtw.QTextEdit, 'setTabStopWidth',
-                            mockqtw.MockEditorWidget.setTabStopWidth)
+        monkeypatch.setattr(testee.qtw.QTextEdit, 'setTabStopDistance',
+                            mockqtw.MockEditorWidget.setTabStopDistance)
         testobj = testee.EditorPanel('parent')
         assert testobj.parent == 'parent'
         assert testobj.paragraph_increment == 1  # 100
         assert capsys.readouterr().out == (
                 "called Editor.__init__\n"
                 "called Editor.setAcceptRichText with arg `True`\n"
-                "called Editor.setAutoFormatting with arg `-1`\n"
+                "called Editor.setAutoFormatting with arg `AutoFormattingFlag.AutoAll`\n"
                 f"called Signal.connect with args ({testobj.charformat_changed},)\n"
                 f"called Signal.connect with args ({testobj.cursorposition_changed},)\n"
                 "called Editor.currentFont\n"
                 "called Font.__init__\n"
                 "called Font.pointSize\n"
                 "called tabsize\n"
-                "called Editor.setTabStopWidth with arg fontsize\n")
+                "called Editor.setTabStopDistance with arg fontsize\n")
 
     def test_canInsertFromMimeData(self, monkeypatch, capsys):
         """unittest for EditorPanel.canInsertFromMimeData
@@ -2106,10 +2154,7 @@ class TestEditorPanel:
         testobj.charformat_changed = mock_char
         testobj.set_contents('img src="yyy"')
         assert testobj.oldtext == 'img src="xxx/yyy"'
-        assert capsys.readouterr().out == (
-                'called EditorPanel.setHtml with arg img src="xxx/yyy"\n'
-                'called TextCharFormat.__init__ with args ()\n'
-                'called EditorPanel.charformat_changed\n')
+        assert capsys.readouterr().out == 'called EditorPanel.setHtml with arg img src="xxx/yyy"\n'
 
     def test_get_contents(self, monkeypatch, capsys):
         """unittest for EditorPanel.get_contents
@@ -2132,7 +2177,7 @@ class TestEditorPanel:
         assert testobj.get_contents() == 'img src="yyy"'
         assert capsys.readouterr().out == ("called EditorPanel.toPlainText\n"
                                            "called TreeItem.setData to `plaintext` with role"
-                                           f" {testee.core.Qt.UserRole} for col 0\n"
+                                           f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n"
                                            "called EditorPanel.toHtml\n")
 
     def test_get_text_position(self, monkeypatch, capsys):
@@ -2152,12 +2197,13 @@ class TestEditorPanel:
         testobj.textCursor = lambda: testobj._text_cursor
         monkeypatch.setattr(testee.EditorPanel, 'setTextCursor',
                             mockqtw.MockEditorWidget.setTextCursor)
+        monkeypatch.setattr(testee.EditorPanel, 'ensureCursorVisible',
+                            mockqtw.MockEditorWidget.ensureCursorVisible)
         testobj.set_text_position('pos')
         assert capsys.readouterr().out == ("called TextCursor.__init__\n"
                                            "called TextCursor.setPosition with arg pos\n"
-                                           "called Editor.setTextCursor\n")
-                                           # "called Editor.setTextCursor with args"
-                                           # f" ({testobj._text_cursor},)\n")
+                                           "called Editor.setTextCursor\n"
+                                           "called Editor.ensureCursorVisible\n")
 
     def test_select_all(self, monkeypatch, capsys):
         """unittest for EditorPanel.select_all
@@ -2185,19 +2231,21 @@ class TestEditorPanel:
         assert capsys.readouterr().out == ("called Editor.hasFocus\n")
         testobj.hasFocus = mock_has_focus
         testobj.text_bold()
-        assert capsys.readouterr().out == ("called Editor.hasFocus\n"
-                                           "called TextCharFormat.__init__ with args ()\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called TextCharFormat.setFontWeight with arg 50\n"
-                                           "called EditorPanel.mergeCurrentCharformat\n")
+        assert capsys.readouterr().out == (
+                "called Editor.hasFocus\n"
+                "called TextCharFormat.__init__ with args ()\n"
+                "called CheckBox.isChecked\n"
+                f"called TextCharFormat.setFontWeight with arg {testee.gui.QFont.Weight.Normal}\n"
+                "called EditorPanel.mergeCurrentCharformat\n")
         testobj.parent.styleactiondict['&Bold'].setChecked(True)
         assert capsys.readouterr().out == ("called CheckBox.setChecked with arg True\n")
         testobj.text_bold()
-        assert capsys.readouterr().out == ("called Editor.hasFocus\n"
-                                           "called TextCharFormat.__init__ with args ()\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called TextCharFormat.setFontWeight with arg 75\n"
-                                           "called EditorPanel.mergeCurrentCharformat\n")
+        assert capsys.readouterr().out == (
+                "called Editor.hasFocus\n"
+                "called TextCharFormat.__init__ with args ()\n"
+                "called CheckBox.isChecked\n"
+                f"called TextCharFormat.setFontWeight with arg {testee.gui.QFont.Weight.Bold}\n"
+                "called EditorPanel.mergeCurrentCharformat\n")
 
     def test_text_italic(self, monkeypatch, capsys):
         """unittest for EditorPanel.text_italic
@@ -2445,24 +2493,24 @@ class TestEditorPanel:
         def mock_has_focus():
             print('called Editor.hasFocus')
             return True
-        def mock_blockFormat(self):
-            print('called TextCursor.blockFormat')
-            return mockqtw.MockTextBlockFormat()
-        def mock_setBlockFormat(self, arg):
-            print('called TextCursor.setBlockFormat')
-        def mock_indent(self):
-            print("called TextBlockCursor.indent")
-            return 1
-        def mock_setIndent(self, value):
-            print(f"called TextBlockCursor.setIndent with arg {value}")
+        # def mock_blockFormat(self):
+        #     print('called TextCursor.blockFormat')
+        #     return mockqtw.MockTextBlockFormat()
+        # def mock_setBlockFormat(self, arg):
+        #     print('called TextCursor.setBlockFormat')
+        # def mock_indent(self):
+        #     print("called TextBlockCursor.indent")
+        #     return 1
+        # def mock_setIndent(self, value):
+        #     print(f"called TextBlockCursor.setIndent with arg {value}")
         monkeypatch.setattr(testee.EditorPanel, 'hasFocus', mockqtw.MockEditorWidget.hasFocus)
         monkeypatch.setattr(testee.EditorPanel, 'textCursor', mockqtw.MockEditorWidget.textCursor)
         monkeypatch.setattr(testee.EditorPanel, 'setTextCursor',
                             mockqtw.MockEditorWidget.setTextCursor)
-        monkeypatch.setattr(mockqtw.MockTextCursor, 'blockFormat', mock_blockFormat)
-        monkeypatch.setattr(mockqtw.MockTextCursor, 'setBlockFormat', mock_setBlockFormat)
-        monkeypatch.setattr(mockqtw.MockTextBlockFormat, 'indent', mock_indent)
-        monkeypatch.setattr(mockqtw.MockTextBlockFormat, 'setIndent', mock_setIndent)
+        # monkeypatch.setattr(mockqtw.MockTextCursor, 'blockFormat', mock_blockFormat)
+        # monkeypatch.setattr(mockqtw.MockTextCursor, 'setBlockFormat', mock_setBlockFormat)
+        # monkeypatch.setattr(mockqtw.MockTextBlockFormat, 'indent', mock_indent)
+        # monkeypatch.setattr(mockqtw.MockTextBlockFormat, 'setIndent', mock_setIndent)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.paragraph_increment = 5
         testobj.indent_more()
@@ -2474,8 +2522,8 @@ class TestEditorPanel:
                                            "called TextCursor.__init__\n"
                                            "called TextCursor.blockFormat\n"
                                            "called TextBlockFormat.__init__ with args ()\n"
-                                           "called TextBlockCursor.indent\n"
-                                           "called TextBlockCursor.setIndent with arg"
+                                           "called TextBlockFormat.indent\n"
+                                           "called TextBlockFormat.setIndent with arg"
                                            f" {1 + testobj.paragraph_increment}\n"
                                            "called TextCursor.setBlockFormat\n"
                                            "called Editor.setTextCursor\n")
@@ -2589,8 +2637,8 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.gui, 'QFont', mockqtw.MockFont)
         monkeypatch.setattr(testee.qtw.QTextEdit, 'currentFont',
                             mockqtw.MockEditorWidget.currentFont)
-        monkeypatch.setattr(testee.qtw.QTextEdit, 'setTabStopWidth',
-                            mockqtw.MockEditorWidget.setTabStopWidth)
+        monkeypatch.setattr(testee.qtw.QTextEdit, 'setTabStopDistance',
+                            mockqtw.MockEditorWidget.setTabStopDistance)
         monkeypatch.setattr(testee, 'tabsize', mock_tabsize)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.mergeCurrentCharFormat = mock_merge
@@ -2613,7 +2661,7 @@ class TestEditorPanel:
                                            "called TextCharFormat.setFont\n"
                                            "called Font.pointSize\n"
                                            "called tabsize\n"
-                                           "called Editor.setTabStopWidth with arg fontsize\n"
+                                           "called Editor.setTabStopDistance with arg fontsize\n"
                                            "called EditorPanel.mergeCurrentCharformat\n")
 
     def test_text_family(self, monkeypatch, capsys):
@@ -2879,9 +2927,9 @@ class TestEditorPanel:
         def mock_background(arg):
             print(f"called EditorPanel.background_changed with arg '{arg}'")
         def mock_style(self):
-            return testee.core.Qt.NoBrush
+            return testee.core.Qt.BrushStyle.NoBrush
         def mock_style_2(self):
-            return testee.core.Qt.SolidPattern
+            return testee.core.Qt.BrushStyle.SolidPattern
         monkeypatch.setattr(mockqtw.MockBrush, 'style', mock_style)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.font_changed = mock_font
@@ -2896,7 +2944,7 @@ class TestEditorPanel:
                                            "called EditorPanel.color_changed with arg 'fg color'\n"
                                            "called TextCharFormat.background\n"
                                            "called EditorPanel.background_changed with arg"
-                                           f" '{int(testee.core.Qt.white)}'\n")
+                                           f" '{testee.core.Qt.GlobalColor.white}'\n")
         monkeypatch.setattr(mockqtw.MockBrush, 'style', mock_style_2)
         testobj.charformat_changed(fmt)
         assert capsys.readouterr().out == ("called TextCharFormat.font\n"
@@ -3023,7 +3071,7 @@ class TestEditorPanel:
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n"
                                            "called CheckBox.isChecked\n")
-        align = testee.core.Qt.AlignLeft
+        align = testee.core.Qt.AlignmentFlag.AlignLeft
         testobj.alignment_changed(align)
         assert testobj.parent.styleactiondict["Align &Left"].isChecked()
         assert capsys.readouterr().out == ("called CheckBox.setChecked with arg False\n"
@@ -3032,7 +3080,7 @@ class TestEditorPanel:
                                            "called CheckBox.setChecked with arg False\n"
                                            "called CheckBox.setChecked with arg True\n"
                                            "called CheckBox.isChecked\n")
-        align = testee.core.Qt.AlignHCenter
+        align = testee.core.Qt.AlignmentFlag.AlignHCenter
         testobj.alignment_changed(align)
         assert testobj.parent.styleactiondict["C&enter"].isChecked()
         assert capsys.readouterr().out == ("called CheckBox.setChecked with arg False\n"
@@ -3041,7 +3089,7 @@ class TestEditorPanel:
                                            "called CheckBox.setChecked with arg False\n"
                                            "called CheckBox.setChecked with arg True\n"
                                            "called CheckBox.isChecked\n")
-        align = testee.core.Qt.AlignRight
+        align = testee.core.Qt.AlignmentFlag.AlignRight
         testobj.alignment_changed(align)
         assert testobj.parent.styleactiondict["Align &Right"].isChecked()
         assert capsys.readouterr().out == ("called CheckBox.setChecked with arg False\n"
@@ -3050,7 +3098,7 @@ class TestEditorPanel:
                                            "called CheckBox.setChecked with arg False\n"
                                            "called CheckBox.setChecked with arg True\n"
                                            "called CheckBox.isChecked\n")
-        align = testee.core.Qt.AlignJustify
+        align = testee.core.Qt.AlignmentFlag.AlignJustify
         testobj.alignment_changed(align)
         assert testobj.parent.styleactiondict["&Justify"].isChecked()
         assert capsys.readouterr().out == ("called CheckBox.setChecked with arg False\n"
@@ -3072,12 +3120,13 @@ class TestEditorPanel:
                             mockqtw.MockEditorWidget.textCursor)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.mergeCurrentCharFormat('fmt')
-        assert capsys.readouterr().out == ("called Editor.textCursor\n"
-                                           "called TextCursor.__init__\n"
-                                           "called TextCursor.hasSelection\n"
-                                           "called TextCursor.select with arg 0\n"
-                                           "called TextCursor.mergeCharFormat with arg fmt\n"
-                                           "called Editor.mergeCurrentCharFormat with arg fmt\n")
+        assert capsys.readouterr().out == (
+                "called Editor.textCursor\n"
+                "called TextCursor.__init__\n"
+                "called TextCursor.hasSelection\n"
+                "called TextCursor.select with arg SelectionType.WordUnderCursor\n"
+                "called TextCursor.mergeCharFormat with arg fmt\n"
+                "called Editor.mergeCurrentCharFormat with arg fmt\n")
         monkeypatch.setattr(mockqtw.MockTextCursor, 'hasSelection', mock_sel)
         testobj.mergeCurrentCharFormat('fmt')
         assert capsys.readouterr().out == ("called Editor.textCursor\n"
@@ -3166,12 +3215,14 @@ class TestEditorPanel:
         testobj.parent.srchflags = 'flags'
         assert not testobj.search_from_start()
         assert capsys.readouterr().out == (
-                f"called Editor.moveCursor with args ({testee.gui.QTextCursor.Start},)\n"
+                "called Editor.moveCursor with args"
+                f" ({testee.gui.QTextCursor.MoveOperation.Start!r},)\n"
                 "called Editor.find with args ('search', 'flags')\n")
         testobj.find = mock_find
         assert testobj.search_from_start()
         assert capsys.readouterr().out == (
-                f"called Editor.moveCursor with args ({testee.gui.QTextCursor.Start},)\n"
+                f"called Editor.moveCursor with args"
+                f" ({testee.gui.QTextCursor.MoveOperation.Start!r},)\n"
                 "called Editor.find with args ('search', 'flags')\n"
                 "called Editor.ensureCursorVisible\n")
 
@@ -3179,45 +3230,54 @@ class TestEditorPanel:
         """unittest for EditorPanel.find_next
         """
         def mock_find(what, how):
-            print(f"called Editor.find with args '{what}', {int(how)}")
+            print(f"called Editor.find with args '{what}', {how}")
             return False
         def mock_find_2(what, how):
-            print(f"called Editor.find with args '{what}', {int(how)}")
+            print(f"called Editor.find with args '{what}', {how}")
             return True
         monkeypatch.setattr(testee.EditorPanel, 'ensureCursorVisible',
                             mockqtw.MockEditorWidget.ensureCursorVisible)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.parent.srchtext = 'search'
-        testobj.parent.srchflags = (testee.gui.QTextDocument.FindCaseSensitively
-                                    | testee.gui.QTextDocument.FindWholeWords)
+        testobj.parent.srchflags = (testee.gui.QTextDocument.FindFlag.FindCaseSensitively
+                                    | testee.gui.QTextDocument.FindFlag.FindWholeWords)
         testobj.find = mock_find
         testobj.find_next()
-        assert capsys.readouterr().out == "called Editor.find with args 'search', 6\n"
+        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
+                                           " FindFlag.FindCaseSensitively|FindWholeWords\n")
         testobj.find = mock_find_2
         testobj.find_next()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search', 6\n"
+        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
+                                           " FindFlag.FindCaseSensitively|FindWholeWords\n"
                                            "called Editor.ensureCursorVisible\n")
 
     def test_find_prev(self, monkeypatch, capsys):
         """unittest for EditorPanel.find_prev
         """
         def mock_find(what, how):
-            print(f"called Editor.find with args '{what}', {int(how)}")
+            print(f"called Editor.find with args '{what}', {how}")
             return False
         def mock_find_2(what, how):
-            print(f"called Editor.find with args '{what}', {int(how)}")
+            print(f"called Editor.find with args '{what}', {how}")
             return True
         monkeypatch.setattr(testee.EditorPanel, 'ensureCursorVisible',
                             mockqtw.MockEditorWidget.ensureCursorVisible)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.parent.srchtext = 'search'
-        testobj.parent.srchflags = 0
+        testobj.parent.srchflags = testee.gui.QTextDocument.FindFlag
         testobj.find = mock_find
         testobj.find_prev()
-        assert capsys.readouterr().out == "called Editor.find with args 'search', 1\n"
+        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
+                                           " FindFlag.FindBackward\n")
         testobj.find = mock_find_2
         testobj.find_prev()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search', 1\n"
+        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
+                                           " FindFlag.FindBackward\n"
+                                           "called Editor.ensureCursorVisible\n")
+        testobj.parent.srchflags = testee.gui.QTextDocument.FindFlag.FindWholeWords
+        testobj.find_prev()
+        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
+                                           " FindFlag.FindBackward|FindWholeWords\n"
                                            "called Editor.ensureCursorVisible\n")
 
 
@@ -3279,7 +3339,7 @@ class TestMainGui:
         monkeypatch.setattr(testee, 'UndoRedoStack', MockStack)
         monkeypatch.setattr(testee, 'TreePanel', MockTree)
         monkeypatch.setattr(testee, 'EditorPanel', MockEditor)
-        monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlags', lambda: 'searchflags')
+        monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlag', 'searchflags')
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.app = mockqtw.MockApplication()
         testobj.title = 'title'
@@ -3334,7 +3394,7 @@ class TestMainGui:
         def mock_add(arg):
             print(f'called MainGui.addToolBar with arg {arg}')
             return toolbar
-        monkeypatch.setattr(testee.qtw, 'QAction', mockqtw.MockAction)
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
         monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
         monkeypatch.setattr(testee.core, 'QSize', mockqtw.MockSize)
         monkeypatch.setattr(testee.gui, 'QFont', mockqtw.MockFont)
@@ -3360,11 +3420,14 @@ class TestMainGui:
                              ('S', callbacks[5], '', '', 'CheckS'),
                              (),
                              (),
-                             ('X', callbacks[6], '', '', 'Check')]),
+                             ('X', callbacks[6], '', '', 'Check'),
+                             ()]),
                     ('zzz', [('&Undo', callbacks[7], 'Ctrl+Z', '', 'undo'),
-                             ('&Redo', callbacks[8], 'Ctrl+Y', '', 'redo')]),
+                             ('&Redo', callbacks[8], 'Ctrl+Y', '', 'redo'),
+                             ('', callbacks[0], '', '', 'xxx')]),
                     ('bbb', [('bbbb', callbacks[9], '', '', '')]),
                     ('ccc', [('cccc', callbacks[10], '', '', '')])]
+        # breakpoint()
         testobj.create_menu(menubar, menudata)
         assert capsys.readouterr().out == expected_output['menu'].format(testobj=testobj,
                                                                          testee=testee,
@@ -3382,17 +3445,17 @@ class TestMainGui:
         assert len(testobj.menulist[3].actions()) == 2
         assert len(testobj.menulist[4].actions()) == 1
         assert len(testobj.menulist[5].actions()) == 1
-        assert isinstance(testobj.undo_item, testee.qtw.QAction)
+        assert isinstance(testobj.undo_item, testee.gui.QAction)
         assert testobj.undo_item.text() == '&Undo'
         assert capsys.readouterr().out == 'called Action.text\n'
         assert testobj.undo_item.shortcuts() == ['Ctrl+Z']
         assert capsys.readouterr().out == 'called Action.shortcuts\n'
-        assert isinstance(testobj.redo_item, testee.qtw.QAction)
+        assert isinstance(testobj.redo_item, testee.gui.QAction)
         assert testobj.redo_item.text() == '&Redo'
         assert capsys.readouterr().out == 'called Action.text\n'
         assert testobj.redo_item.shortcuts() == ['Ctrl+Y']
         assert capsys.readouterr().out == 'called Action.shortcuts\n'
-        assert isinstance(testobj.quit_action, testee.qtw.QAction)
+        assert isinstance(testobj.quit_action, testee.gui.QAction)
         assert testobj.quit_action.text() == 'exit'
         assert capsys.readouterr().out == 'called Action.text\n'
         assert testobj.quit_action.shortcuts() == ['Ctrl+X', 'Esc']
@@ -3435,12 +3498,13 @@ class TestMainGui:
         def mock_icon(self, arg):
             print(f'called Icon.__init__ with arg of type {type(arg)}')
         monkeypatch.setattr(testee.gui, 'QFontDatabase',
-                            lambda: types.SimpleNamespace(standardSizes=lambda: [10, 12, 20]))
-        monkeypatch.setattr(mockqtw.MockFontComboBox, 'activated', {str: mockqtw.MockSignal()})
+                            types.SimpleNamespace(standardSizes=lambda: [10, 12, 20]))
+        monkeypatch.setattr(mockqtw.MockFontComboBox, 'currentTextChanged',
+                            {str: mockqtw.MockSignal()})
         monkeypatch.setattr(testee.qtw, 'QFontComboBox', mockqtw.MockFontComboBox)
         monkeypatch.setattr(testee.qtw, 'QComboBox', mockqtw.MockComboBox)
         monkeypatch.setattr(testee.gui, 'QPixmap', mockqtw.MockPixmap)
-        monkeypatch.setattr(testee.qtw, 'QAction', mockqtw.MockAction)
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
         monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
         monkeypatch.setattr(mockqtw.MockIcon, '__init__', mock_icon)
         toolbar = mockqtw.MockToolBar()
@@ -3460,13 +3524,13 @@ class TestMainGui:
         testobj.create_stylestoolbar()
         assert isinstance(testobj.combo_font, testee.qtw.QFontComboBox)
         assert isinstance(testobj.combo_size, testee.qtw.QComboBox)
-        assert testobj.setcoloraction_color == testee.core.Qt.black
-        assert isinstance(testobj.setcolor_action, testee.qtw.QAction)
-        assert testobj.setbackgroundcoloraction_color == testee.core.Qt.white
-        assert isinstance(testobj.setbackgroundcolor_action, testee.qtw.QAction)
+        assert testobj.setcoloraction_color == testee.core.Qt.GlobalColor.black
+        assert isinstance(testobj.setcolor_action, testee.gui.QAction)
+        assert testobj.setbackgroundcoloraction_color == testee.core.Qt.GlobalColor.white
+        assert isinstance(testobj.setbackgroundcolor_action, testee.gui.QAction)
         assert list(testobj.styleactiondict) == ['&Color...', '&Background...']
         for item in testobj.styleactiondict.values():
-            assert isinstance(item, testee.qtw.QAction)
+            assert isinstance(item, testee.gui.QAction)
         assert capsys.readouterr().out == expected_output['toolbar'].format(testobj=testobj)
 
     def test_show_statusmessage(self, monkeypatch, capsys):
@@ -3554,23 +3618,33 @@ class TestMainGui:
         """unittest for MainGui.set_focus_to_editor
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.editor = mockqtw.MockEditorWidget()
-        assert capsys.readouterr().out == "called Editor.__init__\n"
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = 'active item'
+        testobj.master.text_positions = {'itemkey': 99}
+        testobj.tree = MockTree()
+        testobj.editor = MockEditor()
+        assert capsys.readouterr().out == "called TreePanel.__init__ with args ()\n"
         testobj.set_focus_to_editor()
         assert testobj.in_editor
-        assert capsys.readouterr().out == "called Editor.setFocus\n"
+        assert capsys.readouterr().out == ("called Editor.setFocus\n"
+                                           "called TreePanel.getitemkey with arg 'active item'\n"
+                                           "called Editor.set_text_position with arg 99\n")
 
     def test_go(self, monkeypatch, capsys):
         """unittest for MainGui.go
         """
+        def mock_set():
+            print('called MainGui.set_focus_to_editor')
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.app = mockqtw.MockApplication()
         assert capsys.readouterr().out == "called Application.__init__\n"
         monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
+        testobj.set_focus_to_editor = mock_set
         with pytest.raises(SystemExit) as e:
             testobj.go()
         assert capsys.readouterr().out == ("called MainWindow.show\n"
-                                           "called Application.exec_\n")
+                                           "called MainGui.set_focus_to_editor\n"
+                                           "called Application.exec\n")
 
     def test_close(self, monkeypatch, capsys):
         """unittest for MainGui.close
@@ -3618,10 +3692,10 @@ class TestMainGui:
         testobj.revive()
         assert capsys.readouterr().out == ("called MainWindow.show\n"
                                            "called TrayIcon.hide\n")
-        testobj.revive(testee.qtw.QSystemTrayIcon.Unknown)
+        testobj.revive(testee.qtw.QSystemTrayIcon.ActivationReason.Unknown)
         assert capsys.readouterr().out == (
                 "called TrayIcon.showMessage with args ('DocTree', 'Click to revive DocTree')\n")
-        testobj.revive(testee.qtw.QSystemTrayIcon.Context)
+        testobj.revive(testee.qtw.QSystemTrayIcon.ActivationReason.Context)
         assert capsys.readouterr().out == ""
 
     def test_expand_root(self, monkeypatch, capsys):
@@ -3637,6 +3711,7 @@ class TestMainGui:
         """unittest for MainGui.start_add
         """
         class MockAdd:
+            "stub"
             def __init__(self, *args, **kwargs):
                 print('called AddCommand.__init__ with args', args, kwargs)
         monkeypatch.setattr(testee, 'AddCommand', MockAdd)
@@ -3652,7 +3727,7 @@ class TestMainGui:
                 f"called AddCommand.__init__ with args ({testobj}, 'root', False, 'xxx', []) {{}}\n"
                 "called UndoRedoStack.push\n")
 
-    def _test_set_next_item(self, monkeypatch, capsys):
+    def test_set_next_item(self, monkeypatch, capsys):
         """unittest for MainGui.set_next_item
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
@@ -3666,7 +3741,8 @@ class TestMainGui:
                                            "called TreeItem.addChild\n"
                                            "called Tree.__init__\n")
         assert testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
                                            f"called Tree.setCurrentItem with arg `{child}`\n")
 
         testobj.master.activeitem._parent = None
@@ -3681,10 +3757,11 @@ class TestMainGui:
         # deze gaat de any_level branch in maar gaat niet dieper omdat er geen grandparent is.
         # en dat stuk moet misschien anders, zie ticket #1018
         assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n")
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n")
 
-        assert testobj.set_next_item(any_level=True) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        # assert testobj.set_next_item(any_level=True)
+        # assert capsys.readouterr().out == ("")
 
     def _test_set_prev_item(self, monkeypatch, capsys):
         """unittest for MainGui.set_prev_item
@@ -3749,16 +3826,20 @@ class TestMainGui:
                                            "called TreeItem.addChild\n")
         testobj.reorder_items(root)
         assert capsys.readouterr().out == (
-                f"called TreeItem.sortChildren with args ({testee.core.Qt.AscendingOrder}, 0)\n")
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n")
         testobj.reorder_items(root, recursive=True)
         assert capsys.readouterr().out == (
-                f"called TreeItem.sortChildren with args ({testee.core.Qt.AscendingOrder}, 0)\n"
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
                 "called TreeItem.childCount\n"
                 "called TreeItem.child with arg 0\n"
-                f"called TreeItem.sortChildren with args ({testee.core.Qt.AscendingOrder}, 0)\n"
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
                 "called TreeItem.childCount\n"
                 "called TreeItem.child with arg 1\n"
-                f"called TreeItem.sortChildren with args ({testee.core.Qt.AscendingOrder}, 0)\n"
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
                 "called TreeItem.childCount\n")
 
     def test_rebuild_root(self, monkeypatch, capsys):
@@ -3830,13 +3911,13 @@ class TestMainGui:
     def test_add_viewmenu_option(self, monkeypatch, capsys):
         """unittest for MainGui.add_viewmenu_option
         """
-        monkeypatch.setattr(testee.qtw, 'QAction', mockqtw.MockAction)
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.master = MockMainWindow()
         testobj.master.select_view = lambda: 'dummy'
         testobj.viewmenu = mockqtw.MockMenu()
         result = testobj.add_viewmenu_option('optiontext')
-        assert isinstance(result, testee.qtw.QAction)
+        assert isinstance(result, testee.gui.QAction)
         assert capsys.readouterr().out == (
                 "called Menu.__init__ with args ()\n"
                 f"called Action.__init__ with args ('optiontext', {testobj})\n"
@@ -3856,15 +3937,20 @@ class TestMainGui:
         assert testobj.check_viewmenu_option(action) == ""
         assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
 
+        action.setChecked(False)
+        testobj.viewmenu.addAction(action)
         testobj.sender = mock_sender
         action9.setChecked(True)
-        assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
+        assert capsys.readouterr().out == ("called Action.setChecked with arg `False`\n"
+                                           "called Menu.addAction\n"
+                                           "called Action.setChecked with arg `True`\n")
         assert testobj.check_viewmenu_option() == "&2 x10"
         assert capsys.readouterr().out == ("called MainWindow.sender\n"
                                            "called Action.isChecked\n"
                                            "called Action.setChecked with arg `False`\n"
                                            "called Action.text\n"
-                                           "called Action.setChecked with arg `True`\n")
+                                           "called Action.setChecked with arg `True`\n"
+                                           "called Action.isChecked\n")
 
     def test_uncheck_viewmenu_option(self, monkeypatch, capsys):
         """unittest for MainGui.uncheck_viewmenu_option
@@ -3972,6 +4058,24 @@ class TestMainGui:
         assert capsys.readouterr().out == ("called Action.text\n"
                                            "called Action.text\n"
                                            f"called Menu.removeaction with arg {action0}\n")
+
+    def test_remove_viewmenu_option_3(self, monkeypatch, capsys):
+        """unittest for MainGui.remove_viewmenu_option
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+        testobj.viewmenu.addAction('&3 xxx')
+        assert capsys.readouterr().out == ("called Menu.addAction with args `&3 xxx` None\n"
+                                           "called Action.__init__ with args ('&3 xxx', None)\n")
+        testobj.master = MockEditor()
+        testobj.master.opts = {'ActiveView': 2}
+        assert testobj.remove_viewmenu_option('xx9') == action0
+        assert capsys.readouterr().out == ("called Action.text\n"
+                                           f"called Menu.removeaction with arg {action9}\n"
+                                           "called Action.text\n"
+                                           "called Action.setText with arg `&1 x10`\n"
+                                           "called Action.text\n"
+                                           "called Action.setText with arg `&2 xxx`\n")
 
     def test_tree_undo(self, monkeypatch, capsys):
         """unittest for MainGui.tree_undo

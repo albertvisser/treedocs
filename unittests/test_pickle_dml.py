@@ -152,6 +152,7 @@ def test_read_from_files(monkeypatch, capsys, tmp_path):
         return {0: testdata[0], 1: testdata[1], 2: testdata[2], 3: testdata[3]}
     (tmp_path / 'test_read').mkdir(exist_ok=True)
     testfile = tmp_path / 'test_read' / 'testfile.dtr'
+    other_file = tmp_path / 'test_read' / 'other_file.dtr'
     imagepath = 'temp_path_for_images'  # # testfile.with_suffix('.zip')
 
     # geen filenaam
@@ -241,6 +242,12 @@ def test_read_from_files(monkeypatch, capsys, tmp_path):
             f'called ZipFile.extractall with arg `{imagepath}`\n'
             'called ZipFile.__exit__\n'
             'called ZipFile.namelist\n')
+    other_file.touch()
+    assert testee.read_from_files(testfile, other_file, imagepath) == (
+            {'Application': 'DocTree'}, [[(0, [(1, [])])]],
+            {0: ('text1', 'this is one text'), 1: ('text2', 'this is another')},
+            {0: 0, 1: 0}, [])
+    assert capsys.readouterr().out == 'called pickle.load\n'
 
     # fout tijdens openen (aan het eind zodat ik de monkeypatch niet ongedaan hoef te maken)
     monkeypatch.setattr(pathlib.Path, 'open', mock_open_err)

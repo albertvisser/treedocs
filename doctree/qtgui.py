@@ -2,36 +2,39 @@
 """
 import os
 import sys
-# import contextlib
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as qtw
-import PyQt5.QtCore as core
+import contextlib
+import PyQt6.QtGui as gui
+import PyQt6.QtWidgets as qtw
+import PyQt6.QtCore as core
 from doctree import shared
 
 
 def show_message(win, text):
     "show a confirmable message"
-    qtw.QMessageBox.information(win, "DocTree", text, qtw.QMessageBox.Ok)
+    qtw.QMessageBox.information(win, "DocTree", text, qtw.QMessageBox.StandardButton.Ok)
 
 
 def ask_ynquestion(win, text):
     "ask a yes/no answerable question"
-    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-                                      defaultButton=qtw.QMessageBox.Yes)
-    return result == qtw.QMessageBox.Yes
+    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.StandardButton.Yes
+                                      | qtw.QMessageBox.StandardButton.No,
+                                      defaultButton=qtw.QMessageBox.StandardButton.Yes)
+    return result == qtw.QMessageBox.StandardButton.Yes
 
 
 def ask_yncquestion(win, text):
     "ask a yes/no answerable question with possibilty to cancel"
-    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.Yes
-                                      | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-                                      defaultButton=qtw.QMessageBox.Yes)
-    return result == qtw.QMessageBox.Yes, result == qtw.QMessageBox.Cancel
+    result = qtw.QMessageBox.question(win, "DocTree", text, qtw.QMessageBox.StandardButton.Yes
+                                      | qtw.QMessageBox.StandardButton.No
+                                      | qtw.QMessageBox.StandardButton.Cancel,
+                                      defaultButton=qtw.QMessageBox.StandardButton.Yes)
+    return (result == qtw.QMessageBox.StandardButton.Yes,
+            result == qtw.QMessageBox.StandardButton.Cancel)
 
 
 def get_text(win, caption, oldtext):
     "open a dialog and get text input from the user"
-    data, ok = qtw.QInputDialog.getText(win, "DocTree", caption, qtw.QLineEdit.Normal, oldtext)
+    data, ok = qtw.QInputDialog.getText(win, "DocTree", caption, text=oldtext)
     newtext = str(data) if ok else oldtext
     return ok, newtext
 
@@ -57,7 +60,7 @@ def get_filename(win, title, start, save=False):
 def show_dialog(win, cls, kwargs=None):
     "show dialog and return if confirmed or rejected"
     dlg = cls(win, **kwargs) if kwargs else cls(win)
-    return dlg.exec_() == qtw.QDialog.Accepted
+    return dlg.exec() == qtw.QDialog.DialogCode.Accepted
 
 
 def show_nonmodal(win, cls):
@@ -235,14 +238,16 @@ class SearchDialog(qtw.QDialog):
             self.c_curr.setChecked(True)
         elif mode == 1:
             self.c_titl.setChecked(True)
-        elif mode == 2:
+        else:  # if mode == 2:
             self.c_text.setChecked(True)
         if self.parent.srchtext:
             self.t_zoek.setText(self.parent.srchtext)
-        if self.parent.srchflags & gui.QTextDocument.FindCaseSensitively:
-            self.c_hlett.setChecked(True)
-        if self.parent.srchflags & gui.QTextDocument.FindWholeWords:
-            self.c_woord.setChecked(True)
+
+        with contextlib.suppress(AttributeError):
+            if self.parent.srchflags.value & gui.QTextDocument.FindFlag.FindCaseSensitively.value:
+                self.c_hlett.setChecked(True)
+            if self.parent.srchflags.value & gui.QTextDocument.FindFlag.FindWholeWords.value:
+                self.c_woord.setChecked(True)
         if self.parent.srchlist:
             self.c_lijst.setChecked(True)
         if self.parent.srchwrap:
@@ -286,13 +291,14 @@ class SearchDialog(qtw.QDialog):
             return
         self.parent.srchtext = zoek
         self.parent.srchtype = mode
-        flags = gui.QTextDocument.FindFlags()
-        ## if self.c_richt.isChecked():
-            ## flags |= gui.QTextDocument.FindBackward
+        flags = gui.QTextDocument.FindFlag
         if self.c_hlett.isChecked():
-            flags |= gui.QTextDocument.FindCaseSensitively
+            flags = gui.QTextDocument.FindFlag.FindCaseSensitively
         if self.c_woord.isChecked():
-            flags |= gui.QTextDocument.FindWholeWords
+            if hasattr(flags, 'value'):
+                flags |= gui.QTextDocument.FindFlag.FindWholeWords
+            else:
+                flags = gui.QTextDocument.FindFlag.FindWholeWords
         self.parent.srchflags = flags
         self.parent.srchlist = self.c_lijst.isChecked()
         self.parent.srchwrap = self.c_wrap.isChecked()
@@ -362,9 +368,9 @@ class ResultsDialog(qtw.QDialog):
             "item opbouwen"
             new = qtw.QTreeWidgetItem()
             new.setText(0, oldroot)
-            new.setData(0, core.Qt.UserRole, oldix)
+            new.setData(0, core.Qt.ItemDataRole.UserRole, oldix)
             new.setText(1, oldtitle)
-            new.setData(1, core.Qt.UserRole, oldloc)
+            new.setData(1, core.Qt.ItemDataRole.UserRole, oldloc)
             self.result_list.addTopLevelItem(new)
         oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
         for ix, item in enumerate(self.parent.master.search_results):
@@ -376,7 +382,7 @@ class ResultsDialog(qtw.QDialog):
                 in_text = 0    # idem
             if newtype == 'title':
                 in_title += 1
-            elif newtype == 'text':
+            else:  # if newtype == 'text':  # something else currently not possible
                 in_text += 1
             oldloc, oldtype, oldroot, oldtitle = loc, newtype, root, title
             oldix = ix
@@ -409,7 +415,7 @@ class ResultsDialog(qtw.QDialog):
         if not self.prev_button.isEnabled():
             self.prev_button.setEnabled(True)
         selected = self.result_list.currentItem()
-        self.parent.master.srchno = selected.data(0, core.Qt.UserRole)
+        self.parent.master.srchno = selected.data(0, core.Qt.ItemDataRole.UserRole)
         self.parent.master.go_to_result()
 
     def goto_and_close(self):
@@ -428,7 +434,7 @@ class ResultsDialog(qtw.QDialog):
         super().reject()
 
 
-class UndoRedoStack(qtw.QUndoStack):
+class UndoRedoStack(gui.QUndoStack):
     """Undo stack (subclass overriding some event handlers)
     """
     def __init__(self, parent):
@@ -473,7 +479,7 @@ class UndoRedoStack(qtw.QUndoStack):
             win.redo_item.setDisabled(True)
 
 
-class AddCommand(qtw.QUndoCommand):
+class AddCommand(gui.QUndoCommand):
     """Nieuwe notitie toevoegen
     """
     def __init__(self, win, root, under, new_title, extra_titles, description='Add'):
@@ -529,7 +535,7 @@ class AddCommand(qtw.QUndoCommand):
         #  de tekst(en) meegeven in removeitem helpt daar niet bij
 
 
-class PasteCommand(qtw.QUndoCommand):
+class PasteCommand(gui.QUndoCommand):
     """Notitie toevoegen vanuit copy buffer
     """
     def __init__(self, win, before, below, item, description="Paste"):
@@ -589,7 +595,7 @@ class PasteCommand(qtw.QUndoCommand):
         self.win.statusbar.showMessage(f'{self.text()} undone')
 
 
-class CopyCommand(qtw.QUndoCommand):
+class CopyCommand(gui.QUndoCommand):
     """Notitie in copy buffer halen
     """
     def __init__(self, win, cut, retain, item):  # , description=""):
@@ -676,8 +682,8 @@ class TreePanel(qtw.QTreeWidget):
         self.headerItem().setHidden(True)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
-        self.setSelectionMode(self.SingleSelection)
-        self.setDragDropMode(self.InternalMove)
+        self.setSelectionMode(self.SelectionMode.SingleSelection)
+        self.setDragDropMode(self.DragDropMode.InternalMove)
         self.setDropIndicatorShown(True)
         self.setUniformRowHeights(True)
 
@@ -701,7 +707,8 @@ class TreePanel(qtw.QTreeWidget):
         """
         dragitem = self.selectedItems()[0]
         ## dragparent = dragitem.parent()
-        dropitem = self.itemAt(event.pos())
+        pos = event.position().toPoint()
+        dropitem = self.itemAt(pos)
         if not dropitem:
             ## event.ignore()
             return
@@ -722,15 +729,15 @@ class TreePanel(qtw.QTreeWidget):
     def mousePressEvent(self, event):
         """remember the current parent in preparation for "canceling" a dragmove
         """
-        xc, yc = event.x(), event.y()
-        item = self.itemAt(xc, yc)
+        pos = event.position().toPoint()  # event.x(), event.y()
+        item = self.itemAt(pos)  # int(xc), int(yc))
         if item:
             self.oldparent, self.oldpos = self.getitemparentpos(item)
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         "event handler for showing a context menu using the mouse"
-        if event.button() == core.Qt.RightButton:
+        if event.button() == core.Qt.MouseButton.RightButton:
             xc, yc = event.x(), event.y()
             item = self.itemAt(xc, yc)
             if item:
@@ -744,7 +751,7 @@ class TreePanel(qtw.QTreeWidget):
 
     def keyReleaseEvent(self, event):
         "event handler for showing a context menu using the keyboard"
-        if event.key() == core.Qt.Key_Menu:
+        if event.key() == core.Qt.Key.Key_Menu:
             item = self.currentItem()
             self.create_popupmenu(item)
             return
@@ -765,7 +772,7 @@ class TreePanel(qtw.QTreeWidget):
             menu.addAction(action)
             if item == self.parent.root:
                 action.setEnabled(False)
-        menu.exec_(self.mapToGlobal(self.visualItemRect(item).center()))
+        menu.exec(self.mapToGlobal(self.visualItemRect(item).center()))
         # na uitsturen (en verwerken?) van het menu de uitgangssituatie terugzetten:
         if item == self.parent.root:
             for action in self.parent.notemenu.actions():
@@ -787,7 +794,7 @@ class TreePanel(qtw.QTreeWidget):
         # shared.log(f'   itemkey is {itemkey}, {type(itemkey)}')
         doc.setHtml(self.parent.master.itemdict[itemkey][1])
         rawtext = doc.toPlainText()
-        new.setData(0, core.Qt.UserRole, rawtext)
+        new.setData(0, core.Qt.ItemDataRole.UserRole, rawtext)
         #
         ## new.setIcon(0, gui.QIcon(str(HERE / 'icons/empty.png')))
         new.setText(1, str(itemkey))
@@ -808,7 +815,7 @@ class TreePanel(qtw.QTreeWidget):
     def getitemuserdata(item):
         "data in de visual tree ophalen"
         # eigenlijk is dit hetzelfde als item.text(1) - behalve bij het root item ?
-        return item.data(0, core.Qt.UserRole)
+        return item.data(0, core.Qt.ItemDataRole.UserRole)
 
     @staticmethod
     def getitemtitle(item):
@@ -931,11 +938,11 @@ class EditorPanel(qtw.QTextEdit):
         super().__init__()
         self.setAcceptRichText(True)
         ## self.setTabChangesFocus(True)
-        self.setAutoFormatting(qtw.QTextEdit.AutoAll)
+        self.setAutoFormatting(qtw.QTextEdit.AutoFormattingFlag.AutoAll)
         self.currentCharFormatChanged.connect(self.charformat_changed)
         self.cursorPositionChanged.connect(self.cursorposition_changed)
         font = self.currentFont()
-        self.setTabStopWidth(tabsize(font.pointSize()))
+        self.setTabStopDistance(tabsize(font.pointSize()))
         self.paragraph_increment = 1  # 100
 
     def canInsertFromMimeData(self, source):
@@ -957,7 +964,8 @@ class EditorPanel(qtw.QTextEdit):
             url = self.parent.master.temp_imagepath / f'{num:05}.png'
             image.save(str(url))
             ## urlname = os.path.basename(urlname)  # make name "relative"
-            document.addResource(gui.QTextDocument.ImageResource, core.QUrl(str(url)), image)
+            document.addResource(gui.QTextDocument.ResourceType.ImageResource, core.QUrl(str(url)),
+                                 image)
             # cursor.insertImage(url.name)
             cursor.insertImage(str(url))
         else:
@@ -967,27 +975,34 @@ class EditorPanel(qtw.QTextEdit):
         "load contents into editor"
         data = data.replace('img src="', f'img src="{self.parent.master.temp_imagepath}/')
         self.setHtml(data)
-        fmt = gui.QTextCharFormat()
-        self.charformat_changed(fmt)
+        # dit hopenlijk niet nodig, want merkt document altijd aan als gewijzigd
+        # fmt = gui.QTextCharFormat()
+        # self.charformat_changed(fmt)  # callback voor currentCharFormatChanged event
         self.oldtext = data
 
     def get_contents(self):
         "return contents from editor"
         # update plain text in tree item to facilitate search
-        self.parent.tree.currentItem().setData(0, core.Qt.UserRole, self.toPlainText())
+        self.parent.tree.currentItem().setData(0, core.Qt.ItemDataRole.UserRole, self.toPlainText())
         return self.toHtml().replace(f'img src="{self.parent.master.temp_imagepath}/', 'img src="')
 
     def get_text_position(self):
         """return where the cursor is positioned in the text
         """
-        return self.textCursor().position()
+        cursor = self.textCursor()
+        pos = cursor.position()
+        # if cursor.atEnd():
+        #     pos -= 1
+        return pos
 
     def set_text_position(self, pos):
         """set where the cursor should appear in the text
         """
         cursor = self.textCursor()
         cursor.setPosition(pos)
+        # cursor.movePosition(gui.QTextCursor.MoveOperation.NextCharacter, n=pos)
         self.setTextCursor(cursor)
+        self.ensureCursorVisible()
 
     def select_all(self):
         "select complete text"
@@ -999,9 +1014,9 @@ class EditorPanel(qtw.QTextEdit):
             return
         fmt = gui.QTextCharFormat()
         if self.parent.styleactiondict['&Bold'].isChecked():
-            fmt.setFontWeight(gui.QFont.Bold)
+            fmt.setFontWeight(gui.QFont.Weight.Bold)
         else:
-            fmt.setFontWeight(gui.QFont.Normal)
+            fmt.setFontWeight(gui.QFont.Weight.Normal)
         self.mergeCurrentCharFormat(fmt)
 
     def text_italic(self):  # , event=None):
@@ -1035,7 +1050,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.styleactiondict["C&enter"].setChecked(False)
         self.parent.styleactiondict["Align &Right"].setChecked(False)
         self.parent.styleactiondict["&Justify"].setChecked(False)
-        self.setAlignment(core.Qt.AlignLeft | core.Qt.AlignAbsolute)
+        self.setAlignment(core.Qt.AlignmentFlag.AlignLeft | core.Qt.AlignmentFlag.AlignAbsolute)
 
     def align_center(self):  # , event=None):
         "alinea centreren"
@@ -1044,7 +1059,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.styleactiondict["Align &Left"].setChecked(False)
         self.parent.styleactiondict["Align &Right"].setChecked(False)
         self.parent.styleactiondict["&Justify"].setChecked(False)
-        self.setAlignment(core.Qt.AlignHCenter)
+        self.setAlignment(core.Qt.AlignmentFlag.AlignHCenter)
 
     def align_right(self):  # , event=None):
         "alinea rechts uitlijnen"
@@ -1053,7 +1068,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.styleactiondict["Align &Left"].setChecked(False)
         self.parent.styleactiondict["C&enter"].setChecked(False)
         self.parent.styleactiondict["&Justify"].setChecked(False)
-        self.setAlignment(core.Qt.AlignRight | core.Qt.AlignAbsolute)
+        self.setAlignment(core.Qt.AlignmentFlag.AlignRight | core.Qt.AlignmentFlag.AlignAbsolute)
 
     def text_justify(self):  # , event=None):
         "alinea aan weerszijden uitlijnen"
@@ -1062,7 +1077,7 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.styleactiondict["Align &Left"].setChecked(False)
         self.parent.styleactiondict["C&enter"].setChecked(False)
         self.parent.styleactiondict["Align &Right"].setChecked(False)
-        self.setAlignment(core.Qt.AlignJustify)
+        self.setAlignment(core.Qt.AlignmentFlag.AlignJustify)
 
     def indent_more(self):  # , event=None):
         "alinea verder laten inspringen"
@@ -1094,6 +1109,7 @@ class EditorPanel(qtw.QTextEdit):
     def decrease_parspacing(self):
         "not implemented in Qt"
 
+    # ProbReg gebruikt LineHeight
     def set_linespacing_10(self):
         "not implemented in Qt"
 
@@ -1112,7 +1128,7 @@ class EditorPanel(qtw.QTextEdit):
             fmt = gui.QTextCharFormat()
             fmt.setFont(font)
             ## pointsize = float(font.pointSize())
-            self.setTabStopWidth(tabsize(font.pointSize()))
+            self.setTabStopDistance(tabsize(font.pointSize()))
             self.mergeCurrentCharFormat(fmt)
 
     def text_family(self, family):
@@ -1205,7 +1221,8 @@ class EditorPanel(qtw.QTextEdit):
         self.font_changed(fmt.font())
         self.color_changed(fmt.foreground().color())
         backg = fmt.background()
-        bgcol = core.Qt.white if int(backg.style()) == core.Qt.NoBrush else backg.color()
+        bgcol = (core.Qt.GlobalColor.white if backg.style() == core.Qt.BrushStyle.NoBrush
+                 else backg.color())
         self.background_changed(bgcol)
 
     def cursorposition_changed(self):
@@ -1252,20 +1269,20 @@ class EditorPanel(qtw.QTextEdit):
         self.parent.styleactiondict["C&enter"].setChecked(False)
         self.parent.styleactiondict["Align &Right"].setChecked(False)
         self.parent.styleactiondict["&Justify"].setChecked(False)
-        if align & core.Qt.AlignLeft:
+        if align & core.Qt.AlignmentFlag.AlignLeft:
             self.parent.styleactiondict["Align &Left"].setChecked(True)
-        elif align & core.Qt.AlignHCenter:
+        elif align & core.Qt.AlignmentFlag.AlignHCenter:
             self.parent.styleactiondict["C&enter"].setChecked(True)
-        elif align & core.Qt.AlignRight:
+        elif align & core.Qt.AlignmentFlag.AlignRight:
             self.parent.styleactiondict["Align &Right"].setChecked(True)
-        elif align & core.Qt.AlignJustify:
+        elif align & core.Qt.AlignmentFlag.AlignJustify:
             self.parent.styleactiondict["&Justify"].setChecked(True)
 
     def mergeCurrentCharFormat(self, fmt):
         "de geselecteerde tekst op de juiste manier weergeven"
         cursor = self.textCursor()
         if not cursor.hasSelection():
-            cursor.select(gui.QTextCursor.WordUnderCursor)
+            cursor.select(gui.QTextCursor.SelectionType.WordUnderCursor)
         cursor.mergeCharFormat(fmt)
         super().mergeCurrentCharFormat(fmt)
 
@@ -1295,7 +1312,7 @@ class EditorPanel(qtw.QTextEdit):
 
     def search_from_start(self):
         "start search in textarea"
-        self.moveCursor(gui.QTextCursor.Start)
+        self.moveCursor(gui.QTextCursor.MoveOperation.Start)
         ok = self.find(self.parent.srchtext, self.parent.srchflags)
         if ok:
             self.ensureCursorVisible()
@@ -1304,14 +1321,17 @@ class EditorPanel(qtw.QTextEdit):
     def find_next(self):
         "search forward in textarea"
         if self.find(self.parent.srchtext,
-                     self.parent.srchflags & (gui.QTextDocument.FindCaseSensitively
-                                              | gui.QTextDocument.FindWholeWords)):
+                     self.parent.srchflags & (gui.QTextDocument.FindFlag.FindCaseSensitively
+                                              | gui.QTextDocument.FindFlag.FindWholeWords)):
             self.ensureCursorVisible()
 
     def find_prev(self):
         "search backwards in textarea"
-        if self.find(self.parent.srchtext,
-                     self.parent.srchflags | gui.QTextDocument.FindBackward):
+        if hasattr(self.parent.srchflags, 'value'):
+            srchflags = self.parent.srchflags | gui.QTextDocument.FindFlag.FindBackward
+        else:
+            srchflags = gui.QTextDocument.FindFlag.FindBackward
+        if self.find(self.parent.srchtext, srchflags):
             self.ensureCursorVisible()
 
     # no need to reimplement this in this gui version
@@ -1373,7 +1393,7 @@ class MainGui(qtw.QMainWindow):
 
         self.srchtext = ''
         self.srchtype = 0
-        self.srchflags = gui.QTextDocument.FindFlags()
+        self.srchflags = gui.QTextDocument.FindFlag
         self.srchlist = self.srchwrap = False
 
     def create_menu(self, menubar, menudata):
@@ -1388,26 +1408,28 @@ class MainGui(qtw.QMainWindow):
                 self.notemenu = menu
             elif item == menudata[3][0]:
                 self.treemenu = menu
+            prev = ''
             for menudef in data:
-                prev = ''
                 if not menudef:
                     if prev != 'spacer':
                         prev = 'spacer'
                         menu.addSeparator()
+                    else:
+                        prev = ''
                     continue
                 label, handler, shortcut, icon, info = menudef
                 # (nog) niet in Qt geïmplementeerde menukeuzes overslaan
                 if 'line spacing' in label.lower() or 'paragraph spacing' in label.lower():
                     continue
                 if icon:
-                    action = qtw.QAction(gui.QIcon(str(shared.HERE / icon)), label, self)
+                    action = gui.QAction(gui.QIcon(str(shared.HERE / icon)), label, self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
                         toolbar.setIconSize(core.QSize(16, 16))
                         toolbar_added = True
                     toolbar.addAction(action)
                 else:
-                    action = qtw.QAction(label, self)
+                    action = gui.QAction(label, self)
                 if item == menudata[3][0]:
                     if label == '&Undo':
                         self.undo_item = action
@@ -1431,7 +1453,7 @@ class MainGui(qtw.QMainWindow):
                             font.setItalic(True)
                         elif info == 'U':
                             font.setUnderline(True)
-                        elif info == 'S':
+                        else:  # if info == 'S':
                             font.setStrikeOut(True)
                         action.setFont(font)
                         info = ''
@@ -1461,14 +1483,15 @@ class MainGui(qtw.QMainWindow):
         toolbar = self.addToolBar('styles')
         self.combo_font = qtw.QFontComboBox(toolbar)
         toolbar.addWidget(self.combo_font)
-        self.combo_font.activated[str].connect(self.editor.text_family)
+        self.combo_font.currentTextChanged[str].connect(self.editor.text_family)
         ## self.combo_font.activated.connect(self.editor.text_family)
         self.combo_size = qtw.QComboBox(toolbar)
         toolbar.addWidget(self.combo_size)
         self.combo_size.setEditable(True)
-        db = gui.QFontDatabase()
+        # db = gui.QFontDatabase()
         self.fontsizes = []
-        for size in db.standardSizes():
+        # for size in db.standardSizes():
+        for size in gui.QFontDatabase.standardSizes():
             self.combo_size.addItem(str(size))
             self.fontsizes.append(str(size))
         # self.fontsizes = [str(x) for x in gui.QFontDataBase.standardsizes()]
@@ -1478,30 +1501,30 @@ class MainGui(qtw.QMainWindow):
         self.combo_size.setCurrentIndex(self.combo_size.findText(
             str(self.editor.font().pointSize())))
 
-        self.setcoloraction_color = core.Qt.black
+        self.setcoloraction_color = core.Qt.GlobalColor.black
         pix = gui.QPixmap(14, 14)
         pix.fill(self.setcoloraction_color)
-        action = qtw.QAction(gui.QIcon(pix), "Change text color", self)
+        action = gui.QAction(gui.QIcon(pix), "Change text color", self)
         action.triggered.connect(self.editor.select_text_color)
         toolbar.addAction(action)
         self.styleactiondict["&Color..."] = action
         pix = gui.QPixmap(14, 14)
         pix.fill(self.setcoloraction_color)
-        action = qtw.QAction(gui.QIcon(pix), "Set text color", self)
+        action = gui.QAction(gui.QIcon(pix), "Set text color", self)
         action.triggered.connect(self.editor.set_text_color)
         toolbar.addAction(action)
         self.setcolor_action = action
 
-        self.setbackgroundcoloraction_color = core.Qt.white
+        self.setbackgroundcoloraction_color = core.Qt.GlobalColor.white
         pix = gui.QPixmap(18, 18)
         pix.fill(self.setbackgroundcoloraction_color)
-        action = qtw.QAction(gui.QIcon(pix), "Change background color", self)
+        action = gui.QAction(gui.QIcon(pix), "Change background color", self)
         action.triggered.connect(self.editor.select_background_color)
         toolbar.addAction(action)
         self.styleactiondict["&Background..."] = action
         pix = gui.QPixmap(18, 18)
         pix.fill(self.setbackgroundcoloraction_color)
-        action = qtw.QAction(gui.QIcon(pix), "Set background color", self)
+        action = gui.QAction(gui.QIcon(pix), "Set background color", self)
         action.triggered.connect(self.editor.set_background_color)
         toolbar.addAction(action)
         self.setbackgroundcolor_action = action
@@ -1551,12 +1574,15 @@ class MainGui(qtw.QMainWindow):
     def set_focus_to_editor(self):
         "set focus to the editor panel"
         self.editor.setFocus()
+        ref = self.tree.getitemkey(self.master.activeitem)
+        self.editor.set_text_position(self.master.text_positions[ref])
         self.in_editor = True
 
     def go(self):
         "start the application's event loop"
         self.show()
-        sys.exit(self.app.exec_())
+        self.set_focus_to_editor()
+        sys.exit(self.app.exec())
 
     def close(self):
         """applicatie afsluiten"""
@@ -1577,9 +1603,9 @@ class MainGui(qtw.QMainWindow):
 
     def revive(self, event=None):
         """applicatie weer zichtbaar maken"""
-        if event == qtw.QSystemTrayIcon.Unknown:
+        if event == qtw.QSystemTrayIcon.ActivationReason.Unknown:
             self.tray_icon.showMessage('DocTree', "Click to revive DocTree")
-        elif event == qtw.QSystemTrayIcon.Context:
+        elif event == qtw.QSystemTrayIcon.ActivationReason.Context:
             pass
         else:
             self.show()
@@ -1659,7 +1685,7 @@ class MainGui(qtw.QMainWindow):
 
     def reorder_items(self, root, recursive=False):
         "(re)order_items"
-        root.sortChildren(0, core.Qt.AscendingOrder)
+        root.sortChildren(0, core.Qt.SortOrder.AscendingOrder)
         if recursive:
             for num in range(root.childCount()):
                 tag = root.child(num)
@@ -1682,7 +1708,7 @@ class MainGui(qtw.QMainWindow):
 
     def add_viewmenu_option(self, optiontext):
         "add view action to viewmenu"
-        action = qtw.QAction(optiontext, self)
+        action = gui.QAction(optiontext, self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
         action.triggered.connect(self.master.select_view)
