@@ -5,14 +5,16 @@ __pycache__/
 
 # development stuff
 logs/
-*.swp
-*.swo
+.coverage
+projdocs*
+.sessionrc
 
 # data, backups
-*.pck
+*.trd
 *.zip
 *.bak
 *~
+*.out
 
 # on-demand
 toolkit.py
