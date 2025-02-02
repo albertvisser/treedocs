@@ -1547,7 +1547,7 @@ class TestMainWindow:
         assert testobj.copied_item == ''
         assert testobj.cut_from_itemdict == []
         assert not testobj.add_node_on_paste
-        assert testobj.activeitem is None
+        assert testobj.activeitem is 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
         assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
                                            "called Tree.removeitem wth args"
@@ -1566,7 +1566,7 @@ class TestMainWindow:
         assert testobj.copied_item == 'x'
         assert testobj.cut_from_itemdict == [(1, ('y', 'yy')), (2, ('z', 'zz'))]
         assert not testobj.add_node_on_paste
-        assert testobj.activeitem is None
+        assert testobj.activeitem is 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
         assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
                                            "called Tree.removeitem wth args"
@@ -2788,11 +2788,13 @@ class TestMainWindow:
         assert capsys.readouterr().out == ("called Tree.getitemkey with arg `item`\n"
                                            "called Editor.set_contents with arg 'item text'\n"
                                            "called Editor.set_text_position with arg '1'\n"
+                                           "called Editor.mark_dirty with arg 'False'\n"
                                            "called Editor.openup with arg 'True'\n")
         testobj.gui.tree.getitemkey = mock_getitemkey_2
         testobj.activate_item('item')
         assert capsys.readouterr().out == ("called Tree.getitemkey with arg `item`\n"
                                            "called Editor.set_contents with arg 'root data'\n"
+                                           "called Editor.mark_dirty with arg 'False'\n"
                                            "called Editor.openup with arg 'True'\n")
         testobj.gui.tree.getitemkey = mock_getitemkey
         testobj.gui.editor.set_text_position = mock_set
@@ -2801,6 +2803,7 @@ class TestMainWindow:
                                            "called Editor.set_contents with arg 'item text'\n"
                                            "called Editor.set_text_position with arg '1'\n"
                                            "called Editor.get_text_position\n"
+                                           "called Editor.mark_dirty with arg 'False'\n"
                                            "called Editor.openup with arg 'True'\n")
 
     def test_cleanup_files(self, monkeypatch, capsys):

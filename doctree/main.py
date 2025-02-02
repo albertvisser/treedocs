@@ -726,6 +726,7 @@ class MainWindow:
 
             # finish up
             self.set_project_dirty(True)
+            self.activeitem = prev
             self.gui.tree.set_item_selected(prev)
 
         return item_to_copy, oldloc, cut_from_itemdict
@@ -1284,6 +1285,7 @@ class MainWindow:
             except KeyError:  # item is nieuw
                 self.text_positions[ref] = self.gui.editor.get_text_position()
         # self.gui.editor.set_contents(tekst)  # , titel)
+        self.gui.editor.mark_dirty(False)
         self.gui.editor.openup(True)
 
     def cleanup_files(self):
