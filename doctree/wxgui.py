@@ -561,7 +561,7 @@ class EditorPanel(rt.RichTextCtrl):
             attr.SetFlags(wx.TEXT_ATTR_LEFT_INDENT)
             self.SetStyle(range, attr)
 
-    def increase_parspacing_more(self, evt):
+    def increase_parspacing(self, evt):
         "ruimte tussen alinea's vergroten"
         attr = rt.RichTextAttr()
         attr.SetFlags(wx.TEXT_ATTR_PARA_SPACING_AFTER)
@@ -574,7 +574,7 @@ class EditorPanel(rt.RichTextCtrl):
             attr.SetFlags(wx.TEXT_ATTR_PARA_SPACING_AFTER)
             self.SetStyle(range, attr)
 
-    def decrease_parspacing_less(self, evt):
+    def decrease_parspacing(self, evt):
         "ruimte tussen alinea's verkleinen"
         attr = rt.RichTextAttr()
         attr.SetFlags(wx.TEXT_ATTR_PARA_SPACING_AFTER)
@@ -860,6 +860,8 @@ class MainGui(wx.Frame):
                         submenu.AppendSeparator()
                     continue
                 label, handler, shortcut, icon, info = menudef
+                if shortcut == 'Ctrl+Tab':
+                    shortcut= '' # Tab werkt niet in gtk
                 # (nog) niet in wx geïmplementeerde menukeuzes overslaan
                 if 'justify' in label.lower() or 'indent' in label.lower():
                     continue
@@ -921,7 +923,7 @@ class MainGui(wx.Frame):
         self.fontpicker.Bind(wx.EVT_FONTPICKER_CHANGED, self.editor.text_font)
         toolbar.AddControl(self.fontpicker)
         self.fgcselect = csel.ColourSelect(toolbar, colour=self.textcolour)
-        self.fgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.text_color)
+        self.fgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.select_text_color)
         toolbar.AddControl(self.fgcselect)
         bmp = wx.Bitmap(14, 14)
         self.fgcset = wxlb.GenBitmapButton(toolbar, bitmap=bmp, size=(22, 22))
@@ -930,7 +932,7 @@ class MainGui(wx.Frame):
         toolbar.AddControl(self.fgcset)
         self.backgroundcolour = wx.WHITE
         self.bgcselect = csel.ColourSelect(toolbar, colour=self.backgroundcolour, size=(24, 24))
-        self.bgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.background_color)
+        self.bgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.select_background_color)
         toolbar.AddControl(self.bgcselect)
         bmp = wx.Bitmap(16, 16)
         self.bgcset = wxlb.GenBitmapButton(toolbar, bitmap=bmp, size=(24, 24))
@@ -1083,7 +1085,7 @@ class MainGui(wx.Frame):
 
     def clear_viewmenu(self):
         "remove all view actions from viewmenu"
-        menuitem_list = [x for x in self.viewmenu.GetMenuItems()]
+        menuitem_list = list(self.viewmenu.GetMenuItems())
         for menuitem in menuitem_list[4:]:
             self.viewmenu.Delete(menuitem)
 
@@ -1163,10 +1165,10 @@ class MainGui(wx.Frame):
             item_to_check = menuitem_list[7]
         return item_to_check
 
-    def tree_undo(self):  # , event=None):
+    def tree_undo(self, event=None):
         "start undo action"
 
-    def tree_redo(self):  # , event=None):
+    def tree_redo(self, event=None):
         "start redo action"
 
     def find_needle(self, haystack):

@@ -589,14 +589,14 @@ class TestEditorPanel:
         assert testobj.indent_less(evt) == "expected_result"
         assert capsys.readouterr().out == ("")
 
-    def _test_increase_parspacing_more(self, monkeypatch, capsys):
+    def _test_increase_parspacing(self, monkeypatch, capsys):
         """unittest for EditorPanel.increase_parspacing_more
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         assert testobj.increase_parspacing_more(evt) == "expected_result"
         assert capsys.readouterr().out == ("")
 
-    def _test_decrease_parspacing_less(self, monkeypatch, capsys):
+    def _test_decrease_parspacing(self, monkeypatch, capsys):
         """unittest for EditorPanel.decrease_parspacing_less
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
