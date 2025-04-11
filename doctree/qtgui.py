@@ -483,9 +483,6 @@ class AddCommand(gui.QUndoCommand):
     """Nieuwe notitie toevoegen
     """
     def __init__(self, win, root, under, new_title, extra_titles, description='Add'):
-        # root is self.parent.root in geval van "nieuw item onder root"
-        # anders is deze None en moet deze bepaald worden op self.win.item
-        # bepalen root en pos gebeurt eigenlijk pas in do_addaction maar ik heb ze hier al nodig
         self.win = win
         self.root = root if root is not None else self.win.master.activeitem
         if root == self.win.root:
@@ -495,51 +492,36 @@ class AddCommand(gui.QUndoCommand):
             self.pos = -1
         else:
             self.pos = self.win.tree.getitemparentpos(self.win.master.activeitem)[1] + 1
-        self.new_title = new_title
-        self.extra_titles = extra_titles
-        self.first_edit = not self.win.master.project_dirty
+        self.add_to_itemdict = [new_title, '']  # , []]
+        subel = self.add_to_itemdict  # [2]
+        for x in extra_titles:
+            new_subel = [x, '']  # , []]
+            subel.append(new_subel)
+            subel = new_subel  # [2]
+        subel.append([])
+        self.is_first_edit = not self.win.master.project_dirty
         super().__init__(description)
 
     def redo(self):
         """actie uitvoeren
         """
         self.data = self.win.master.do_addaction(self.root, self.under, self.pos,
-                                                 self.new_title, self.extra_titles)
-        # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
-        #             en kan ik deze dus ook niet terugstoppen
+                                                 self.add_to_itemdict)
 
     def undo(self):
         """actie ongedaan maken
         """
-        # shared.log('in AddCommand.undo')
-        newkey, extra_keys, new_item = self.data[:3]
-        # TODO: als ik wil dat de eventuele tekstinhoud onthouden wordt
-        # dan moet ik volgens mij uitvoeren:
-        # self.win.master.activeitem = new_item
-        # self.win.master.check_active()
-        # maar eigenlijk moet ik dit dan ook uitvoeren voor eventuele via \ toegevoegde extra
-        # items
-        # en misschien moet ik check_active eigenlijk herdefinieren om niet self.activeitem
-        # te controleren maar een meegegeven item - oh dat is al zo - is dit dan nog een issue?
-        cut_from_itemdict = [(newkey, self.win.master.itemdict[newkey])]
-        for key in extra_keys:
-            cut_from_itemdict.append((key, self.win.master.itemdict[key]))
-        self.win.tree.removeitem(new_item, cut_from_itemdict)
-        for idx, view in enumerate(self.win.master.views):
-            if idx != self.win.master.opts["ActiveView"]:
-                view.pop()
-            # wat als ik het item eerder verplaatst heb in een niet actieve view?
-        if self.first_edit:
+        new_item = self.data
+        self.add_to_itemdict = self.win.tree.removeitem(new_item)[2]
+        if self.is_first_edit:
             self.win.master.set_project_dirty(False)
-        # TODO: als ik de undo do na het invullen van tekst raak ik deze kwijt
-        #  de tekst(en) meegeven in removeitem helpt daar niet bij
 
 
 class PasteCommand(gui.QUndoCommand):
     """Notitie toevoegen vanuit copy buffer
     """
     def __init__(self, win, before, below, item, description="Paste"):
-        self.win = win          # treewidget
+        self.win = win
         if below:
             description += ' Under'
         elif before:
@@ -548,12 +530,9 @@ class PasteCommand(gui.QUndoCommand):
             description += ' After'
         self.before = before
         self.below = below
-        self.item = item        # where we are now
-        # shared.log(f"init {description} {self.item}")
+        self.item = item
         super().__init__(description)
-        ## self.parent = item.parent()
-        self.key = int(self.item.text(1))  # on the root item this can be the editor
-        # contents, but we can't paste the root so we don't have to deal with that
+        self.key = int(self.item.text(1))
         self.title = str(self.item.text(0))
         self.first_edit = not self.win.master.project_dirty
         self.replaced = None    # in case item is replaced while redoing
@@ -562,10 +541,6 @@ class PasteCommand(gui.QUndoCommand):
         """actie uitvoeren
         """
         self.views = self.win.master.views  # huidige stand onthouden tbv redo
-        # items toevoegen aan itemdict (nieuwe keys of de eerder gebruikte)
-        # items toevoegen aan visual tree
-        # indien nodig het copied_item in eventuele andere views ook toevoegen
-        # afmaken
         self.used_keys, self.used_parent = self.win.master.do_pasteaction(self.before, self.below,
                                                                           self.item)
 
@@ -573,23 +548,15 @@ class PasteCommand(gui.QUndoCommand):
         """actie ongedaan maken
         "essentially 'cut' Command"
         """
-        # items weer uit itemdict verwijderen
-        # shared.log("in paste.undo")
         for key in self.used_keys:
             self.win.master.itemdict.pop(key)
         # items weer uit de visual tree halen   / removeitem
         parent, pos = self.used_parent
-        ## print(parent, pos)
         if pos == -1:
             pos = parent.childCount() - 1
-        # shared.log(f'Taking child {pos} from parent {parent} {parent.text(0)}')
         parent.takeChild(pos)
         # eventueel andere views weer aanpassen
         self.win.master.views = self.views
-        ## self.replaced = self.added   # remember original item in case redo replaces it
-        ## item = CopyElementCommand(self.win, self.added, cut=True, retain=False,
-            ## description="Undo add element")
-        ## item.redo()
         if self.first_edit:
             self.win.master.set_project_dirty(False)
         self.win.statusbar.showMessage(f'{self.text()} undone')
@@ -598,78 +565,39 @@ class PasteCommand(gui.QUndoCommand):
 class CopyCommand(gui.QUndoCommand):
     """Notitie in copy buffer halen
     """
-    def __init__(self, win, cut, retain, item):  # , description=""):
+    def __init__(self, win, cut, retain, item):
         description = "Copy" if not cut else "Cut" if retain else "Delete"
         super().__init__(description)
         self.undodata = None
-        self.win = win      # treewidget
-        self.item = item    # where we are now
-        self.key = int(self.item.text(1))  # on the root item this can be the editor
-        # contents, but we can't copy the root so we don't have to deal with that
+        self.win = win
+        self.item = item
+        self.key = int(self.item.text(1))
         self.title = str(self.item.text(0))
         self.first_edit = not self.win.master.project_dirty
         self.cut = cut
         self.retain = retain
-        # shared.log(f"init {description} {self.key} {self.item} {self.cut} {self.retain}")
 
     def redo(self):
         """actie uitvoeren
         """
-        # data = self.win.master.itemdict[self.key]
-        # shared.log(f'in copy.redo for item {self.item} with key {self.key} and data {data}')
         self.oldstate = self.win.master.opts["ActiveItem"], self.win.master.views
-        # shared.log(f'before (re)do: oldstate is {self.win.master.activeitem}'
-        #            f' {self.win.master.opts["ActiveItem"]} {self.win.master.views}')
-        ## def get_children(current):
-            ## count = current.childCount()
-            ## if count == 0:
-                ## return []
-            ## for ix in count:
-                ## item = current.child(ix)
-                ## text, key, data = current.text(0), current.text[1],
-                    ## get_children(current)
-        ## state['current'] = current.text(0), current.text[1], get_children(current)
-        ## print('state is', state)
         self.newstate = self.win.master.do_copyaction(self.cut, self.retain, self.item)
-        # shared.log(f' after (re)do: newstate is {self.newstate}')
 
     def undo(self):
         """actie ongedaan maken
         """
-        # shared.log(f'Undo copy for {self.item} with key {self.key}')
-        ## # self.cut_el = None
-        ## if self.cut:
-            ## item = PasteElementCommand(self.win, self.tag, self.data, self.parent,
-                ## before=False, below=True, data = self.undodata,
-                ## description="Undo Copy Element")
-            ## item.redo() # add_under=add_under, loc=self.loc)
-            ## self.item = item.added
         # terugzetten in tree en itemdict indien nodig
-        ## copied_item, itemlist = self.tree.getsubtree(current)
-        ## cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
         copied_items, oldloc, cut_from_itemdict = self.newstate
-        # shared.log(f' in undo: newstate is {self.newstate}')
         if self.cut:
-            # shared.log(f'itemdict terugzetten in redo bij cut, {cut_from_itemdict=}')
             for key, value in cut_from_itemdict:
                 self.win.master.itemdict[key] = value
             parent, pos = oldloc
-            # shared.log(f'na terugzetten, itemdict is {self.win.master.itemdict}')
-            # shared.log(f'calling tree.putsubtree using parent, *copied_items ({copied_items}), pos')
             newitem = self.win.tree.putsubtree(parent, *copied_items, pos=pos - 1)
             self.win.master.activeitem = self.item = newitem
-
-        ## self.win.copied_item = state['copied_item']
-        ## self.win.cut_from_itemdict = state['cut_from_itemdict']
-        ## self.win.add_node_on_paste = state['add_node']
         self.win.master.opts["ActiveItem"], self.win.master.views = self.oldstate
-        # shared.log(f' after undo: restored old state to {self.win.master.activeitem}'
-        #            ' {self.win.master.opts["ActiveItem"]} {self.win.master.views}')
-
         if self.first_edit:
             self.win.master.set_project_dirty(False)
         self.win.statusbar.showMessage(f'{self.text()} undone')
-        ## self.win.tree.setCurrentItem(self.item)
 
 
 class TreePanel(qtw.QTreeWidget):
@@ -883,11 +811,9 @@ class TreePanel(qtw.QTreeWidget):
         "return the selected tree item"
         return self.currentItem()
 
-    def removeitem(self, item, cut_from_itemdict):
+    def removeitem(self, item):
         "removes current treeitem and returns the previous one"
-        # shared.log(f'in removeitem {item} {cut_from_itemdict}')
-        ## parent = item.parent()               # gui-dependent
-        ## pos = parent.indexOfChild(item)
+        cut_from_itemdict = []
         parent, pos = self.getitemparentpos(item)
         oldloc = (parent, pos)
         if pos - 1 >= 0:
@@ -898,20 +824,17 @@ class TreePanel(qtw.QTreeWidget):
                 prev = parent.child(pos + 1)
             if prev is None:
                 prev = self.parent.root
-        self.parent.master.popitems(item, cut_from_itemdict)
-        # shared.log(f'  na popitem: cut_from_itemdict is {cut_from_itemdict}')
-        ## parent.takeChild(pos)
+        cut_from_itemdict = self.parent.master.popitems(item, cut_from_itemdict)
         # bij een undo van een add moeten met " \ " toegevoegde items ook verwijderd worden
         to_remove = [(parent, pos)] if parent else []
         while True:
-            # shared.log(f'{item} {item.childCount()} {item.child(0)}')
             if item.childCount() == 0:
                 break
             to_remove.append((item, 0))  # er is er altijd maar één
             item = item.child(0)
         for parent, pos in reversed(to_remove):
             parent.takeChild(pos)
-        return oldloc, prev
+        return oldloc, prev, cut_from_itemdict
 
     def getsubtree(self, item, itemlist=None):
         "return part of the tree structure"
@@ -919,8 +842,6 @@ class TreePanel(qtw.QTreeWidget):
 
     def putsubtree(self, parent, titel, key, subtree=None, pos=-1):
         "build a new part of the tree"
-        # shared.log(f'in TreePanel.putsubtree met {parent=}, {titel=}, {key=} of type {type(key)}')
-        # shared.log('calling shared.putsubtree met parent, titel, key, subtree, pos)')
         return shared.putsubtree(self, parent, titel, key, subtree, pos)
 
 
@@ -1575,7 +1496,8 @@ class MainGui(qtw.QMainWindow):
         "set focus to the editor panel"
         self.editor.setFocus()
         ref = self.tree.getitemkey(self.master.activeitem)
-        self.editor.set_text_position(self.master.text_positions[ref])
+        with contextlib.suppress(KeyError):
+            self.editor.set_text_position(self.master.text_positions[ref])
         self.in_editor = True
 
     def go(self):

@@ -216,6 +216,7 @@ class MockTree:
 
     def removeitem(self, *args):
         print("called TreePanel.removeitem with args", args)
+        return 'title', 'text', 'subtree'
 
 
 class MockStack:
@@ -986,9 +987,8 @@ class TestAddCommand:
         assert testobj.root == win.master.activeitem  # win.root
         assert not testobj.under
         assert testobj.pos == 1
-        assert testobj.new_title == 'new_title'
-        assert testobj.extra_titles == ['extra', 'titles']
-        assert testobj.first_edit
+        assert testobj.add_to_itemdict == ['new_title', '', ['extra', '', ['titles', '', []]]]
+        assert testobj.is_first_edit
         assert capsys.readouterr().out == (
                 f"called TreePanel.getitemparentpos with arg '{testobj.root}'\n"
                 "called QUndoCommand with args ('Add',)\n")
@@ -997,9 +997,8 @@ class TestAddCommand:
         assert testobj.root == win.root
         assert testobj.under
         assert testobj.pos == -1
-        assert testobj.new_title == 'new_title'
-        assert testobj.extra_titles == []
-        assert testobj.first_edit
+        assert testobj.add_to_itemdict == ['new_title', '', []]
+        assert testobj.is_first_edit
         assert capsys.readouterr().out == (
                 "called QUndoCommand with args ('AddCommand top level item',)\n")
 
@@ -1010,34 +1009,36 @@ class TestAddCommand:
         testobj.root = 'root'
         testobj.under = 'under'
         testobj.pos = -1
-        testobj.new_title = 'new_title'
-        testobj.extra_titles = ['extra', 'titles']
+        testobj.add_to_itemdict = ['new_title', 'text', []]
         testobj.redo()
         assert testobj.data == "data"
         assert capsys.readouterr().out == ("called Editor.do_addaction with args ('root', 'under',"
-                                           " -1, 'new_title', ['extra', 'titles'])\n")
+                                           " -1, ['new_title', 'text', []])\n")
 
     def test_undo(self, monkeypatch, capsys):
         """unittest for AddCommand.undo
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.data = ['1', ['2'], '3', '4', '5', '6']
-        testobj.first_edit = False
+        testobj.is_first_edit = False
         testobj.win.master.itemdict = {'1': 'x', '2': 'y'}
         testobj.win.master.views = [['view1', 'q'], ['view2', 'q'], ['view3', 'q']]
         testobj.win.master.opts = {'ActiveView': 1}
         testobj.undo()
-        assert testobj.win.master.views == [['view1'], ['view2', 'q'], ['view3']]
+        # assert testobj.win.master.views == [['view1'], ['view2', 'q'], ['view3']]
+        assert testobj.win.master.views == [['view1', 'q'], ['view2', 'q'], ['view3', 'q']]
         assert capsys.readouterr().out == (
-                "called TreePanel.removeitem with args ('3', [('1', 'x'), ('2', 'y')])\n")
+                # "called TreePanel.removeitem with args ('3', [('1', 'x'), ('2', 'y')])\n")
+                "called TreePanel.removeitem with args (['1', ['2'], '3', '4', '5', '6'],)\n")
         testobj.data = ['1', [], '3', '4', '6']
-        testobj.first_edit = True
+        testobj.is_first_edit = True
         testobj.win.master.views = [['view1', 'q']]
         testobj.win.master.opts = {'ActiveView': 0}
         testobj.undo()
         assert testobj.win.master.views == [['view1', 'q']]
         assert capsys.readouterr().out == (
-                "called TreePanel.removeitem with args ('3', [('1', 'x')])\n"
+                # "called TreePanel.removeitem with args ('3', [('1', 'x')])\n"
+                "called TreePanel.removeitem with args (['1', [], '3', '4', '6'],)\n"
                 "called Editor.set_project_dirty with arg False\n")
 
 
@@ -1832,6 +1833,7 @@ class TestTreePanel:
             return parent, 1
         def mock_pop(*args):
             print('called mainwindow.popitems with args', args)
+            return ['popped', 'items']
         root = mockqtw.MockTreeItem()
         parent = mockqtw.MockTreeItem()
         child1 = mockqtw.MockTreeItem()
@@ -1848,12 +1850,10 @@ class TestTreePanel:
         testobj.getitemparentpos = mock_parentpos
         testobj.parent.root = root
         testobj.parent.master.popitems = mock_pop
-        assert testobj.removeitem(child2, [('cut', '_from'), ('item', 'dict')]) == ((parent, 1),
-                                                                                    child1)
+        assert testobj.removeitem(child2) == ((parent, 1), child1, ['popped', 'items'])
         assert capsys.readouterr().out == (f"called Tree.getparentpos with arg {child2}\n"
                                            "called TreeItem.child with arg 0\n"
-                                           "called mainwindow.popitems with args"
-                                           f" ({child2}, [('cut', '_from'), ('item', 'dict')])\n"
+                                           f"called mainwindow.popitems with args ({child2}, [])\n"
                                            "called TreeItem.childCount\n"
                                            "called TreeItem.takeChild\n")
 
@@ -1864,7 +1864,8 @@ class TestTreePanel:
             print(f'called Tree.getparentpos with arg {arg}')
             return parent, 1
         def mock_pop(*args):
-            print('called mainwindow.popitems with args', args)
+            print('called MainWindow.popitems with args', args)
+            return ['popped', 'items']
         root = mockqtw.MockTreeItem()
         parent = mockqtw.MockTreeItem()
         child1 = mockqtw.MockTreeItem()
@@ -1885,12 +1886,10 @@ class TestTreePanel:
         testobj.getitemparentpos = mock_parentpos
         testobj.parent.root = root
         testobj.parent.master.popitems = mock_pop
-        assert testobj.removeitem(child2, [('cut', '_from'), ('item', 'dict')]) == ((parent, 1),
-                                                                                    child1)
+        assert testobj.removeitem(child2) == ((parent, 1), child1, ['popped', 'items'])
         assert capsys.readouterr().out == (f"called Tree.getparentpos with arg {child2}\n"
                                            "called TreeItem.child with arg 0\n"
-                                           "called mainwindow.popitems with args"
-                                           f" ({child2}, [('cut', '_from'), ('item', 'dict')])\n"
+                                           f"called MainWindow.popitems with args ({child2}, [])\n"
                                            "called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 0\n"
                                            "called TreeItem.childCount\n"
@@ -1904,7 +1903,8 @@ class TestTreePanel:
             print(f'called Tree.getparentpos with arg {arg}')
             return parent, 0
         def mock_pop(*args):
-            print('called mainwindow.popitems with args', args)
+            print('called MainWindow.popitems with args', args)
+            return ['popped', 'items']
         root = mockqtw.MockTreeItem()
         parent = mockqtw.MockTreeItem()
         child1 = mockqtw.MockTreeItem()
@@ -1921,11 +1921,9 @@ class TestTreePanel:
         testobj.getitemparentpos = mock_parentpos
         testobj.parent.root = root
         testobj.parent.master.popitems = mock_pop
-        assert testobj.removeitem(child1, [('cut', '_from'), ('item', 'dict')]) == ((parent, 0),
-                                                                                    parent)
+        assert testobj.removeitem(child1) == ((parent, 0), parent, ['popped', 'items'])
         assert capsys.readouterr().out == (f"called Tree.getparentpos with arg {child1}\n"
-                                           "called mainwindow.popitems with args"
-                                           f" ({child1}, [('cut', '_from'), ('item', 'dict')])\n"
+                                           f"called MainWindow.popitems with args ({child1}, [])\n"
                                            "called TreeItem.childCount\n"
                                            "called TreeItem.takeChild\n")
 
@@ -1936,7 +1934,8 @@ class TestTreePanel:
             print(f'called Tree.getparentpos with arg {arg}')
             return parent, 0
         def mock_pop(*args):
-            print('called mainwindow.popitems with args', args)
+            print('called MainWindow.popitems with args', args)
+            return ['popped', 'items']
         root = mockqtw.MockTreeItem()
         parent = mockqtw.MockTreeItem()
         child1 = mockqtw.MockTreeItem()
@@ -1953,12 +1952,10 @@ class TestTreePanel:
         testobj.getitemparentpos = mock_parentpos
         testobj.parent.root = parent
         testobj.parent.master.popitems = mock_pop
-        assert testobj.removeitem(child1, [('cut', '_from'), ('item', 'dict')]) == ((parent, 0),
-                                                                                    child2)
+        assert testobj.removeitem(child1) == ((parent, 0), child2, ['popped', 'items'])
         assert capsys.readouterr().out == (f"called Tree.getparentpos with arg {child1}\n"
                                            "called TreeItem.child with arg 1\n"
-                                           "called mainwindow.popitems with args"
-                                           f" ({child1}, [('cut', '_from'), ('item', 'dict')])\n"
+                                           f"called MainWindow.popitems with args ({child1}, [])\n"
                                            "called TreeItem.childCount\n"
                                            "called TreeItem.takeChild\n")
 
@@ -1969,7 +1966,8 @@ class TestTreePanel:
             print(f'called Tree.getparentpos with arg {arg}')
             return parent, 0
         def mock_pop(*args):
-            print('called mainwindow.popitems with args', args)
+            print('called MainWindow.popitems with args', args)
+            return ['popped', 'items']
         root = mockqtw.MockTreeItem()
         parent = None
         item1 = mockqtw.MockTreeItem()
@@ -1982,11 +1980,9 @@ class TestTreePanel:
         testobj.getitemparentpos = mock_parentpos
         testobj.parent.root = root
         testobj.parent.master.popitems = mock_pop
-        assert testobj.removeitem(item1, [('cut', '_from'), ('item', 'dict')]) == ((None, 0),
-                                                                                   root)
+        assert testobj.removeitem(item1) == ((None, 0), root, ['popped', 'items'])
         assert capsys.readouterr().out == (f"called Tree.getparentpos with arg {item1}\n"
-                                           "called mainwindow.popitems with args"
-                                           f" ({item1}, [('cut', '_from'), ('item', 'dict')])\n"
+                                           f"called MainWindow.popitems with args ({item1}, [])\n"
                                            "called TreeItem.childCount\n")
 
     def test_getsubtree(self, monkeypatch, capsys):
@@ -3403,7 +3399,7 @@ class TestMainGui:
         testobj.mainactiondict = {}
         testobj.styleactiondict = {}
         toolbar = mockqtw.MockToolBar()
-        assert capsys.readouterr().out == "called ToolBar.__init__ \n"
+        assert capsys.readouterr().out == "called ToolBar.__init__\n"
         testobj.addToolBar = mock_add
         menubar = mockqtw.MockMenuBar()
         assert capsys.readouterr().out == "called MenuBar.__init__\n"
@@ -3509,7 +3505,7 @@ class TestMainGui:
         monkeypatch.setattr(mockqtw.MockIcon, '__init__', mock_icon)
         toolbar = mockqtw.MockToolBar()
         assert capsys.readouterr().out == ("called Signal.__init__\n"
-                                           "called ToolBar.__init__ \n")
+                                           "called ToolBar.__init__\n")
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.styleactiondict = {}
         testobj.addToolBar = mock_add

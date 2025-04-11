@@ -190,9 +190,9 @@ called MainWindow.menuBar
 called Splitter.__init__
 called MainWidget.setCentralWindow with arg of type `<class 'mockgui.mockqtwidgets.MockSplitter'>`
 called TreePanel.__init__ with args ({testobj},)
-called Splitter.addWidget with arg `{testobj.tree}`
+called Splitter.addWidget with arg of type <class 'test_qtgui.MockTree'>
 called Editor.setReadOnly with arg True
-called Splitter.addWidget with arg `{testobj.editor}`
+called Splitter.addWidget with arg of type <class 'test_qtgui.MockEditor'>
 called MainGui.get_menu_data
 called MainGui.create_menu with args ({menubar}, 'menudata')
 called gui.UndoRedoStack.__init__ with arg {testobj}

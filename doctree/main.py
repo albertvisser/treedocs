@@ -170,7 +170,7 @@ class MainWindow:
                 if err:
                     gui.show_message(self.gui, err[0])
         else:
-            self.new(ask_ok=False)  # fname='' forces filename dialog
+            self.new(ask_ok=False)
         reset_toolkit_file_if_needed()
         self.gui.go()
 
@@ -452,6 +452,7 @@ class MainWindow:
         if new_title:
             # pos = -1  # doesn't matter for now - will be determined in do_addaction
             # log('under is {}, pos is {}'.format(under, pos))
+            self.update_current_text()
             self.gui.start_add(root, under, new_title, extra_titles)
 
     def get_item_title(self):
@@ -467,35 +468,40 @@ class MainWindow:
         self.check_active()
         return new_title, extra_titles
 
-    def do_addaction(self, root, under, origpos, new_title, extra_titles):
+    # def do_addaction(self, root, under, origpos, new_title, extra_titles):
+    def do_addaction(self, root, under, origpos, added_treedata):  # #958
         """toevoegen nieuw item
         """
         # bepaal nieuwe key in itemdict
+        # breakpoint()
         newkey = len(self.itemdict)
         while newkey in self.itemdict:  # rekening houden met verwijderde items
             newkey += 1
         # voeg nieuw item toe aan itemdict
-        self.itemdict[newkey] = (new_title, "")
+        # self.itemdict[newkey] = new_title  # #958: new_title en extra_titles bevatten nu tuples
+        #                                    # van titel en waarde in plaats van alleen maar de titel
+        new_title, new_text, subitems = added_treedata
+        self.itemdict[newkey] = (new_title, new_text)
         # voeg nieuw item toe aan visual tree
         parent, pos = self.get_add_dest(root, under, origpos)
         item = self.gui.tree.add_to_parent(newkey, new_title, parent, pos)
         new_item = item
-        # doe hetzelfde met het via \ toegevoegde item
-        extra_keys = []
-        subkey = newkey
-        while extra_titles:
-            subkey += 1
-            self.itemdict[subkey] = (extra_titles[0], "")
-            item = self.gui.tree.add_to_parent(subkey, extra_titles[0], item)
-            extra_keys.append(subkey)
-            extra_titles = extra_titles[1:]
+        # voeg de onthouden onderliggende items toe
+        # while extra_titles:
+        #     subkey += 1
+        #     self.itemdict[subkey] = extra_titles[0]
+        #     item = self.gui.tree.add_to_parent(subkey, extra_titles[0][0], item)
+        #     extra_keys.append(subkey)
+        #     extra_titles = extra_titles[1:]
+        subview = self.add_subitems(newkey, new_item, subitems)[0]
         # voeg de items ook toe aan de niet zichtbare views
-        subitem = []
-        for subkey in reversed(extra_keys):
-            subitem = [(subkey, subitem)]
+        # subitem = []
+        # for subkey in reversed(extra_keys):
+        #     subitem = [(subkey, subitem)]
         for idx, view in enumerate(self.views):
             if idx != self.opts["ActiveView"]:
-                view.append((newkey, subitem))
+                # view.append((newkey, subitem))
+                view.append((newkey, subview))
         # data is gewijzigd
         self.set_project_dirty(True)
         # afmaken
@@ -504,7 +510,23 @@ class MainWindow:
         if item != self.gui.root:
             self.gui.set_focus_to_editor()
         # resultaat t.b.v. undo/redo mechanisme
-        return newkey, extra_keys, new_item, subitem
+        return new_item
+
+    def add_subitems(self, key, parent, items):
+        """another stab at recursively adding items to the visual tree
+
+        returns the structure as a partial view to add to other doctree views
+        as well as the last used key (needed in the recursivity)
+        """
+        subview = []
+        for title, text, subitems in items:
+            key += 1
+            self.itemdict[key] = (title, text)
+            item = self.gui.tree.add_to_parent(key, title, parent, -1)
+            subsubview, lastkey = self.add_subitems(key, item, subitems)
+            subview.append((key, subsubview))
+            key = lastkey
+        return subview, key
 
     def get_add_dest(self, root, under, origpos):
         """bepaal de parent voor het nieuwe item en op welke plek eronder het moet komen
@@ -676,6 +698,7 @@ class MainWindow:
         """
         current = self.get_copy_source(cut, retain, to_other_file)
         if current:
+            self.update_current_text()
             self.gui.start_copy(cut, retain, current)  # to_other_file)
 
     def get_copy_source(self, cut, retain, to_other_file):
@@ -712,7 +735,9 @@ class MainWindow:
             # remove item (and subitems) from tree and itemdict
             # they're buffered in (self.)cut_from_itemdict because we still need them
             self.add_node_on_paste = False
-            oldloc, prev = self.gui.tree.removeitem(current, cut_from_itemdict)
+            # oldloc, prev = self.gui.tree.removeitem(current, cut_from_itemdict)
+            oldloc, prev = self.gui.tree.removeitem(current)[:2]  # het derde geretourneerde
+            # element bevat de verwijderde gegevens, is misschien te gebruiken ipv cut_from_itemdict?
             self.activeitem = None
 
             # remove item(s) from view(s)
@@ -731,18 +756,22 @@ class MainWindow:
 
         return item_to_copy, oldloc, cut_from_itemdict
 
-    def popitems(self, current, itemlist):
+    # def popitems(self, current, itemlist):
+    def popitems(self, current, cut_from_itemdict):
         """recursieve routine om de structuur uit de itemdict en de
         niet-actieve views te verwijderen
         """
         ref = self.gui.tree.getitemkey(current)
         ## try:
-        self.itemdict.pop(ref)
+        itemdict_item = self.itemdict.pop(ref)
+        cut_from_itemdict = []
         ## except KeyError:
             ## pass
         ## else:
         for kid in self.gui.tree.getitemkids(current):
-            self.popitems(kid, itemlist)
+            # self.popitems(kid, itemlist)
+            cut_from_itemdict.append(self.popitems(kid, cut_from_itemdict))
+        return (*itemdict_item, cut_from_itemdict)
 
     def paste_item(self, *args):
         "paste before"
@@ -1235,8 +1264,6 @@ class MainWindow:
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         # shared.log('*** in main.check_active ***')
         if self.activeitem:
-            text = self.gui.tree.getitemtitle(self.activeitem)
-            # shared.log(f'active item is {self.activeitem} ({text})')
             ref = self.gui.tree.getitemkey(self.activeitem)
             pos = self.gui.editor.get_text_position()
             # try:
@@ -1287,6 +1314,16 @@ class MainWindow:
         # self.gui.editor.set_contents(tekst)  # , titel)
         self.gui.editor.mark_dirty(False)
         self.gui.editor.openup(True)
+
+    def update_current_text(self):
+        """haal de tekst nog een keer op voor het geval er iets gewijzigd is
+        (vergelijkbaar met wat in check_active gebeurt)
+        """
+        ref = self.gui.tree.getitemkey(self.activeitem)
+        if ref != -1:
+            content = str(self.gui.editor.get_contents())
+            titel = self.itemdict[ref][0]
+            self.itemdict[ref] = (titel, content)
 
     def cleanup_files(self):
         "remove temporary files on exit (as they have been zipped)"

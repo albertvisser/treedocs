@@ -408,6 +408,12 @@ class MockMainWindow:
         """
         print("called MainWindow.new_item with args", args, kwargs)
 
+    def add_subitems(self, *args, **kwargs):
+        """stub for MainWindow.add_subitems
+        """
+        print("called MainWindow.add_subitems with args", args, kwargs)
+        return 'subview'
+
     def get_add_dest(self, *args, **kwargs):
         """stub for MainWindow.get_add_dest
         """
@@ -1037,10 +1043,13 @@ class TestMainWindow:
         def mock_get_2():
             print('called MainWindow.get_item_title')
             return 'title', ['extra', 'titles']
+        def mock_update():
+            print('called MainWindow.update_current_text')
         def mock_start(*args, **kwargs):
             print('called MainGui.start_add with args', args, kwargs)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.get_item_title = mock_get
+        testobj.update_current_text = mock_update
         testobj.gui.start_add = mock_start
         testobj.new_item()
         assert capsys.readouterr().out == "called MainWindow.get_item_title\n"
@@ -1048,10 +1057,12 @@ class TestMainWindow:
         testobj.new_item()
         assert capsys.readouterr().out == (
             "called MainWindow.get_item_title\n"
+            "called MainWindow.update_current_text\n"
             "called MainGui.start_add with args (None, True, 'title', ['extra', 'titles']) {}\n")
         testobj.new_item(root='a root', under=False)
         assert capsys.readouterr().out == (
             "called MainWindow.get_item_title\n"
+            "called MainWindow.update_current_text\n"
             "called MainGui.start_add with args ('a root', False, 'title', ['extra', 'titles']) {}\n")
 
     def test_get_item_title(self, monkeypatch, capsys):
@@ -1072,37 +1083,50 @@ class TestMainWindow:
                 " ('Geef een titel op voor het nieuwe item', '01-01-2000 00:00:00')\n"
                 "called MainWindow.check_active\n")
 
+    def test_add_subitems(self, monkeypatch, capsys):
+        """unittest for MainWindow.add_subitems
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.itemdict = {}
+        items = [('child1', 'text1', [('child2', 'text2', [])])]
+        assert testobj.add_subitems(1, 'parent', items) == ([(2, [(3, [])])], 3)
+        assert capsys.readouterr().out == (
+                "called Tree.add_to_parent with args (2, 'child1', 'parent', -1)\n"
+                "called Tree.add_to_parent with args (3, 'child2', 'child1', -1)\n")
+
     def test_do_addaction(self, monkeypatch, capsys):
         """unittest for MainWindow.do_addaction
         """
         monkeypatch.setattr(testee.MainWindow, 'set_project_dirty', self.mocker.set_dirty)
         monkeypatch.setattr(testee.MainWindow, 'get_add_dest', self.mocker.get_add_dest)
+        monkeypatch.setattr(testee.MainWindow, 'add_subitems', self.mocker.add_subitems)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.itemdict = {0: 'x', 1: 'y', 3: 'z'}
         testobj.views = [[(0, [(1, []), (3, [])])], [(0, []), (1, []), (3, [])]]
         testobj.opts = {'ActiveView': 0}
         testobj.gui.root = 'new_title'
-        assert testobj.do_addaction('root', 'under', 'origpos', 'new_title', []) == (
-                4, [], 'new_title', [])
+        added_data = ['new_title', 'new_text', []]
+        assert testobj.do_addaction('root', 'under', 'origpos', added_data) == 'new_title'
         assert capsys.readouterr().out == (
                 "called MainWindow.get_add_dest with args ('root', 'under', 'origpos') {}\n"
                 "called Tree.add_to_parent with args (4, 'new_title', 'parent', 1)\n"
+                "called MainWindow.add_subitems with args (4, 'new_title', []) {}\n"
                 "called MainWindow.set_project_dirty with arg True\n"
                 "called Tree.set_item_expanded with args ('parent',)\n"
                 "called Tree.set_item_selected with arg `new_title`\n")
         testobj.itemdict = {0: 'x', 1: 'y', 3: 'z'}
         testobj.views = [[(0, [(1, []), (3, [])])], [(0, []), (1, []), (3, [])]]
         testobj.gui.root = 'gui root'
-        assert testobj.do_addaction('root', 'under', 'origpos', 'new_title', ['extra', 'titles']) == (
-                4, [5, 6], 'new_title', [(5, [(6, [])])])
+        added_data = ['new_title', 'new_text', ['extra', 'titles', []]]
+        assert testobj.do_addaction('root', 'under', 'origpos', added_data) == 'new_title'
         assert capsys.readouterr().out == (
                 "called MainWindow.get_add_dest with args ('root', 'under', 'origpos') {}\n"
                 "called Tree.add_to_parent with args (4, 'new_title', 'parent', 1)\n"
-                "called Tree.add_to_parent with args (5, 'extra', 'new_title')\n"
-                "called Tree.add_to_parent with args (6, 'titles', 'extra')\n"
+                "called MainWindow.add_subitems with args"
+                " (4, 'new_title', ['extra', 'titles', []]) {}\n"
                 "called MainWindow.set_project_dirty with arg True\n"
                 "called Tree.set_item_expanded with args ('parent',)\n"
-                "called Tree.set_item_selected with arg `titles`\n"
+                "called Tree.set_item_selected with arg `new_title`\n"
                 "called MainGui.set_focus_to_editor\n")
 
     def test_get_add_dest(self, monkeypatch, capsys):
@@ -1449,10 +1473,13 @@ class TestMainWindow:
         def mock_get_source_2(*args):
             print('called MainWindow.get_copy_source with args', args)
             return 'item'
+        def mock_update():
+            print('called MainWindow.update_current_text')
         def mock_start(*args):
             print('called MainGui.start_copy with args', args)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.get_copy_source = mock_get_source
+        testobj.update_current_text = mock_update
         testobj.gui.start_copy = mock_start
         testobj.get_copy_item()
         assert capsys.readouterr().out == (
@@ -1461,18 +1488,22 @@ class TestMainWindow:
         testobj.get_copy_item()
         assert capsys.readouterr().out == (
                 "called MainWindow.get_copy_source with args (False, True, None)\n"
+                "called MainWindow.update_current_text\n"
                 "called MainGui.start_copy with args (False, True, 'item')\n")
         testobj.get_copy_item(cut=True)
         assert capsys.readouterr().out == (
                 "called MainWindow.get_copy_source with args (True, True, None)\n"
+                "called MainWindow.update_current_text\n"
                 "called MainGui.start_copy with args (True, True, 'item')\n")
         testobj.get_copy_item(retain=False)
         assert capsys.readouterr().out == (
                 "called MainWindow.get_copy_source with args (False, False, None)\n"
+                "called MainWindow.update_current_text\n"
                 "called MainGui.start_copy with args (False, False, 'item')\n")
         testobj.get_copy_item(to_other_file='text.trd')
         assert capsys.readouterr().out == (
                 "called MainWindow.get_copy_source with args (False, True, 'text.trd')\n"
+                "called MainWindow.update_current_text\n"
                 "called MainGui.start_copy with args (False, True, 'item')\n")
 
     def test_get_copy_source(self, monkeypatch, capsys):
@@ -1550,8 +1581,7 @@ class TestMainWindow:
         assert testobj.activeitem is 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
         assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
-                                           "called Tree.removeitem wth args"
-                                           " ('current', [(1, ('y', 'yy')), (2, ('z', 'zz'))])\n"
+                                           "called Tree.removeitem wth args ('current',)\n"
                                            "called Tree.getitemkey with arg prev\n"
                                            "called MainWindow.remove_item_from_view with args"
                                            " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
@@ -1569,8 +1599,7 @@ class TestMainWindow:
         assert testobj.activeitem is 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
         assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
-                                           "called Tree.removeitem wth args"
-                                           " ('current', [(1, ('y', 'yy')), (2, ('z', 'zz'))])\n"
+                                           "called Tree.removeitem wth args ('current',)\n"
                                            "called MainWindow.remove_item_from_view with args"
                                            " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
                                            "called MainWindow.set_project_dirty with arg True\n"
@@ -2691,7 +2720,6 @@ class TestMainWindow:
                 "called Tree.add_to_parent with args (1, 'x', 'z')\n"
                 "called Tree.add_to_parent with args (2, 'y', 'z')\n")
 
-# 1255->1261  check_dirty -> KeyError bij ophalen uit itemdict
     def test_check_active(self, monkeypatch, capsys):
         """unittest for MainWindow.check_active
         """
@@ -2720,14 +2748,12 @@ class TestMainWindow:
         testobj.text_positions = [0, 1]
         testobj.activeitem = 'active item'
         testobj.check_active()
-        assert capsys.readouterr().out == ("called Tree.getitemtitle with arg `active item`\n"
-                                           "called Tree.getitemkey with arg `active item`\n"
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `active item`\n"
                                            "called Editor.get_text_position\n"
                                            "called Editor.check_dirty\n")
         testobj.gui.editor.check_dirty = mock_check
         testobj.check_active()
-        assert capsys.readouterr().out == ("called Tree.getitemtitle with arg `active item`\n"
-                                           "called Tree.getitemkey with arg `active item`\n"
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `active item`\n"
                                            "called Editor.get_text_position\n"
                                            "called Editor.check_dirty\n"
                                            "called Editor.get_contents\n"
@@ -2737,7 +2763,6 @@ class TestMainWindow:
         testobj.check_active()
         assert testobj.opts['RootData'] == 'editor contents'
         assert capsys.readouterr().out == (
-                "called Tree.getitemtitle with arg `active item`\n"
                 "called Tree.getitemkey with arg `active item`\n"
                 "called Editor.get_text_position\n"
                 "called Editor.check_dirty\n"
@@ -2749,7 +2774,6 @@ class TestMainWindow:
         testobj.gui.tree.getitemkey = mock_getitemkey
         testobj.check_active()
         assert capsys.readouterr().out == (
-                "called Tree.getitemtitle with arg `active item`\n"
                 "called Tree.getitemkey with arg `active item`\n"
                 "called Editor.get_text_position\n"
                 "called Editor.check_dirty\n"
@@ -2759,8 +2783,7 @@ class TestMainWindow:
                 "called MainWindow.set_project_dirty with arg True\n")
         testobj.gui.editor.get_contents = mock_get
         testobj.check_active()
-        assert capsys.readouterr().out == ("called Tree.getitemtitle with arg `active item`\n"
-                                           "called Tree.getitemkey with arg `active item`\n"
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `active item`\n"
                                            "called Editor.get_text_position\n"
                                            "called Editor.check_dirty\n"
                                            "called Editor.get_contents\n"
@@ -2805,6 +2828,25 @@ class TestMainWindow:
                                            "called Editor.get_text_position\n"
                                            "called Editor.mark_dirty with arg 'False'\n"
                                            "called Editor.openup with arg 'True'\n")
+
+    def test_update_current_text(self, monkeypatch, capsys):
+        """unittest for MainWindow.update_current_text
+        """
+        def mock_getitemkey(arg):
+            print(f'called Tree.getitemkey with arg `{arg}`')
+            return -1
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.activeitem = 'activeitem'
+        testobj.itemdict = {"activeitem": ("titel", 'text')}
+        testobj.update_current_text()
+        assert testobj.itemdict == {"activeitem": ("titel", "editor contents")}
+        assert capsys.readouterr().out == ("called Tree.getitemkey with arg `activeitem`\n"
+                                           "called Editor.get_contents\n")
+        testobj.itemdict = {"activeitem": ("titel", 'text')}
+        testobj.gui.tree.getitemkey = mock_getitemkey
+        testobj.update_current_text()
+        assert testobj.itemdict == {"activeitem": ("titel", "text")}
+        assert capsys.readouterr().out == "called Tree.getitemkey with arg `activeitem`\n"
 
     def test_cleanup_files(self, monkeypatch, capsys):
         """unittest for MainWindow.cleanup_files
