@@ -450,8 +450,6 @@ class MainWindow:
         "nieuw item toevoegen"
         new_title, extra_titles = self.get_item_title()
         if new_title:
-            # pos = -1  # doesn't matter for now - will be determined in do_addaction
-            # log('under is {}, pos is {}'.format(under, pos))
             self.update_current_text()
             self.gui.start_add(root, under, new_title, extra_titles)
 
