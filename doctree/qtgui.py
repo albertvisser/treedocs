@@ -592,7 +592,7 @@ class CopyCommand(gui.QUndoCommand):
             for key, value in cut_from_itemdict:
                 self.win.master.itemdict[key] = value
             parent, pos = oldloc
-            newitem = self.win.tree.putsubtree(parent, *copied_items, pos=pos - 1)
+            newitem = self.win.tree.putsubtree(parent, *copied_items, pos=pos)
             self.win.master.activeitem = self.item = newitem
         self.win.master.opts["ActiveItem"], self.win.master.views = self.oldstate
         if self.first_edit:

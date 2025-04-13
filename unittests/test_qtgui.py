@@ -1290,7 +1290,7 @@ class TestCopyCommand:
         assert testobj.win.master.opts["ActiveItem"] == 'xx'
         assert testobj.win.master.views == ['views']
         assert capsys.readouterr().out == (
-                "called Tree.putsubtree with args ('oldloc', 'copied', 'items') {'pos': 1}\n"
+                "called Tree.putsubtree with args ('oldloc', 'copied', 'items') {'pos': 2}\n"
                 "called Editor.set_project_dirty with arg False\n"
                 "called CopyCommand.text\n"
                 "called StatusBar.showMessage with arg `Copy action undone`\n")
