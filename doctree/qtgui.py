@@ -532,8 +532,8 @@ class PasteCommand(gui.QUndoCommand):
         self.below = below
         self.item = item
         super().__init__(description)
-        self.key = int(self.item.text(1))
-        self.title = str(self.item.text(0))
+        # self.key = int(self.item.text(1))
+        # self.title = str(self.item.text(0))
         self.first_edit = not self.win.master.project_dirty
         self.replaced = None    # in case item is replaced while redoing
 
@@ -571,8 +571,8 @@ class CopyCommand(gui.QUndoCommand):
         self.undodata = None
         self.win = win
         self.item = item
-        self.key = int(self.item.text(1))
-        self.title = str(self.item.text(0))
+        # self.key = int(self.item.text(1))
+        # self.title = str(self.item.text(0))
         self.first_edit = not self.win.master.project_dirty
         self.cut = cut
         self.retain = retain

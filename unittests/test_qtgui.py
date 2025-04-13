@@ -1084,47 +1084,31 @@ class TestPasteCommand:
         assert not testobj.before
         assert not testobj.below
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert testobj.first_edit
         assert testobj.replaced is None
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Paste After',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste After',)\n"
         win.master.project_dirty = True
         testobj = testee.PasteCommand(win, False, True, item, description="Paste")
         assert not testobj.before
         assert testobj.below
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert not testobj.first_edit
         assert testobj.replaced is None
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Paste Under',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Under',)\n"
         testobj = testee.PasteCommand(win, True, False, item, description="Paste")
         assert testobj.before
         assert not testobj.below
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert not testobj.first_edit
         assert testobj.replaced is None
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Paste Before',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Before',)\n"
         testobj = testee.PasteCommand(win, True, True, item, description="Paste")
         assert testobj.before
         assert testobj.below
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert not testobj.first_edit
         assert testobj.replaced is None
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Paste Under',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Under',)\n"
 
     def test_redo(self, monkeypatch, capsys):
         """unittest for PasteCommand.redo
@@ -1221,51 +1205,35 @@ class TestCopyCommand:
         assert testobj.undodata is None
         assert testobj.win == win
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert testobj.first_edit
         assert not testobj.cut
         assert not testobj.retain
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Copy',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Copy',)\n"
         win.master.project_dirty = True
         testobj = testee.CopyCommand(win, False, True, item)
         assert testobj.undodata is None
         assert testobj.win == win
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert not testobj.first_edit
         assert not testobj.cut
         assert testobj.retain
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Copy',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Copy',)\n"
         testobj = testee.CopyCommand(win, True, False, item)
         assert testobj.undodata is None
         assert testobj.win == win
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert not testobj.first_edit
         assert testobj.cut
         assert not testobj.retain
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Delete',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Delete',)\n"
         testobj = testee.CopyCommand(win, True, True, item)
         assert testobj.undodata is None
         assert testobj.win == win
         assert testobj.item == item
-        assert testobj.key == 111
-        assert testobj.title == 'xxx'
         assert not testobj.first_edit
         assert testobj.cut
         assert testobj.retain
-        assert capsys.readouterr().out == ("called QUndoCommand with args ('Cut',)\n"
-                                           "called TreeItem.text for col 1\n"
-                                           "called TreeItem.text for col 0\n")
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Cut',)\n"
 
     def test_redo(self, monkeypatch, capsys):
         """unittest for CopyCommand.redo
