@@ -1496,8 +1496,8 @@ class TestTreePanel:
     def test_mouseReleaseEvent(self, monkeypatch, capsys):
         """unittest for TreePanel.mouseReleaseEvent
         """
-        def mock_itemat(line, col):
-            print(f'called Tree.itemAt with args ({line}, {col})')
+        def mock_itemat(pos):
+            print(f'called Tree.itemAt with args {pos}')
             return ''
         def mock_create(item):
             print(f"called Tree.create_popupmenu with arg '{item}'")
@@ -1514,13 +1514,13 @@ class TestTreePanel:
         event.button = lambda *x: testee.core.Qt.MouseButton.RightButton
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (
-                "called Tree.itemAt with args (x, y)\n"
-                "called Tree.create_popupmenu with arg 'item at (x, y)'\n")
+                "called Tree.itemAt with args ((1, 2),)\n"
+                "called Tree.create_popupmenu with arg 'item at (1, 2)'\n")
 
         testobj.itemAt = mock_itemat
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (
-                "called Tree.itemAt with args (x, y)\n"
+                "called Tree.itemAt with args (1, 2)\n"
                 f"called Tree.mouseReleaseEvent with arg {event}\n")
 
     def test_keyReleaseEvent(self, monkeypatch, capsys):

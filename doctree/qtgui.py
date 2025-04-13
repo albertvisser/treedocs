@@ -666,8 +666,10 @@ class TreePanel(qtw.QTreeWidget):
     def mouseReleaseEvent(self, event):
         "event handler for showing a context menu using the mouse"
         if event.button() == core.Qt.MouseButton.RightButton:
-            xc, yc = event.x(), event.y()
-            item = self.itemAt(xc, yc)
+            # xc, yc = event.x(), event.y()
+            # item = self.itemAt(xc, yc)
+            pos = event.position().toPoint()  # event.x(), event.y()
+            item = self.itemAt(pos)  # int(xc), int(yc))
             if item:
                 self.create_popupmenu(item)
                 return
