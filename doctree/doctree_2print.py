@@ -70,17 +70,13 @@ def main(fname, *, donot_filter_html=False, to_files=False):
 
         # pprint the first element; a dictionary with settings
         options = nt_data[0]
-        for opt in options:
-            if opt == 'RootData':
-                if to_files:
-                    if donot_filter_html:
-                        pass
-                    else:
-                        options[opt] = filter_html(options[opt])
-                    write_file(old, opt, options[opt], donot_filter_html)
-                else:
-                    print('options:', file=_out)
-                    pprint.pprint(options, stream=_out)
+        if not donot_filter_html:
+            options['RootData'] = filter_html(options['RootData'])
+        if to_files:
+            write_file(old, opt, options[opt], donot_filter_html)
+        else:
+            print('options:', file=_out)
+            pprint.pprint(options, width=200, stream=_out)
 
         # pprint the second element: the view(s) (lists of lists)
         ## if not to_files:
