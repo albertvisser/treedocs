@@ -1,6 +1,7 @@
 """unittests for ./doctree/qtgui.py
 """
 import types
+import pathlib
 from doctree import qtgui as testee
 import pytest
 from mockgui import mockqtwidgets as mockqtw
@@ -113,20 +114,21 @@ def test_get_filename(monkeypatch, capsys):
         print('called FileDialog.getSaveFileName with args', parent, args, kwargs)
         return 'xxxxx', True
     monkeypatch.setattr(testee.qtw, 'QFileDialog', mockqtw.MockFileDialog)
-    assert testee.get_filename('win', 'title', 'start') == (False, '')
+    win = types.SimpleNamespace(master=types.SimpleNamespace(FILE_TYPE=('Doctree File', '.trd')))
+    assert testee.get_filename(win, 'title', 'start') == (False, '')
     assert capsys.readouterr().out == ("called FileDialog.getOpenFileName with args"
-                                       " win ('title', 'start', 'Doctree Files (*.trd)') {}\n")
+                                       f" {win} ('title', 'start', 'Doctree Files (*.trd)') {{}}\n")
     monkeypatch.setattr(mockqtw.MockFileDialog, 'getOpenFileName', mock_open)
-    assert testee.get_filename('win', 'title', 'start') == (True, 'xxxxx')
+    assert testee.get_filename(win, 'title', 'start') == (True, 'xxxxx')
     assert capsys.readouterr().out == ("called FileDialog.getOpenFileName with args"
-                                       " win ('title', 'start', 'Doctree Files (*.trd)') {}\n")
-    assert testee.get_filename('win', 'title', 'start', True) == (False, '')
+                                       f" {win} ('title', 'start', 'Doctree Files (*.trd)') {{}}\n")
+    assert testee.get_filename(win, 'title', 'start', True) == (False, '')
     assert capsys.readouterr().out == ("called FileDialog.getSaveFileName with args"
-                                       " win ('title', 'start', 'Doctree Files (*.trd)') {}\n")
+                                       f" {win} ('title', 'start', 'Doctree Files (*.trd)') {{}}\n")
     monkeypatch.setattr(mockqtw.MockFileDialog, 'getSaveFileName', mock_save)
-    assert testee.get_filename('win', 'title', 'start', True) == (True, 'xxxxx')
+    assert testee.get_filename(win, 'title', 'start', True) == (True, 'xxxxx')
     assert capsys.readouterr().out == ("called FileDialog.getSaveFileName with args"
-                                       " win ('title', 'start', 'Doctree Files (*.trd)') {}\n")
+                                       f" {win} ('title', 'start', 'Doctree Files (*.trd)') {{}}\n")
 
 
 def test_show_dialog(monkeypatch, capsys):
@@ -191,6 +193,11 @@ class MockEditor:
         return 'opts', 'views'
     def setReadOnly(self, value):
         print(f'called Editor.setReadOnly with arg {value}')
+    def putsubtree(self, *args, **kwargs):
+        print('called Editor.putsubtree with args', args, kwargs)
+    def getsubtree(self, *args, **kwargs):
+        print('called Editor.getsubtree with args', args, kwargs)
+        return []
 
 
 class MockMainGui:
@@ -325,7 +332,7 @@ class TestOptionsDialog:
         def mock_get():
             print('called shared.get_setttexts')
             return {'xxx': 'xxxxxxxxxxxxxx', 'yyy': 'yyyyyyyyyyyyyyy'}
-        monkeypatch.setattr(testee.shared, 'get_setttexts', mock_get)
+        # monkeypatch.setattr(testee.shared, 'get_setttexts', mock_get)
         monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
         monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
         monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
@@ -337,6 +344,7 @@ class TestOptionsDialog:
         monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
         parent = MockMainGui()
         parent.master = MockEditor()
+        parent.master.get_setttexts = mock_get
         parent.master.opts = {'xxx': True, 'yyy': False, 'zzz': False}
         testobj = testee.OptionsDialog(parent)
         assert len(testobj.controls) == len(['xxx', 'yyy'])
@@ -1269,7 +1277,7 @@ class TestCopyCommand:
         testobj.item = ''
         testobj.win.master.activeitem = ''
         testobj.win.master.opts = {}
-        testobj.win.tree.putsubtree = mock_put
+        testobj.win.master.putsubtree = mock_put
         testobj.first_edit = False
         testobj.text = mock_text
         testobj.undo()
@@ -1290,7 +1298,8 @@ class TestCopyCommand:
         assert testobj.win.master.opts["ActiveItem"] == 'xx'
         assert testobj.win.master.views == ['views']
         assert capsys.readouterr().out == (
-                "called Tree.putsubtree with args ('oldloc', 'copied', 'items') {'pos': 2}\n"
+                "called Tree.putsubtree with args"
+                f" ({testobj.win.tree}, 'oldloc', 'copied', 'items') {{'pos': 2}}\n"
                 "called Editor.set_project_dirty with arg False\n"
                 "called CopyCommand.text\n"
                 "called StatusBar.showMessage with arg `Copy action undone`\n")
@@ -1953,36 +1962,6 @@ class TestTreePanel:
                                            f"called MainWindow.popitems with args ({item1}, [])\n"
                                            "called TreeItem.childCount\n")
 
-    def test_getsubtree(self, monkeypatch, capsys):
-        """unittest for TreePanel.getsubtree
-        """
-        def mock_get(self, *args, **kwargs):
-            print('called shared.getsubtree with args', args, kwargs)
-            return 'subtree'
-        monkeypatch.setattr(testee.shared, 'getsubtree', mock_get)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.getsubtree('item') == "subtree"
-        assert capsys.readouterr().out == (
-                "called shared.getsubtree with args ('item', None) {}\n")
-        assert testobj.getsubtree('item', itemlist=['item', 'list']) == "subtree"
-        assert capsys.readouterr().out == (
-                "called shared.getsubtree with args ('item', ['item', 'list']) {}\n")
-
-    def test_putsubtree(self, monkeypatch, capsys):
-        """unittest for TreePanel.putsubtree
-        """
-        def mock_put(self, *args, **kwargs):
-            print('called shared.putsubtree with args', args, kwargs)
-            return 'subtree'
-        monkeypatch.setattr(testee.shared, 'putsubtree', mock_put)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.putsubtree('parent', 'titel', 'key') == "subtree"
-        assert capsys.readouterr().out == (
-                "called shared.putsubtree with args ('parent', 'titel', 'key', None, -1) {}\n")
-        assert testobj.putsubtree('parent', 'titel', 'key', subtree='xxx', pos=1) == "subtree"
-        assert capsys.readouterr().out == (
-                "called shared.putsubtree with args ('parent', 'titel', 'key', 'xxx', 1) {}\n")
-
 
 def test_tabsize(monkeypatch, capsys):
     """unittest for qtgui.tabsize
@@ -2086,7 +2065,7 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.qtw.QTextEdit, 'document', mockqtw.MockEditorWidget.document)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.parent.master.opts = {'ImageCount': 1}
-        testobj.parent.master.temp_imagepath = testee.shared.pathlib.Path('xxx')
+        testobj.parent.master.temp_imagepath = pathlib.Path('xxx')
         source = types.SimpleNamespace(hasImage=lambda *x: False)
         testobj.insertFromMimeData(source)
         assert capsys.readouterr().out == (
@@ -3326,6 +3305,7 @@ class TestMainGui:
         menubar = mockqtw.MockMenuBar()
         testobj.menuBar = mock_menubar
         testobj.master = MockMainWindow()
+        testobj.master.HERE = pathlib.Path(__file__).parent.resolve()
         testobj.master.opts = {'ScreenSize': (1, 2)}
         testobj.master.get_menu_data = mock_getmenu
 
@@ -3363,6 +3343,8 @@ class TestMainGui:
         monkeypatch.setattr(testee.core, 'QSize', mockqtw.MockSize)
         monkeypatch.setattr(testee.gui, 'QFont', mockqtw.MockFont)
         testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.HERE = pathlib.Path(__file__).parent.resolve()
         testobj.menulist = []
         testobj.mainactiondict = {}
         testobj.styleactiondict = {}
@@ -3391,7 +3373,6 @@ class TestMainGui:
                              ('', callbacks[0], '', '', 'xxx')]),
                     ('bbb', [('bbbb', callbacks[9], '', '', '')]),
                     ('ccc', [('cccc', callbacks[10], '', '', '')])]
-        # breakpoint()
         testobj.create_menu(menubar, menudata)
         assert capsys.readouterr().out == expected_output['menu'].format(testobj=testobj,
                                                                          testee=testee,

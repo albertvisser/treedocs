@@ -975,7 +975,7 @@ class TestMainWindow:
                 "called MainWindow.set_window_title\n")
 
         testobj.project_file = testee.pathlib.Path('test.trd')
-        monkeypatch.setattr(testee.shared, 'FILE_TYPE', ('x', '.txt'))
+        monkeypatch.setattr(testobj, 'FILE_TYPE', ('x', '.txt'))
         testobj.saveas()
         assert testobj.project_file == testee.pathlib.Path('newname.txt')
         assert capsys.readouterr().out == (
@@ -1541,8 +1541,8 @@ class TestMainWindow:
     def test_do_copyaction(self, monkeypatch, capsys):
         """unittest for MainWindow.do_copyaction
         """
-        def mock_get(arg):
-            print(f'called Tree.getsubtree with arg {arg}')
+        def mock_get(*args):
+            print('called Tree.getsubtree with args', args)
             return 'x', ['1', '2']
         def mock_remove(*args):
             print('called Tree.removeitem wth args', args)
@@ -1552,7 +1552,7 @@ class TestMainWindow:
             return 'itemkey'
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.itemdict = {1: ('y', 'yy'), 2: ('z', 'zz'), 3: ('q', 'qq')}
-        testobj.gui.tree.getsubtree = mock_get
+        testobj.getsubtree = mock_get
         testobj.set_project_dirty = self.mocker.set_dirty
         testobj.opts = {'ActiveItem': [1, 3], 'ActiveView': 1}
         testobj.views = [(0, [(1, [(2, [])]), (3, [])]), (0, [(1, []), (2, []), (3, [])])]
@@ -1565,7 +1565,8 @@ class TestMainWindow:
         assert testobj.cut_from_itemdict == [(1, ('y', 'yy')), (2, ('z', 'zz'))]
         assert testobj.add_node_on_paste
         assert testobj.activeitem == 'x'
-        assert capsys.readouterr().out == "called Tree.getsubtree with arg current\n"
+        assert capsys.readouterr().out == (
+                f"called Tree.getsubtree with args ({testobj.gui.tree}, 'current')\n")
 
         testobj.copied_item = ''
         testobj.cut_from_itemdict = []
@@ -1580,13 +1581,14 @@ class TestMainWindow:
         assert not testobj.add_node_on_paste
         assert testobj.activeitem is 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
-        assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
-                                           "called Tree.removeitem wth args ('current',)\n"
-                                           "called Tree.getitemkey with arg prev\n"
-                                           "called MainWindow.remove_item_from_view with args"
-                                           " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
-                                           "called MainWindow.set_project_dirty with arg True\n"
-                                           "called Tree.set_item_selected with arg `prev`\n")
+        assert capsys.readouterr().out == (
+                f"called Tree.getsubtree with args ({testobj.gui.tree}, 'current')\n"
+                "called Tree.removeitem wth args ('current',)\n"
+                "called Tree.getitemkey with arg prev\n"
+                "called MainWindow.remove_item_from_view with args"
+                " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_selected with arg `prev`\n")
 
         testobj.copied_item = ''
         testobj.cut_from_itemdict = []
@@ -1598,12 +1600,13 @@ class TestMainWindow:
         assert not testobj.add_node_on_paste
         assert testobj.activeitem is 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
-        assert capsys.readouterr().out == ("called Tree.getsubtree with arg current\n"
-                                           "called Tree.removeitem wth args ('current',)\n"
-                                           "called MainWindow.remove_item_from_view with args"
-                                           " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
-                                           "called MainWindow.set_project_dirty with arg True\n"
-                                           "called Tree.set_item_selected with arg `prev`\n")
+        assert capsys.readouterr().out == (
+                f"called Tree.getsubtree with args ({testobj.gui.tree}, 'current')\n"
+                "called Tree.removeitem wth args ('current',)\n"
+                "called MainWindow.remove_item_from_view with args"
+                " ((0, [(1, [(2, [])]), (3, [])]), [1, 2])\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_selected with arg `prev`\n")
 
     def test_popitems(self, monkeypatch, capsys):
         """unittest for MainWindow.popitems
@@ -1755,6 +1758,8 @@ class TestMainWindow:
         def mock_replace(*args):
             print('called replace_keys with args', args)
             return ('pasted', 'item')
+        def mock_putsubtree(*args, **kwargs):
+            print('called Main.putsubtree with args', args, kwargs)
         def mock_add_item(*args):
             print('called add_item_to_view with args', args)
         testobj = self.setup_testobj(monkeypatch, capsys)
@@ -1764,6 +1769,7 @@ class TestMainWindow:
         testobj.itemdict = {0: ('x', 'xx'), 1: ('y', 'yy'), 3: ('z', 'zz')}
         testobj.views = [[(0, [(1, []), (3, [])])], [(0, []), (1, []), (3, [])]]
         testobj.opts = {'ActiveView': 1}
+        testobj.putsubtree = mock_putsubtree
         testobj.add_items_back = mock_add_back
         testobj.set_project_dirty = self.mocker.set_dirty
         monkeypatch.setattr(testee, 'add_newitems', mock_add_new)
@@ -1775,7 +1781,8 @@ class TestMainWindow:
                 " {0: ('x', 'xx'), 1: ('y', 'yy'), 3: ('z', 'zz')})\n"
                 "called replace_keys with args ('', {})\n"
                 "called Tree.getitemparentpos with arg `current`\n"
-                "called Tree.putsubtree with args ('add_to', 'pasted', 'item') {'pos': 1}\n"
+                "called Main.putsubtree with args"
+                f" ({testobj.gui.tree}, 'add_to', 'pasted', 'item') {{'pos': 1}}\n"
                 "called add_item_to_view with args (('pasted', 'item'), [(0, [(1, []), (3, [])])])\n"
                 "called MainWindow.set_project_dirty with arg True\n"
                 "called Tree.set_item_expanded with args ('current',)\n"
@@ -1783,28 +1790,31 @@ class TestMainWindow:
 
         testobj.add_node_on_paste = False
         assert testobj.do_pasteaction(False, True, 'current') == ([], ('current', -1))
-        assert capsys.readouterr().out == ("called MainWindow.add_items_back\n"
-                                           "called Tree.putsubtree with args ('current',) {}\n"
-                                           "called MainWindow.set_project_dirty with arg True\n"
-                                           "called Tree.set_item_expanded with args ('current',)\n"
-                                           "called Tree.set_item_selected with arg `current`\n")
+        assert capsys.readouterr().out == (
+                "called MainWindow.add_items_back\n"
+                f"called Main.putsubtree with args ({testobj.gui.tree}, 'current') {{}}\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_expanded with args ('current',)\n"
+                "called Tree.set_item_selected with arg `current`\n")
 
         testobj.add_node_on_paste = False
         assert testobj.do_pasteaction(True, True, 'current') == ([], ('current', -1))
-        assert capsys.readouterr().out == ("called MainWindow.add_items_back\n"
-                                           "called Tree.putsubtree with args ('current',) {}\n"
-                                           "called MainWindow.set_project_dirty with arg True\n"
-                                           "called Tree.set_item_expanded with args ('current',)\n"
-                                           "called Tree.set_item_selected with arg `current`\n")
+        assert capsys.readouterr().out == (
+                "called MainWindow.add_items_back\n"
+                f"called Main.putsubtree with args ({testobj.gui.tree}, 'current') {{}}\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_expanded with args ('current',)\n"
+                "called Tree.set_item_selected with arg `current`\n")
 
         testobj.add_node_on_paste = False
         assert testobj.do_pasteaction(False, False, 'current') == ([], ('add_to', 2))
-        assert capsys.readouterr().out == ("called MainWindow.add_items_back\n"
-                                           "called Tree.getitemparentpos with arg `current`\n"
-                                           "called Tree.putsubtree with args ('add_to',) {'pos': 2}\n"
-                                           "called MainWindow.set_project_dirty with arg True\n"
-                                           "called Tree.set_item_expanded with args ('current',)\n"
-                                           "called Tree.set_item_selected with arg `current`\n")
+        assert capsys.readouterr().out == (
+                "called MainWindow.add_items_back\n"
+                "called Tree.getitemparentpos with arg `current`\n"
+                f"called Main.putsubtree with args ({testobj.gui.tree}, 'add_to') {{'pos': 2}}\n"
+                "called MainWindow.set_project_dirty with arg True\n"
+                "called Tree.set_item_expanded with args ('current',)\n"
+                "called Tree.set_item_selected with arg `current`\n")
 
     def test_add_items_back(self, monkeypatch, capsys):
         """unittest for MainWindow.add_items_back
@@ -1814,6 +1824,67 @@ class TestMainWindow:
         testobj.cut_from_itemdict = [(2, ('y', 'yy'))]
         assert testobj.add_items_back() == [2]
         assert testobj.itemdict == {1: ('x', 'xx'), 2: ('y', 'yy')}
+
+    def test_getsubtree(self, monkeypatch, capsys):
+        """unittest for shared.getsubtree
+        """
+        def mock_get_data(item):
+            "stub"
+            print(f"called Tree.getitemdata with arg '{item}'")
+            return 'item title', 'item key'
+        def mock_get_kids(item):
+            "stub"
+            nonlocal counter
+            print(f"called Tree.getitemkids with arg '{item}'")
+            counter += 1
+            if counter == 1:
+                return ['kid1', 'kid2']
+            return []
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        tree = MockTree()
+        tree.getitemdata = mock_get_data
+        tree.getitemkids = mock_get_kids
+        counter = 0
+        assert testobj.getsubtree(tree, 'item') == (
+                ('item title', 'item key', [('item title', 'item key', []),
+                                            ('item title', 'item key', [])]),
+                ['item key', 'item key', 'item key'])
+        assert capsys.readouterr().out == ("called Tree.getitemdata with arg 'item'\n"
+                                           "called Tree.getitemkids with arg 'item'\n"
+                                           "called Tree.getitemdata with arg 'kid1'\n"
+                                           "called Tree.getitemkids with arg 'kid1'\n"
+                                           "called Tree.getitemdata with arg 'kid2'\n"
+                                           "called Tree.getitemkids with arg 'kid2'\n")
+
+    def test_putsubtree(self, monkeypatch, capsys):
+        """unittest for shared.putsubtree
+        """
+        def mock_add(*args):
+            "stub"
+            print("called Tree.add_to_parent with args", args)
+            return 'new treeitem'
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        tree = MockTree()
+        tree.add_to_parent = mock_add
+        subtree = [('subtitle1', 'subkey1', []), ('subtitle2', 'subkey2', [])]
+        assert testobj.putsubtree(tree, 'parent', 'titel', 'key', subtree, pos=1) == 'new treeitem'
+        assert capsys.readouterr().out == (
+                "called Tree.add_to_parent with args ('key', 'titel', 'parent', 1)\n"
+                "called Tree.add_to_parent with args ('subkey1', 'subtitle1', 'new treeitem', -1)\n"
+                "called Tree.add_to_parent with args ('subkey2', 'subtitle2', 'new treeitem', -1)\n")
+        assert testobj.putsubtree(tree, 'parent', 'titel', 'key', pos=1) == 'new treeitem'
+        assert capsys.readouterr().out == (
+                "called Tree.add_to_parent with args ('key', 'titel', 'parent', 1)\n")
+
+    def test_get_setttexts(self, monkeypatch, capsys):
+        """unittest for shared.get_setttexts
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        assert testobj.get_setttexts() == {
+                'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
+                'NotifyOnLoad': 'Notify that the data has been reloaded',
+                'NotifyOnSave': 'Notify that the data has been saved',
+                'EscapeClosesApp': 'Application can be closed by pressing Escape'}
 
     def test_move_to_file(self, monkeypatch, capsys):
         """unittest for MainWindow.move_to_file
@@ -1990,8 +2061,9 @@ class TestMainWindow:
     def test_hide_me(self, monkeypatch, capsys):
         """unittest for MainWindow.hide_me
         """
-        monkeypatch.setattr(testee.shared, 'HIDE_TEXT', 'xxx')
         testobj = self.setup_testobj(monkeypatch, capsys)
+        # monkeypatch.setattr(testobj, 'HIDE_TEXT', 'xxx')
+        testobj.HIDE_TEXT = 'xxx'
         testobj.confirm = self.mocker.confirm
         testobj.hide_me()
         assert capsys.readouterr().out == ("called MainWindow.confirm with args"

@@ -10,7 +10,6 @@ import tempfile
 # import zipfile as zpf
 import doctree.pickle_dml as dml
 from doctree import gui
-from doctree import shared
 
 app_info = "\n".join(["DocTree door Albert Visser",
                       "Uitgebreid electronisch notitieblokje",
@@ -59,13 +58,11 @@ def add_newitems(cut_from_itemdict, itemdict):
         newkey = max(itemdict.keys()) + 1
     except ValueError:
         newkey = 0
-    # shared.log(f"add_newitems: cut_from_itemdict is {cut_from_itemdict}")
     for key, item in cut_from_itemdict:
         title, text = item
         itemdict[newkey] = (title, text)
         keymap[key] = newkey
         newkey += 1
-    # shared.log(f"add_newitems: keymap is {keymap}")
     return itemdict, keymap
 
 
@@ -143,6 +140,12 @@ def reset_toolkit_file_if_needed():
 
 class MainWindow:
     "Primary application window (main screen)"
+    HERE = pathlib.Path(__file__).parent.resolve()
+    FILE_TYPE = ('Doctree File', '.trd')
+    HIDE_TEXT = ("DocTree gaat nu slapen in de System tray\n"
+                 "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken")
+
+
     def __init__(self, fname=''):
         self.project_dirty = False
         self.add_node_on_paste = False
@@ -418,8 +421,8 @@ class MainWindow:
         if ok:
             filename = pathlib.Path(filename)
             test = filename.suffix
-            if test != shared.FILE_TYPE[1]:
-                filename = filename.with_suffix(shared.FILE_TYPE[1])
+            if test != self.FILE_TYPE[1]:
+                filename = filename.with_suffix(self.FILE_TYPE[1])
             self.project_file = filename
             self.write(meld=True)
             self.set_window_title()
@@ -719,11 +722,8 @@ class MainWindow:
     def do_copyaction(self, cut, retain, current):  # to_other_file):
         "do the copying"
         # create a copy buffer
-        item_to_copy, itemlist = self.gui.tree.getsubtree(current)
-        # shared.log(f'in main.do_copyaction na getsubtree, copied_item is {copied_item},'
-        #            f' itemlist is {itemlist}')
+        item_to_copy, itemlist = self.getsubtree(self.gui.tree, current)
         cut_from_itemdict = [(int(x), self.itemdict[int(x)]) for x in itemlist]
-        # shared.log(f'  cut_from_itemdict wordt dan {cut_from_itemdict}')
         oldloc = None  # alleen interessant bij undo van cut/delete
         if retain:
             self.copied_item = item_to_copy
@@ -814,13 +814,13 @@ class MainWindow:
             used_keys = list(keymap.values())
        # items toevoegen aan visual tree
         if below:
-            self.gui.tree.putsubtree(current, *pasted_item)
+            self.putsubtree(self.gui.tree, current, *pasted_item)
             used_parent = (current, -1)
         else:
             add_to, pos = self.gui.tree.getitemparentpos(current)
             if not before:
                 pos += 1
-            self.gui.tree.putsubtree(add_to, *pasted_item, pos=pos)
+            self.putsubtree(self.gui.tree, add_to, *pasted_item, pos=pos)
             used_parent = (add_to, pos)
         # indien nodig het copied_item in eventuele andere views ook toevoegen
         if self.add_node_on_paste:
@@ -848,6 +848,37 @@ class MainWindow:
         #   self.itemdict.update({key: item for key, item in self.cut_from_itemdict})
         #   keys = [key for key, item in self.cut_from_itemdict]
         return keys
+
+    def getsubtree(self, tree, item, itemlist=None):
+        """recursieve functie om de structuur onder de te verplaatsen data
+        te onthouden"""
+        if itemlist is None:
+            itemlist = []
+        titel, key = tree.getitemdata(item)
+        itemlist.append(key)
+        subtree = []
+        for kid in tree.getitemkids(item):
+            data, itemlist = self.getsubtree(tree, kid, itemlist)
+            subtree.append(data)
+        return (titel, key, subtree), itemlist
+
+    def putsubtree(self, tree, parent, titel, key, subtree=None, pos=-1):
+        """recursieve functie om de onthouden structuur terug te zetten"""
+        if subtree is None:
+            subtree = []
+        new = tree.add_to_parent(key, str(titel), parent, pos)
+        for subtitel, subkey, subsubtree in subtree:
+            self.putsubtree(tree, new, subtitel, subkey, subsubtree)
+        return new
+
+    @staticmethod
+    def get_setttexts():
+        """returns texts associated with the message dialogs that can be hidden
+        """
+        return {'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
+                'NotifyOnLoad': 'Notify that the data has been reloaded',
+                'NotifyOnSave': 'Notify that the data has been saved',
+                'EscapeClosesApp': 'Application can be closed by pressing Escape'}
 
     def move_to_file(self, *args):
         "afhandelen Menu > Move / Ctrl-M"
@@ -941,7 +972,7 @@ class MainWindow:
 
     def hide_me(self, *args):
         """applicatie verbergen"""
-        self.confirm(setting="AskBeforeHide", textitem=shared.HIDE_TEXT)
+        self.confirm(setting="AskBeforeHide", textitem=self.HIDE_TEXT)
         self.gui.hide_me()
 
     def change_pane(self, *args):
@@ -1260,7 +1291,6 @@ class MainWindow:
 
     def check_active(self):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
-        # shared.log('*** in main.check_active ***')
         if self.activeitem:
             ref = self.gui.tree.getitemkey(self.activeitem)
             pos = self.gui.editor.get_text_position()
@@ -1271,7 +1301,6 @@ class MainWindow:
             if ref != -1:
                 self.text_positions[ref] = pos
             if self.gui.editor.check_dirty():
-                # shared.log(f'contents is {self.gui.tree.getitemdata(self.activeitem)}')
                 content = str(self.gui.editor.get_contents())
                 try:
                     # titel, tekst = self.itemdict[int(ref)]
@@ -1289,7 +1318,6 @@ class MainWindow:
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
-        # shared.log(f'*** in main.activate_item, item is {item}')
         self.activeitem = item
         ref = self.gui.tree.getitemkey(item)
         # try:

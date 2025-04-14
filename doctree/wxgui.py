@@ -8,7 +8,6 @@ import wx.lib.mixins.treemixin as treemix
 import wx.richtext as rt
 import wx.lib.colourselect as csel
 import wx.lib.buttons as wxlb
-from doctree import shared
 
 
 def show_message(win, text):
@@ -46,12 +45,13 @@ def get_choice(win, caption, options, current):
 
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
-    filter = "Pickle files (*.pck)|*.pck"
+    name, ext = self.master.FILE_TYPE
+    filter_ = f"{name} (*{ext})|*{ext}"
     start = os.path.dirname(start)
     if save:
-        dlg = wx.FileDialog(win, title, start, '', filter, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        dlg = wx.FileDialog(win, title, start, '', filter_, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
     else:
-        dlg = wx.FileDialog(win, title, start, '', filter, wx.FD_OPEN)
+        dlg = wx.FileDialog(win, title, start, '', filter_, wx.FD_OPEN)
     ok, filename = False, ''
     with dlg:
         if dlg.ShowModal() == wx.ID_OK:
@@ -141,7 +141,7 @@ class OptionsDialog(wx.Dialog):
     """
     def __init__(self, parent, id_):
         self.parent = parent
-        sett2text = shared.get_setttexts()
+        sett2text = self.parent.master.get_setttexts()
         super().__init__(parent, id_, title='A Propos Settings')
         pnl = self  # wx.Panel(self, -1)
         sizer0 = wx.BoxSizer(wx.VERTICAL)
@@ -246,8 +246,9 @@ class TaskbarIcon(wx.adv.TaskBarIcon):
 
 class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
     "Tree structure depicting the notes organization"
-    ## def __init__(self, *args, **kwargs):
-        ## super(TreePanel, self).__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        self.controller = args[0].parent
+        super().__init__(self, *args, **kwargs)
 
     def OnDrop(self, dropitem, dragitem):
         """reimplemented from treemix.DragAndDrop
@@ -260,16 +261,16 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
             return
         if dropitem is None:
             dropitem = self.root
-        ## dragtext = self.GetItemText(dragitem)  # alleen gebruikt in print statement?
-        ## dragdata = self.GetItemData(dragitem)  # niet gebruikt?
-        dragtree = shared.getsubtree(self, dragitem)
-        ## pprint.pprint(dragtree)
-        ## droptext = self.GetItemText(dropitem)  # alleen gebruikt in print statement?
-        ## dropdata = self.GetItemData(dropitem)  # niet gebruikt?
+        # dragtext = self.GetItemText(dragitem)  # alleen gebruikt in print statement?
+        # dragdata = self.GetItemData(dragitem)  # niet gebruikt?
+        dragtree = self.controller.getsubtree(self, dragitem)
+        # pprint.pprint(dragtree)
+        # droptext = self.GetItemText(dropitem)  # alleen gebruikt in print statement?
+        # dropdata = self.GetItemData(dropitem)  # niet gebruikt?
         self.Delete(dragitem)
-        ## item = self.AppendItem(dropitem, dragtext)
-        ## self.SetItemData(item, dragdata)
-        shared.putsubtree(self, dropitem, *dragtree)
+        # item = self.AppendItem(dropitem, dragtext)
+        # self.SetItemData(item, dragdata)
+        self.controller.putsubtree(self, dropitem, *dragtree)
         self.Expand(dropitem)
 
     def create_popupmenu(self, item):
@@ -328,8 +329,6 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
 
     def getitemparentpos(self, item):
         "parent en positie van item onder parent bepalen"
-        shared.log('*** in wx.tree.getitemparentpos ***')
-        shared.log(f'item is {item} {self.getitemtitle(item)}')
         try:
             root = self.GetItemParent(item)
         except TypeError:   # geen item meegegeven - mag dat eigenlijk wel?
@@ -338,12 +337,9 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
         else:
             pos = 0
             tag, cookie = self.GetFirstChild(root)
-            if tag:
-                shared.log(f'start at tag {tag} {self.getitemtitle(tag)}')
             while tag != item and tag.IsOk():
                 pos += 1
                 tag, cookie = self.GetNextChild(root, cookie)
-                shared.log(f'next ok tag is {tag} {self.getitemtitle(tag)}')
         return root, pos
 
     def getselecteditem(self):
@@ -379,14 +375,6 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
         self.Delete(item)
         return oldloc, prev
 
-    def getsubtree(self, item, itemlist=None):
-        "return part of the tree structure"
-        shared.getsubtree(self, item, itemlist)
-
-    def putsubtree(self, parent, titel, key, subtree=None, pos=-1):
-        "build a new part of the tree"
-        shared.putsubtree(self, parent, titel, key, subtree, pos)
-
 
 class EditorPanel(rt.RichTextCtrl):
     "Rich text editor displaying the selected note"
@@ -405,8 +393,6 @@ class EditorPanel(rt.RichTextCtrl):
 
     def set_contents(self, data):
         "load contents into editor"
-        shared.log("*** in set_contents: ***")
-        shared.log(data)
         self.Clear()
         data = str(data)
         # self.SetValue(data)
@@ -449,8 +435,6 @@ class EditorPanel(rt.RichTextCtrl):
             # # of moet dit zijn ok = _buffer.SaveFile(_out) ?
             out.seek(0)
             content = out.read()
-        shared.log("*** in get_contents: ***")
-        shared.log(content)
         return content
 
     def get_text_position(self):
@@ -764,7 +748,7 @@ class MainGui(wx.Frame):
 
     def setup_screen(self):
         "continue after we have a reference to the class"
-        self.app_icon = wx.Icon(os.path.join(shared.HERE, 'icons', "doctree.ico"),
+        self.app_icon = wx.Icon(os.path.join(self.master.HERE, 'icons', "doctree.ico"),
                                 wx.BITMAP_TYPE_ICO)
         self.SetIcon(self.app_icon)
         self.statbar = self.CreateStatusBar()
@@ -883,7 +867,7 @@ class MainGui(wx.Frame):
                         self.redo_item = menu_item
                 self.Bind(wx.EVT_MENU, handler, menu_item)
                 if icon:
-                    bmp = wx.Bitmap(os.path.join(shared.HERE, icon), wx.BITMAP_TYPE_PNG)
+                    bmp = wx.Bitmap(os.path.join(self.master.HERE, icon), wx.BITMAP_TYPE_PNG)
                     menu_item.SetBitmap(bmp)
                     # tevens opbouwen eerste toolbar
                     # tooltype = wx.ITEM_NORMAL

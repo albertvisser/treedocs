@@ -3,7 +3,7 @@ unittests
 
 [testscripts]
 main = test_main.py
-shared = test_shared.py
+log = test_logging.py
 mongo = test_mongo_dml.py
 pickle = test_pickle_dml.py
 qtgui = test_qtgui.py
@@ -11,7 +11,7 @@ wxgui = test_wxgui.py
 
 [testees]
 main = doctree/main.py
-shared = doctree/shared.py
+log = doctree/do_logging.py
 mongo = doctree/mongo_dml.py
 pickle = doctree/pickle_dml.py
 qtgui = doctree/qtgui.py

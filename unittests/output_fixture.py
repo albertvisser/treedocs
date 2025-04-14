@@ -209,7 +209,7 @@ called Action.setIcon
 main_menu = """\
 called MenuBar.addMenu with arg  aaa
 called Menu.__init__ with args ('aaa',)
-called Icon.__init__ with arg `{testee.shared.HERE}/aaa.ico`
+called Icon.__init__ with arg `{testobj.master.HERE}/aaa.ico`
 called Action.__init__ with args ('item of type Icon', 'aaaa', {testobj})
 called MainGui.addToolBar with arg aaa
 called Size.__init__ with args (16, 16)
@@ -217,7 +217,7 @@ called ToolBar.setIconSize
 called ToolBar.addAction
 called Signal.connect with args ({callbacks[0]},)
 called Menu.addAction
-called Icon.__init__ with arg `{testee.shared.HERE}/exit.ico`
+called Icon.__init__ with arg `{testobj.master.HERE}/exit.ico`
 called Action.__init__ with args ('item of type Icon', 'exit', {testobj})
 called ToolBar.addAction
 called Action.setShortcuts with arg `['Ctrl+X', 'Esc']`

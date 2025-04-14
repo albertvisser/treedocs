@@ -6,7 +6,6 @@ import contextlib
 import PyQt6.QtGui as gui
 import PyQt6.QtWidgets as qtw
 import PyQt6.QtCore as core
-from doctree import shared
 
 
 def show_message(win, text):
@@ -48,7 +47,7 @@ def get_choice(win, caption, options, current):
 
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
-    file_filter = "{}s (*{})".format(*shared.FILE_TYPE)
+    file_filter = "{}s (*{})".format(*win.master.FILE_TYPE)
     if save:
         filename = qtw.QFileDialog.getSaveFileName(win, title, start, file_filter)
     else:
@@ -118,7 +117,7 @@ class OptionsDialog(qtw.QDialog):
     """
     def __init__(self, parent):
         self.parent = parent
-        sett2text = shared.get_setttexts()
+        sett2text = self.parent.master.get_setttexts()
         super().__init__(parent)
         self.setWindowTitle('A Propos Settings')
         vbox = qtw.QVBoxLayout()
@@ -592,7 +591,7 @@ class CopyCommand(gui.QUndoCommand):
             for key, value in cut_from_itemdict:
                 self.win.master.itemdict[key] = value
             parent, pos = oldloc
-            newitem = self.win.tree.putsubtree(parent, *copied_items, pos=pos)
+            newitem = self.win.master.putsubtree(self.win.tree, parent, *copied_items, pos=pos)
             self.win.master.activeitem = self.item = newitem
         self.win.master.opts["ActiveItem"], self.win.master.views = self.oldstate
         if self.first_edit:
@@ -623,7 +622,6 @@ class TreePanel(qtw.QTreeWidget):
         # helaas zijn newsel en oldsel niet makkelijk om te rekenen naar treeitems
         self.parent.master.check_active()
         item = self.currentItem()
-        # shared.log(f'current item is now {item} {item.text(0)}')
         self.parent.master.activate_item(item)
         self.parent.master.set_window_title()
 
@@ -714,23 +712,16 @@ class TreePanel(qtw.QTreeWidget):
     def add_to_parent(self, itemkey, titel, parent, pos=-1):
         """add item to tree at a given location
         """
-        # shared.log(f'in add_to_parent, itemkey is {itemkey}, titel is {titel}, parent is {parent},')
         new = qtw.QTreeWidgetItem()
         new.setText(0, titel.rstrip())
         # save plain text on tree item to facilitate search
         # faster that using BeautifulSoup? Also, we don't need the import this way
         doc = gui.QTextDocument()
-        # shared.log(f'   itemdict is {self.parent.master.itemdict}')
-        # shared.log(f'   itemkey is {itemkey}, {type(itemkey)}')
         doc.setHtml(self.parent.master.itemdict[itemkey][1])
         rawtext = doc.toPlainText()
         new.setData(0, core.Qt.ItemDataRole.UserRole, rawtext)
-        #
-        ## new.setIcon(0, gui.QIcon(str(HERE / 'icons/empty.png')))
         new.setText(1, str(itemkey))
         new.setToolTip(0, titel.rstrip())
-        # shared.log(f'adding child {new} ({new.text(0)}) to parent {parent} ({parent.text(0)})'
-        #            ' at pos p{}')
         if pos == -1:
             parent.addChild(new)
         else:
@@ -756,14 +747,12 @@ class TreePanel(qtw.QTreeWidget):
     def getitemkey(item):
         "sleutel voor de itemdict ophalen"
         value = item.text(1)
-        # shared.log(f'in tree.getitemkey, type voor omzetten is {type(value)}')
         # with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
         # maar uit de displays blijkt dat dat praktisch altijd omgezet wordt van str naar int
         try:
             value = int(value)
         except ValueError:
             value = -1
-        # shared.log(f'in tree.getitemkey, type na omzetten is {type(value)}')
         return value
 
     @staticmethod
@@ -837,14 +826,6 @@ class TreePanel(qtw.QTreeWidget):
         for parent, pos in reversed(to_remove):
             parent.takeChild(pos)
         return oldloc, prev, cut_from_itemdict
-
-    def getsubtree(self, item, itemlist=None):
-        "return part of the tree structure"
-        return shared.getsubtree(self, item, itemlist)
-
-    def putsubtree(self, parent, titel, key, subtree=None, pos=-1):
-        "build a new part of the tree"
-        return shared.putsubtree(self, parent, titel, key, subtree, pos)
 
 
 def tabsize(pointsize):
@@ -1275,7 +1256,7 @@ class MainGui(qtw.QMainWindow):
         "continue after we have a reference to the class"
         offset = 40 if os.name != 'posix' else 10
         self.move(offset, offset)
-        self.nt_icon = gui.QIcon(str(shared.HERE / 'icons' / "doctree.xpm"))
+        self.nt_icon = gui.QIcon(str(self.master.HERE / 'icons' / "doctree.xpm"))
         self.app.setWindowIcon(self.nt_icon)
         self.tray_icon = qtw.QSystemTrayIcon(self.nt_icon, self)
         self.tray_icon.setToolTip("Click to revive DocTree")
@@ -1345,7 +1326,7 @@ class MainGui(qtw.QMainWindow):
                 if 'line spacing' in label.lower() or 'paragraph spacing' in label.lower():
                     continue
                 if icon:
-                    action = gui.QAction(gui.QIcon(str(shared.HERE / icon)), label, self)
+                    action = gui.QAction(gui.QIcon(str(self.master.HERE / icon)), label, self)
                     if not toolbar_added:
                         toolbar = self.addToolBar(item)
                         toolbar.setIconSize(core.QSize(16, 16))

@@ -4,7 +4,6 @@ import pickle
 import shutil
 import zipfile as zpf
 import bs4 as bs
-# from doctree import shared
 
 
 def read_from_files(this_file, other_file, temp_imagepath):
