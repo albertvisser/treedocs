@@ -172,6 +172,7 @@ class MainWindow:
                 err = self.read()
                 if err:
                     gui.show_message(self.gui, err[0])
+                    import sys; sys.exit()
         else:
             self.new(ask_ok=False)
         reset_toolkit_file_if_needed()
@@ -676,7 +677,8 @@ class MainWindow:
             return
         if self.gui.in_editor:
             ref = self.gui.tree.getitemkey(self.activeitem)
-            self.gui.editor.set_text_position(self.text_positions[ref])
+            if ref != -1:   # root level may not yet have a textposition entry
+                self.gui.editor.set_text_position(self.text_positions[ref])
 
     def cut_item(self, *args):
         "cut = copy with removing item from tree"

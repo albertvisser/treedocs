@@ -636,6 +636,17 @@ class TestMainWindow:
         def mock_exists_2(arg):
             print('called path.exists with arg', arg)
             return True
+        def mock_init(self, *args, **kwargs):
+            """stub for doctree.gui.__init__
+            """
+            print("called MainGui.__init__ with args", args[1:], kwargs)
+            self.tree = MockTree()
+            self.editor = MockEditor()
+            self.undo_stack = MockStack()
+        def mock_show(*args):
+            """stub for doctree.gui.show_message
+            """
+            print('called gui.show_message with args', args[1:])
         monkeypatch.setattr(testee, 'reset_toolkit_file_if_needed', mock_reset)
         monkeypatch.setattr(testee.gui, 'MainGui', MockGui)
         monkeypatch.setattr(testee.gui, 'ask_ynquestion', mock_ask_yn)
@@ -731,25 +742,17 @@ class TestMainWindow:
 
         monkeypatch.setattr(testee.pathlib.Path, 'exists', mock_exists_2)
         monkeypatch.setattr(testee.MainWindow, 'read', self.mocker.read_error)
-        testobj = testee.MainWindow('test.trd')
-        assert not testobj.project_dirty
-        assert not testobj.add_node_on_paste
-        assert not testobj.has_treedata
-        assert testobj.imagelist == []
-        assert hasattr(testobj, 'temp_imagepath') and isinstance(testobj.temp_imagepath,
-                                                                 testee.pathlib.Path)
-        assert testobj.copied_item == ()
-        assert testobj.cut_from_itemdict == []
-        assert not testobj.images_embedded
+        monkeypatch.setattr(MockGui, '__init__', mock_init)
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show)
+        with pytest.raises(SystemExit):
+            testobj = testee.MainWindow('test.trd')
         assert capsys.readouterr().out == (
-                f"called MainGui.__init__ with args ({testobj},) {{'title': 'Doctree'}}\n"
+                f"called MainGui.__init__ with args () {{'title': 'Doctree'}}\n"
                 "called MainGui.setup_screen\n"
                 "called path.resolve with arg test.trd\n"
                 "called path.exists with arg resolved\n"
                 "called MainWindow.read\n"
-                f"called gui.show_message with args ({testobj.gui}, 'error')\n"
-                "called reset_toolkit_file_if_needed\n"
-                "called MainGui.go\n")
+                f"called gui.show_message with args ('error',)\n")
 
     def test_get_menu_data(self, monkeypatch, capsys):
         """unittest for MainWindow.get_menu_data
@@ -1419,6 +1422,9 @@ class TestMainWindow:
         def mock_set(*args, **kwargs):
             print('called MainGui.set_prev_item with args', args, kwargs)
             return True
+        def mock_get(arg):
+            print(f'called Tree.getitemkey with arg `{arg}`')
+            return -1
         monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.activeitem = 'active item'
@@ -1438,6 +1444,11 @@ class TestMainWindow:
             "called MainGui.set_prev_item with args () {'any_level': True}\n"
             "called Tree.getitemkey with arg `active item`\n"
             "called Editor.set_text_position with arg 'here'\n")
+        testobj.gui.tree.getitemkey = mock_get
+        testobj.prev_note_any()
+        assert capsys.readouterr().out == (
+            "called MainGui.set_prev_item with args () {'any_level': True}\n"
+            "called Tree.getitemkey with arg `active item`\n")
 
     def test_cut_item(self, monkeypatch, capsys):
         """unittest for MainWindow.cut_item
