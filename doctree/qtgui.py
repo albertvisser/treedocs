@@ -1539,14 +1539,16 @@ class MainGui(qtw.QMainWindow):
                 item = parent.child(pos + 1)
                 self.tree.setCurrentItem(item)
                 return True
-            if any_level:             # #1018:
-                gp = parent.parent()  # dit recursief uitvoeren tot next gevonden of root bereikt
-                if gp is not None:
+            if any_level:
+                gp = parent.parent()
+                while gp:
                     pos = gp.indexOfChild(parent)
                     if pos < gp.childCount() - 1:
                         item = gp.child(pos + 1)
                         self.tree.setCurrentItem(item)
                         return True
+                    parent = gp
+                    gp = parent.parent()
         return False
 
     def set_prev_item(self, any_level=False):

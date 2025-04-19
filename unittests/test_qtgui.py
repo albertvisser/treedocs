@@ -1963,7 +1963,7 @@ class TestTreePanel:
                                            "called TreeItem.childCount\n")
 
 
-def test_tabsize(monkeypatch, capsys):
+def test_tabsize():
     """unittest for qtgui.tabsize
     """
     assert testee.tabsize(1) == 4
@@ -3585,7 +3585,7 @@ class TestMainGui:
         assert capsys.readouterr().out == "called Application.__init__\n"
         monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
         testobj.set_focus_to_editor = mock_set
-        with pytest.raises(SystemExit) as e:
+        with pytest.raises(SystemExit):
             testobj.go()
         assert capsys.readouterr().out == ("called MainWindow.show\n"
                                            "called MainGui.set_focus_to_editor\n"
@@ -3674,48 +3674,311 @@ class TestMainGui:
 
     def test_set_next_item(self, monkeypatch, capsys):
         """unittest for MainGui.set_next_item
+        # activeitem zonder children en zonder parent
+        #  1. geen any_level: stopt (result is False)
+        #  2. wel any_level: stopt (result is False)
+        # activeitem met 1 child eronder en geen parent
+        #  3. any_level: gaat naar child (eerste 4 regels)
+        #  4: geen any_level: stopt (result is False) (5e regel, rest overslaan; )
+        # activeitem met 1 child eronder en wel een parent (en een sibling volgend)
+        #  5: zonder any_level: stopt (esult is False)
+        #  6: met any_level: gaat naar child (weer eerste 4 regels)
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.master = MockEditor()
         testobj.master.activeitem = mockqtw.MockTreeItem()
-        child = mockqtw.MockTreeItem()
-        testobj.master.activeitem.addChild(child)
+        testobj.master.activeitem._parent = None
         testobj.tree = mockqtw.MockTreeWidget()
         assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
                                            "called Tree.__init__\n")
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+        assert not testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n")
+
+        child = mockqtw.MockTreeItem()
+        testobj.master.activeitem.addChild(child)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
         assert testobj.set_next_item(any_level=True)
         assert capsys.readouterr().out == ("called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 0\n"
                                            f"called Tree.setCurrentItem with arg `{child}`\n")
 
-        testobj.master.activeitem._parent = None
         assert not testobj.set_next_item()
         assert capsys.readouterr().out == "called TreeItem.parent\n"
 
         parent = mockqtw.MockTreeItem()
+        next_one = mockqtw.MockTreeItem()
         parent.addChild(testobj.master.activeitem)
+        parent.addChild(next_one)
         assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 1\n"
+                                           f"called Tree.setCurrentItem with arg `{next_one}`\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{child}`\n")
+
+    def test_set_next_item_2(self, monkeypatch, capsys):
+        """unittest for MainGui.set_next_item
+        geen children, wel een parent met een sibling volgend op parent niveau
+        geen any_level: stopt (result is False)
+        wel any_level: gaat naar parent's sibling
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        parent._parent = None
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
                                            "called TreeItem.addChild\n")
         assert not testobj.set_next_item()
-        # deze gaat de any_level branch in maar gaat niet dieper omdat er geen grandparent is.
-        # en dat stuk moet misschien anders, zie ticket #1018
         assert capsys.readouterr().out == ("called TreeItem.parent\n"
                                            "called TreeItem.indexOfChild\n"
                                            "called TreeItem.childCount\n")
+        assert not testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n")
+        gp = mockqtw.MockTreeItem()
+        gp.addChild(parent)
+        next_p = mockqtw.MockTreeItem()
+        gp.addChild(next_p)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        # breakpoint()
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 1\n"
+                                           f"called Tree.setCurrentItem with arg `{next_p}`\n")
 
-        # assert testobj.set_next_item(any_level=True)
-        # assert capsys.readouterr().out == ("")
-
-    def _test_set_prev_item(self, monkeypatch, capsys):
-        """unittest for MainGui.set_prev_item
+    def test_set_next_item_3(self, monkeypatch, capsys):
+        """unittest for MainGui.set_next_item
+        geen children, wel een parent met een parent en een sibling volgend op grandparent niveau
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.set_prev_item() == "expected_result"
-        assert capsys.readouterr().out == ("")
-        assert testobj.set_prev_item(any_level=True) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        gp = mockqtw.MockTreeItem()
+        gp.addChild(parent)
+        ggp = mockqtw.MockTreeItem()
+        ggp.addChild(gp)
+        next_p = mockqtw.MockTreeItem()
+        ggp.addChild(next_p)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 1\n"
+                                           f"called Tree.setCurrentItem with arg `{next_p}`\n")
+
+    def test_set_prev_item(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + (no parent)
+        |--  active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.master.activeitem._parent = None
+        testobj.tree = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n")
+        assert not testobj.set_prev_item()
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+        assert not testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+
+    def test_set_prev_item_2(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        assert not testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           f"called Tree.setCurrentItem with arg `{parent}`\n")
+
+    def test_set_prev_item_3(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |-- prev_one
+        |-- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        prev_one = mockqtw.MockTreeItem()
+        parent.addChild(prev_one)
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+
+    def test_set_prev_item_4(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |-+ prev_parent
+          |-- prev_one
+        |-- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        prev_one = mockqtw.MockTreeItem()
+        prev_parent = mockqtw.MockTreeItem()
+        prev_parent.addChild(prev_one)
+        parent.addChild(prev_parent)
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_parent}`\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+
+    def test_set_prev_item_5(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |-+ prev_parent
+          |-+ prev_child
+            |-- prev_one
+        |-- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockEditor()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        prev_parent = mockqtw.MockTreeItem()
+        prev_child = mockqtw.MockTreeItem()
+        prev_one = mockqtw.MockTreeItem()
+        prev_child.addChild(prev_one)
+        prev_parent.addChild(prev_child)
+        parent.addChild(prev_parent)
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_parent}`\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
 
     def test_start_copy(self, monkeypatch, capsys):
         """unittest for MainGui.start_copy
