@@ -8,7 +8,8 @@ from datetime import datetime
 import tempfile
 # import pickle as pck
 # import zipfile as zpf
-import doctree.pickle_dml as dml
+# import doctree.pickle_dml as dml
+import doctree.json_dml as dml
 from doctree import gui
 
 app_info = "\n".join(["DocTree door Albert Visser",
@@ -144,7 +145,6 @@ class MainWindow:
     FILE_TYPE = ('Doctree File', '.trd')
     HIDE_TEXT = ("DocTree gaat nu slapen in de System tray\n"
                  "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken")
-
 
     def __init__(self, fname=''):
         self.project_dirty = False

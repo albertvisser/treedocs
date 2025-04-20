@@ -1,8 +1,10 @@
 """DocTree utility program to present the data in a viewable form
 """
 import pathlib
+import tempfile
+import zipfile as zpf
+import json
 import pprint
-import pickle as pck
 import bs4 as bs
 
 
@@ -42,38 +44,49 @@ def main(fname, *, donot_filter_html=False, to_files=False):
     output files are created in the same directory as the input file and end with
     .out
     """
-    ## """
-    ## Als het opgegeven bestand een doctree structuur bevat, geef deze dan weer
-    ## in een leesbare vorm
+    # """
+    # Als het opgegeven bestand een doctree structuur bevat, geef deze dan weer
+    # in een leesbare vorm
 
-    ## uit de html voor in de edit velden wordt de tekst geëxtraheerd tenzij
-    ## een tweede argument opgegeven is
-    ## """
+    # uit de html voor in de edit velden wordt de tekst geëxtraheerd tenzij
+    # een tweede argument opgegeven is
+    # """
 
-    old = pathlib.Path(fname)
+    infile = pathlib.Path(fname)
+    temp_imagepath = pathlib.Path(tempfile.mkdtemp())
     extra = 'as-saved' if donot_filter_html else 'text-only'
     new = pathlib.Path(fname + f'-{extra}.out')
     print('donot-filter-html:', donot_filter_html)
     print('to-files:', to_files)
     # try to open the input file, if not present do not create output but fail
+    with zpf.ZipFile(infile) as zipped:
+        imagelist = zipped.namelist()
+        for name in imagelist:
+            if name.endswith('.json'):
+                zipped.extract(name, path=temp_imagepath)
+                break
+        else:
+            return 'no data portion found in file'
+    old = temp_imagepath / name
     with old.open("rb") as f_in, new.open('w') as _out:
 
         # get the input from the file
-        nt_data = pck.load(f_in)
+        nt_data = json.load(f_in)
 
         # if this is not a list whose first element is a dictionary that contains a specific key
         # then this is definitely not a doctree structure
         try:
-            test = nt_data[0]["AskBeforeHide"]
+            test = nt_data['0']["AskBeforeHide"]
         except (ValueError, KeyError):
             return "{fname} is not a valid Doctree data file"
 
         # pprint the first element; a dictionary with settings
-        options = nt_data[0]
+        options = nt_data['0']
         if not donot_filter_html:
             options['RootData'] = filter_html(options['RootData'])
         if to_files:
-            write_file(old, opt, options[opt], donot_filter_html)
+            for opt in options:
+                write_file(old, opt, options[opt], donot_filter_html)
         else:
             print('options:', file=_out)
             pprint.pprint(options, width=200, stream=_out)
@@ -81,13 +94,13 @@ def main(fname, *, donot_filter_html=False, to_files=False):
         # pprint the second element: the view(s) (lists of lists)
         ## if not to_files:
         print('views', file=_out)
-        pprint.pprint(nt_data[1], stream=_out)
+        pprint.pprint(nt_data['1'], stream=_out)
 
         # pprint the third element: a dictionary with node titles en texts
         if donot_filter_html:
-            itemdict = nt_data[2]
+            itemdict = nt_data['2']
         else:
-            itemdict = {x: (y[0], filter_html(y[1])) for x, y in nt_data[2].items()}
+            itemdict = {x: (y[0], filter_html(y[1])) for x, y in nt_data['2'].items()}
         if to_files:
             for key, value in itemdict.items():
                 write_file(old, " ".join((str(key), value[0])), value[1],
@@ -96,6 +109,6 @@ def main(fname, *, donot_filter_html=False, to_files=False):
             print('itemdict', file=_out)
             pprint.pprint(itemdict, width=200, stream=_out)
 
-        text_positions = nt_data[3]
+        text_positions = nt_data['3']
         pprint.pprint(text_positions, width=200, stream=_out)
         return 'done.'
