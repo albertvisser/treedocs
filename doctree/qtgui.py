@@ -947,6 +947,14 @@ class EditorPanel(qtw.QTextEdit):
         fmt.setFontStrikeOut(self.parent.styleactiondict['Strike&through'].isChecked())
         self.mergeCurrentCharFormat(fmt)
 
+    def text_monospace(self):  # , event=None):
+        "selectie monospaced maken"
+        if not self.hasFocus():
+            return
+        fmt = gui.QTextCharFormat()
+        fmt.setFontFixedPitch(self.parent.styleactiondict['&Monospace'].isChecked())
+        self.mergeCurrentCharFormat(fmt)
+
     def align_left(self):  # , event=None):
         "alinea links uitlijnen"
         if not self.hasFocus():
@@ -1139,14 +1147,15 @@ class EditorPanel(qtw.QTextEdit):
         de selectie in de comboboxen wordt aangepast, de van toepassing zijnde
         menuopties worden aangevinkt, en en de betreffende toolbaricons worden
         geaccentueerd"""
-        self.parent.combo_font.setCurrentIndex(
-            self.parent.combo_font.findText(gui.QFontInfo(font).family()))
-        self.parent.combo_size.setCurrentIndex(
-            self.parent.combo_size.findText(str(font.pointSize())))
+        # self.parent.combo_font.setCurrentIndex(
+        #     self.parent.combo_font.findText(gui.QFontInfo(font).family()))
+        # self.parent.combo_size.setCurrentIndex(
+        #     self.parent.combo_size.findText(str(font.pointSize())))
         self.parent.styleactiondict["&Bold"].setChecked(font.bold())
         self.parent.styleactiondict["&Italic"].setChecked(font.italic())
         self.parent.styleactiondict["&Underline"].setChecked(font.underline())
         self.parent.styleactiondict["Strike&through"].setChecked(font.strikeOut())
+        self.parent.styleactiondict["&Monospace"].setChecked(font.fixedPitch())
 
     def color_changed(self, col):
         """kleur aanpassen
@@ -1349,7 +1358,7 @@ class MainGui(qtw.QMainWindow):
                 if info.startswith("Check"):
                     action.setCheckable(True)
                     info = info[5:]
-                    if info in ('B', 'I', 'U', 'S'):
+                    if info in ('B', 'I', 'U', 'S', 'M'):
                         font = gui.QFont()
                         if info == 'B':
                             font.setBold(True)
@@ -1357,8 +1366,11 @@ class MainGui(qtw.QMainWindow):
                             font.setItalic(True)
                         elif info == 'U':
                             font.setUnderline(True)
-                        else:  # if info == 'S':
+                        # else:
+                        elif info == 'S':
                             font.setStrikeOut(True)
+                        else:  # if info == 'M':
+                            font.setFixedPitch(True)
                         action.setFont(font)
                         info = ''
                 if info:
@@ -1385,25 +1397,25 @@ class MainGui(qtw.QMainWindow):
     def create_stylestoolbar(self):
         "build toolbar with buttons to change styles"
         toolbar = self.addToolBar('styles')
-        self.combo_font = qtw.QFontComboBox(toolbar)
-        toolbar.addWidget(self.combo_font)
-        self.combo_font.currentTextChanged[str].connect(self.editor.text_family)
-        ## self.combo_font.activated.connect(self.editor.text_family)
-        self.combo_size = qtw.QComboBox(toolbar)
-        toolbar.addWidget(self.combo_size)
-        self.combo_size.setEditable(True)
-        # db = gui.QFontDatabase()
-        self.fontsizes = []
-        # for size in db.standardSizes():
-        for size in gui.QFontDatabase.standardSizes():
-            self.combo_size.addItem(str(size))
-            self.fontsizes.append(str(size))
-        # self.fontsizes = [str(x) for x in gui.QFontDataBase.standardsizes()]
-        # self.combo.size.additems(self.fontsizes)
-        ## self.combo_size.activated[str].connect(self.editor.text_size)
-        self.combo_size.activated.connect(self.editor.text_size)
-        self.combo_size.setCurrentIndex(self.combo_size.findText(
-            str(self.editor.font().pointSize())))
+        # self.combo_font = qtw.QFontComboBox(toolbar)
+        # toolbar.addWidget(self.combo_font)
+        # self.combo_font.currentTextChanged[str].connect(self.editor.text_family)
+        # # self.combo_font.activated.connect(self.editor.text_family)
+        # self.combo_size = qtw.QComboBox(toolbar)
+        # toolbar.addWidget(self.combo_size)
+        # self.combo_size.setEditable(True)
+        # # db = gui.QFontDatabase()
+        # self.fontsizes = []
+        # # for size in db.standardSizes():
+        # for size in gui.QFontDatabase.standardSizes():
+        #     self.combo_size.addItem(str(size))
+        #     self.fontsizes.append(str(size))
+        # # self.fontsizes = [str(x) for x in gui.QFontDataBase.standardsizes()]
+        # # self.combo.size.additems(self.fontsizes)
+        # # self.combo_size.activated[str].connect(self.editor.text_size)
+        # self.combo_size.activated.connect(self.editor.text_size)
+        # self.combo_size.setCurrentIndex(self.combo_size.findText(
+        #     str(self.editor.font().pointSize())))
 
         self.setcoloraction_color = core.Qt.GlobalColor.black
         pix = gui.QPixmap(14, 14)

@@ -2286,6 +2286,38 @@ class TestEditorPanel:
                                            "called TextCharFormat.setFontStrikeOut with arg True\n"
                                            "called EditorPanel.mergeCurrentCharformat\n")
 
+    def test_text_monospace(self, monkeypatch, capsys):
+        """unittest for EditorPanel.text_monospace
+        """
+        def mock_has_focus():
+            print('called Editor.hasFocus')
+            return True
+        def mock_merge(arg):
+            print('called EditorPanel.mergeCurrentCharformat')
+        monkeypatch.setattr(testee.EditorPanel, 'hasFocus', mockqtw.MockEditorWidget.hasFocus)
+        monkeypatch.setattr(testee.gui, 'QTextCharFormat', mockqtw.MockTextCharFormat)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.mergeCurrentCharFormat = mock_merge
+        testobj.parent.styleactiondict = {'&Monospace': mockqtw.MockCheckBox()}
+        assert capsys.readouterr().out == ("called CheckBox.__init__\n")
+        testobj.text_monospace()
+        assert capsys.readouterr().out == ("called Editor.hasFocus\n")
+        testobj.hasFocus = mock_has_focus
+        testobj.text_monospace()
+        assert capsys.readouterr().out == ("called Editor.hasFocus\n"
+                                           "called TextCharFormat.__init__ with args ()\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called TextCharFormat.setFontFixedPitch with arg False\n"
+                                           "called EditorPanel.mergeCurrentCharformat\n")
+        testobj.parent.styleactiondict['&Monospace'].setChecked(True)
+        assert capsys.readouterr().out == ("called CheckBox.setChecked with arg True\n")
+        testobj.text_monospace()
+        assert capsys.readouterr().out == ("called Editor.hasFocus\n"
+                                           "called TextCharFormat.__init__ with args ()\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called TextCharFormat.setFontFixedPitch with arg True\n"
+                                           "called EditorPanel.mergeCurrentCharformat\n")
+
     def test_align_left(self, monkeypatch, capsys):
         """unittest for EditorPanel.align_left
         """
@@ -2922,7 +2954,8 @@ class TestEditorPanel:
         testobj.parent.styleactiondict = {'&Bold': mockqtw.MockCheckBox(),
                                           '&Italic': mockqtw.MockCheckBox(),
                                           '&Underline': mockqtw.MockCheckBox(),
-                                          'Strike&through': mockqtw.MockCheckBox()}
+                                          'Strike&through': mockqtw.MockCheckBox(),
+                                          '&Monospace': mockqtw.MockCheckBox()}
         font = mockqtw.MockFont()
         assert capsys.readouterr().out == ("called ComboBox.__init__\n"
                                            "called ComboBox.__init__\n"
@@ -2930,15 +2963,16 @@ class TestEditorPanel:
                                            "called CheckBox.__init__\n"
                                            "called CheckBox.__init__\n"
                                            "called CheckBox.__init__\n"
+                                           "called CheckBox.__init__\n"
                                            "called Font.__init__\n")
         testobj.font_changed(font)
-        assert capsys.readouterr().out == (f"called FontInfo.__init__ with arg {font}\n"
-                                           "called Font.family\n"
-                                           "called ComboBox.findText with args ('family name',)\n"
-                                           "called ComboBox.setCurrentIndex with arg `1`\n"
-                                           "called Font.pointSize\n"
-                                           "called ComboBox.findText with args ('fontsize',)\n"
-                                           "called ComboBox.setCurrentIndex with arg `1`\n"
+        assert capsys.readouterr().out == (# f"called FontInfo.__init__ with arg {font}\n"
+                                           # "called Font.family\n"
+                                           # "called ComboBox.findText with args ('family name',)\n"
+                                           # "called ComboBox.setCurrentIndex with arg `1`\n"
+                                           # "called Font.pointSize\n"
+                                           # "called ComboBox.findText with args ('fontsize',)\n"
+                                           # "called ComboBox.setCurrentIndex with arg `1`\n"
                                            "called Font.bold\n"
                                            "called CheckBox.setChecked with arg bold\n"
                                            "called Font.italic\n"
@@ -2946,7 +2980,9 @@ class TestEditorPanel:
                                            "called Font.underline\n"
                                            "called CheckBox.setChecked with arg underline\n"
                                            "called Font.strikeOut\n"
-                                           "called CheckBox.setChecked with arg strikeOut\n")
+                                           "called CheckBox.setChecked with arg strikeOut\n"
+                                           "called Font.fixedPitch\n"
+                                           "called CheckBox.setChecked with arg fixedPitch\n")
 
     def test_color_changed(self, monkeypatch, capsys):
         """unittest for EditorPanel.color_changed
@@ -3355,7 +3391,7 @@ class TestMainGui:
         assert capsys.readouterr().out == "called MenuBar.__init__\n"
         testobj.create_menu(menubar, [])
         assert capsys.readouterr().out == ("")
-        callbacks = [lambda: x for x in range(11)]
+        callbacks = [lambda: x for x in range(12)]
         menudata = [('aaa', [('aaaa', callbacks[0], '', 'aaa.ico', ''),
                              ('exit', callbacks[1], 'Ctrl+X,Esc', 'exit.ico', '')]),
                     ('xxx', [('LinE sPacINg', '', '', '', ''),
@@ -3364,6 +3400,7 @@ class TestMainGui:
                              ('I', callbacks[3], '', '', 'CheckI'),
                              ('U', callbacks[4], '', '', 'CheckU'),
                              ('S', callbacks[5], '', '', 'CheckS'),
+                             ('M', callbacks[11], '', '', 'CheckM'),
                              (),
                              (),
                              ('X', callbacks[6], '', '', 'Check'),
@@ -3386,7 +3423,7 @@ class TestMainGui:
         assert testobj.menulist[3] == testobj.treemenu
         assert len(testobj.menulist[0].actions()) == 2
         assert len(testobj.menulist[1].actions()) == 0
-        assert len(testobj.menulist[2].actions()) == 7
+        assert len(testobj.menulist[2].actions()) == 8
         assert len(testobj.menulist[3].actions()) == 2
         assert len(testobj.menulist[4].actions()) == 1
         assert len(testobj.menulist[5].actions()) == 1
@@ -3467,8 +3504,8 @@ class TestMainGui:
         testobj.editor.select_background_color = lambda: 'bg color'
         testobj.editor.set_background_color = lambda: 'bg color'
         testobj.create_stylestoolbar()
-        assert isinstance(testobj.combo_font, testee.qtw.QFontComboBox)
-        assert isinstance(testobj.combo_size, testee.qtw.QComboBox)
+        # assert isinstance(testobj.combo_font, testee.qtw.QFontComboBox)
+        # assert isinstance(testobj.combo_size, testee.qtw.QComboBox)
         assert testobj.setcoloraction_color == testee.core.Qt.GlobalColor.black
         assert isinstance(testobj.setcolor_action, testee.gui.QAction)
         assert testobj.setbackgroundcoloraction_color == testee.core.Qt.GlobalColor.white

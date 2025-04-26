@@ -246,9 +246,9 @@ class TaskbarIcon(wx.adv.TaskBarIcon):
 
 class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
     "Tree structure depicting the notes organization"
-    def __init__(self, *args, **kwargs):
-        self.controller = args[0].parent
-        super().__init__(self, *args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     self.controller = args[0].parent
+    #     super().__init__(self, *args, **kwargs)
 
     def OnDrop(self, dropitem, dragitem):
         """reimplemented from treemix.DragAndDrop
@@ -500,6 +500,10 @@ class EditorPanel(rt.RichTextCtrl):
             print('selectie')
             range = self.GetSelectionRange()
             self.SetStyle(range, attr)
+
+    def text_monospace(self, evt):  # 959
+        """
+        """
 
     def align_left(self, evt):
         "alinea links uitlijnen"
@@ -766,6 +770,7 @@ class MainGui(wx.Frame):
         self.splitter.parent = self
 
         self.tree = TreePanel(self.splitter, -1, style=wx.TR_HAS_BUTTONS)
+        self.tree.controller = self
         self.root = self.tree.AddRoot("MyNotes")
         self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, self.tree)
         self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
@@ -847,8 +852,11 @@ class MainGui(wx.Frame):
                 if shortcut == 'Ctrl+Tab':
                     shortcut= '' # Tab werkt niet in gtk
                 # (nog) niet in wx geïmplementeerde menukeuzes overslaan
-                if 'justify' in label.lower() or 'indent' in label.lower():
-                    continue
+                if ('monospace' in label.lower() or 'justify' in label.lower()
+                    or 'indent' in label.lower()):
+                # for text in ('monospace', 'justify', 'indent'):
+                #     if text in label.lower():
+                        continue
                 # icon is mede bedoeld om van hieruit de toolbar op te zetten
                 if shortcut:
                     firstkey = shortcut.split(',', 1)[0].replace('PgDown', 'PgDn')
@@ -903,9 +911,9 @@ class MainGui(wx.Frame):
     def create_stylestoolbar(self, toolbar):
         "build toolbar with buttons to change styles"
         self.textcolour = wx.BLACK
-        self.fontpicker = wx.FontPickerCtrl(toolbar, style=wx.FNTP_FONTDESC_AS_LABEL)
-        self.fontpicker.Bind(wx.EVT_FONTPICKER_CHANGED, self.editor.text_font)
-        toolbar.AddControl(self.fontpicker)
+        # self.fontpicker = wx.FontPickerCtrl(toolbar, style=wx.FNTP_FONTDESC_AS_LABEL)
+        # self.fontpicker.Bind(wx.EVT_FONTPICKER_CHANGED, self.editor.text_font)
+        # toolbar.AddControl(self.fontpicker)
         self.fgcselect = csel.ColourSelect(toolbar, colour=self.textcolour)
         self.fgcselect.Bind(csel.EVT_COLOURSELECT, self.editor.select_text_color)
         toolbar.AddControl(self.fgcselect)

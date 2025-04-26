@@ -251,6 +251,12 @@ called Font.setStrikeOut with arg `True`
 called Action.setFont
 called Signal.connect with args ({callbacks[5]},)
 called Menu.addAction
+called Action.__init__ with args ('M', {testobj})
+called Font.__init__
+called Font.setFixedPitch with arg `True`
+called Action.setFont
+called Signal.connect with args ({callbacks[11]},)
+called Menu.addAction
 called Menu.addSeparator
 called Action.__init__ with args ('-----', None)
 called Action.__init__ with args ('X', {testobj})
@@ -281,8 +287,7 @@ called Action.__init__ with args ('cccc', {testobj})
 called Signal.connect with args ({callbacks[10]},)
 called Menu.addAction
 """
-main_toolbar = """\
-called MainGui.addToolBar with arg styles
+dummy = """\
 called ComboBox.__init__
 called ToolBar.addWidget with arg {testobj.combo_font}
 called Signal.connect with args ({testobj.editor.text_family},)
@@ -297,6 +302,9 @@ called Font.__init__
 called Font.pointSize
 called ComboBox.findText with args ('fontsize',)
 called ComboBox.setCurrentIndex with arg `1`
+"""
+main_toolbar = """\
+called MainGui.addToolBar with arg styles
 called Pixmap.__init__
 called Pixmap.fill with arg {testobj.setcoloraction_color}
 called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>

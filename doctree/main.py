@@ -288,6 +288,8 @@ class MainWindow:
                  'icons/format-text-underline.png', 'CheckU'),
                 ('Strike&through', self.gui.editor.text_strikethrough, 'Ctrl+~',
                  'icons/format-text-strikethrough.png', 'CheckS'),
+                ('&Monospace', self.gui.editor.text_monospace, 'Ctrl+F12',
+                 'icons/format-text-monospace.png', 'CheckM'),
                 (),
                 ('Align &Left', self.gui.editor.align_left, 'Shift+Ctrl+L',
                  'icons/format-justify-left.png', 'Check'),
@@ -310,7 +312,7 @@ class MainWindow:
                 ("1.5 Line Spacing", self.gui.editor.set_linespacing_15, '', '', ''),
                 ("Double Line Spacing", self.gui.editor.set_linespacing_20, '', '', ''),
                 (),
-                ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
+                # ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
                 ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl++', '',
                  'Use bigger letters'),
                 ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+-', '',
@@ -1072,11 +1074,12 @@ class MainWindow:
             self.opts["ActiveView"] -= 1
             if self.opts["ActiveView"] < 0:
                 self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
-        self.gui.rebuild_root()
-        self.activeitem = self.gui.root
-        tree_item = self.viewtotree()
-        self.set_window_title()
-        self.gui.tree.set_item_selected(tree_item)
+        self.build_view()
+        # self.gui.rebuild_root()
+        # self.activeitem = self.gui.root
+        # tree_item = self.viewtotree()
+        # self.set_window_title()
+        # self.gui.tree.set_item_selected(tree_item)
 
     def select_view_from_dropdown(self):
         "handles Menu > View > Goto View"
@@ -1088,11 +1091,12 @@ class MainWindow:
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.gui.editor.clear()
         self.opts["ActiveView"] = self.opts["ViewNames"].index(newview)
-        self.gui.rebuild_root()
-        self.activeitem = self.gui.root
-        tree_item = self.viewtotree()
-        self.set_window_title()
-        self.gui.tree.set_item_selected(tree_item)
+        self.build_view()
+        # self.gui.rebuild_root()
+        # self.activeitem = self.gui.root
+        # tree_item = self.viewtotree()
+        # self.set_window_title()
+        # self.gui.tree.set_item_selected(tree_item)
 
     def select_view(self):
         "handles Menu > View > <view name>"
@@ -1103,6 +1107,9 @@ class MainWindow:
         newview = self.gui.check_viewmenu_option()
         newviewtext = str(newview).split(None, 1)[1]
         self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
+        self.build_view()
+
+    def build_view(self):
         self.gui.rebuild_root()
         self.activeitem = self.gui.root
         tree_item = self.viewtotree()

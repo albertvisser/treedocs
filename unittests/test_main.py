@@ -197,6 +197,8 @@ class MockEditor:
         print('called Editor.text_underline')
     def text_strikethrough(self):
         print('called Editor.text_strikethrough')
+    def text_monospace(self):
+        print('called Editor.text_monospace')
     def align_left(self):
         print('called Editor.align_left')
     def align_center(self):
