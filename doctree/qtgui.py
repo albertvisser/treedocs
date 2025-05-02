@@ -713,15 +713,14 @@ class TreePanel(qtw.QTreeWidget):
         """add item to tree at a given location
         """
         new = qtw.QTreeWidgetItem()
-        new.setText(0, titel.rstrip())
+        self.setitemtitle(new, titel.rstrip())  # new.setText(0, titel.rstrip())
         # save plain text on tree item to facilitate search
         # faster that using BeautifulSoup? Also, we don't need the import this way
         doc = gui.QTextDocument()
         doc.setHtml(self.parent.master.itemdict[itemkey][1])
         rawtext = doc.toPlainText()
-        new.setData(0, core.Qt.ItemDataRole.UserRole, rawtext)
-        new.setText(1, str(itemkey))
-        new.setToolTip(0, titel.rstrip())
+        self.setitemtext(new, rawtext)   # new.setData(0, core.Qt.ItemDataRole.UserRole, rawtext)
+        self.setitemkey(new, itemkey)    # new.setText(1, str(itemkey))
         if pos == -1:
             parent.addChild(new)
         else:
@@ -733,7 +732,7 @@ class TreePanel(qtw.QTreeWidget):
         return self.getitemtitle(item), self.getitemkey(item)
 
     @staticmethod
-    def getitemuserdata(item):
+    def getitemtext(item):
         "data in de visual tree ophalen"
         # eigenlijk is dit hetzelfde als item.text(1) - behalve bij het root item ?
         return item.data(0, core.Qt.ItemDataRole.UserRole)
@@ -746,14 +745,22 @@ class TreePanel(qtw.QTreeWidget):
     @staticmethod
     def getitemkey(item):
         "sleutel voor de itemdict ophalen"
-        value = item.text(1)
-        # with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
-        # maar uit de displays blijkt dat dat praktisch altijd omgezet wordt van str naar int
-        try:
-            value = int(value)
-        except ValueError:
-            value = -1
-        return value
+        # value = item.text(1)
+        # # with contextlib.suppress(ValueError):  # root item heeft tekst in plaats van itemdict key
+        # # dat kwam doordat er een fout zat in de setitemtext methode
+        # # root item moet nu altijd keywaarde -1 hebben
+        # try:
+        #     value = int(value)
+        # except ValueError:                      # zou niet meer nodig moeten zijn
+        #     print(f'{item=}, {self.root=}')
+        #     value = -1
+        # return value
+        return int(item.text(1))
+
+    @staticmethod
+    def setitemkey(item, value):
+        "sleutel voor de itemdict onthouden"
+        item.setText(1, str(value))
 
     @staticmethod
     def setitemtitle(item, title):
@@ -763,10 +770,9 @@ class TreePanel(qtw.QTreeWidget):
 
     @staticmethod
     def setitemtext(item, text):
-        """Meant to set the text for the root item (goes in same place as the keys
-        for the other items)
+        """Meant to set the text for the (root) item
         """
-        item.setText(1, text)
+        item.setData(0, core.Qt.ItemDataRole.UserRole, text)
 
     @staticmethod
     def getitemkids(item):
@@ -876,7 +882,11 @@ class EditorPanel(qtw.QTextEdit):
             super().insertFromMimeData(source)
 
     def set_contents(self, data):
-        "load contents into editor"
+        """load contents into editor
+
+        also edits in the image references to point to the right location
+        and retains the original value
+        """
         data = data.replace('img src="', f'img src="{self.parent.master.temp_imagepath}/')
         self.setHtml(data)
         # dit hopenlijk niet nodig, want merkt document altijd aan als gewijzigd
@@ -885,9 +895,15 @@ class EditorPanel(qtw.QTextEdit):
         self.oldtext = data
 
     def get_contents(self):
-        "return contents from editor"
+        """return contents from editor
+
+        also puts a plaintext version of the text in the internal tree (for searching)
+        and removes the extraction location from the image references
+        """
         # update plain text in tree item to facilitate search
-        self.parent.tree.currentItem().setData(0, core.Qt.ItemDataRole.UserRole, self.toPlainText())
+        # self.parent.tree.currentItem().setData(0, core.Qt.ItemDataRole.UserRole, self.toPlainText())
+        item = self.parent.tree.currentItem()
+        self.parent.tree.setitemtext(item, self.toPlainText())
         return self.toHtml().replace(f'img src="{self.parent.master.temp_imagepath}/', 'img src="')
 
     def get_text_position(self):
@@ -1614,8 +1630,9 @@ class MainGui(qtw.QMainWindow):
         "tree leegmaken en root opnieuw neerzetten"
         self.root = self.tree.takeTopLevelItem(0)
         self.root = qtw.QTreeWidgetItem()
-        self.root.setText(0, self.master.opts["RootTitle"])
-        self.root.setText(1, self.master.opts["RootData"])
+        self.tree.setitemkey(self.root, "-1")   # vaste waarde die niet in de itemdict voorkomt
+        self.tree.setitemtitle(self.root, self.master.opts["RootTitle"])
+        self.tree.setitemtext(self.root, self.master.opts["RootData"])
         self.tree.addTopLevelItem(self.root)
         return self.root
 
@@ -1730,3 +1747,7 @@ class MainGui(qtw.QMainWindow):
         "Remove accelerator for Esc key to close application"
         if len(self.quit_action.shortcuts()) > 1:
             self.quit_action.setShortcuts(self.quit_shortcuts[:-1])
+
+    def cleanup_after_writing(self):
+        "re-initialize if necessary"
+        self.undo_stack.setClean()

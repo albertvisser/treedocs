@@ -1188,7 +1188,7 @@ class MainWindow:
             loc = location + [ix]
             # treeitem = parent.child(ix)
             title = self.gui.tree.getitemtitle(treeitem)
-            text = self.gui.tree.getitemuserdata(treeitem)
+            text = self.gui.tree.getitemtext(treeitem)
             # or
             # title, text = self.gui.tree.getitemdata(treeitem)
             if len(loc) == 1:
@@ -1303,24 +1303,15 @@ class MainWindow:
         if self.activeitem:
             ref = self.gui.tree.getitemkey(self.activeitem)
             pos = self.gui.editor.get_text_position()
-            # try:
-            #     ref = int(ref)  # is dit niet altijd al een int?
-            # except ValueError:
-            #     ref = -1
             if ref != -1:
                 self.text_positions[ref] = pos
             if self.gui.editor.check_dirty():
                 content = str(self.gui.editor.get_contents())
-                try:
-                    # titel, tekst = self.itemdict[int(ref)]
-                    titel, tekst = self.itemdict[ref]
-                # except (KeyError, ValueError):
-                except KeyError:
-                    if content:
-                        self.gui.tree.setitemtext(self.gui.root, content)
-                        self.opts["RootData"] = content
+                if ref == -1:
+                    self.gui.tree.setitemtext(self.gui.root, content)
+                    self.opts["RootData"] = content
                 else:
-                    # self.itemdict[int(ref)] = (titel, content)
+                    titel, tekst = self.itemdict[ref]
                     self.itemdict[ref] = (titel, content)
                 self.gui.editor.mark_dirty(False)
                 self.set_project_dirty(True)
@@ -1329,24 +1320,13 @@ class MainWindow:
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
         self.activeitem = item
         ref = self.gui.tree.getitemkey(item)
-        # try:
-        #     titel, tekst = self.itemdict[ref]
-        # except (KeyError, ValueError):
-        #     self.gui.editor.set_contents(str(ref))
-        #     ref = -1
-        # else:
-        # self.gui.editor.set_contents(tekst)  # , titel)
-        if ref == -1:
-            tekst = self.opts['RootData']
-        else:
-            tekst = self.itemdict[ref][1]
+        tekst = self.opts['RootData'] if ref == -1 else self.itemdict[ref][1]
         self.gui.editor.set_contents(tekst)  # , titel)
-        if ref != -1:
+        if ref != -1:  # is -1 voor root element
             try:
                 self.gui.editor.set_text_position(self.text_positions[ref])
             except KeyError:  # item is nieuw
                 self.text_positions[ref] = self.gui.editor.get_text_position()
-        # self.gui.editor.set_contents(tekst)  # , titel)
         self.gui.editor.mark_dirty(False)
         self.gui.editor.openup(True)
 
@@ -1446,7 +1426,7 @@ class MainWindow:
                                             self.text_positions, self.temp_imagepath,
                                             save_images=not self.images_embedded)
         self.set_project_dirty(False)
-        self.gui.undo_stack.setClean()
+        self.gui.cleanup_after_writing()
         save_text = f"{self.project_file} is opgeslagen"
         if meld:
             ## print('In save - notify is', self.opts['NotifyOnSave'])

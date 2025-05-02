@@ -144,6 +144,9 @@ class MockTree:
         return 'add_to', 1
     def setitemtext(self, *args):
         print('called Tree.setitemtext with args', args)
+    def getitemtext(self, *args):
+        print('called Tree.getitemtext with args', args)
+        return 'item text'
     def getitemdata(self, arg):
         print(f'called Tree.getitemdata with arg `{arg}`')
         return 'item data'
@@ -350,6 +353,8 @@ class MockGui:
         return 'needle'
     def goto_searchresult(self, arg):
         print(f"called Gui.goto_searchresult with arg '{arg}'")
+    def cleanup_after_writing(self):
+        print('called Gui.cleanup_after_writing')
 
 
 class MockMainWindow:
@@ -2104,11 +2109,11 @@ class TestMainWindow:
         testobj.set_escape_action = self.mocker.set_escape_action
         testobj.set_options()
         assert capsys.readouterr().out == (f"called gui.show_dialog with args ({testobj.gui},"
-                                           " <class 'doctree.qtgui.OptionsDialog'>)\n")
+                                           f" {testee.gui.OptionsDialog})\n")
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
         testobj.set_options()
         assert capsys.readouterr().out == (f"called gui.show_dialog with args ({testobj.gui},"
-                                           " <class 'doctree.qtgui.OptionsDialog'>)\n"
+                                           f" {testee.gui.OptionsDialog})\n"
                                            "called MainWindow.set_escape_action\n")
 
     def test_add_view(self, monkeypatch, capsys):
@@ -2423,21 +2428,21 @@ class TestMainWindow:
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n")
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n")
 
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
         testobj.gui.srchtype = 4  # wordt eigenlijk ingesteld door SearchDialog
         testobj.search(mode=4)
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 4}})\n"
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 4}})\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Wrong search type')\n")
 
         testobj.gui.srchtype = 0
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
                 "called Editor.search_from_start\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Search string not found')\n")
 
@@ -2445,14 +2450,14 @@ class TestMainWindow:
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
                 "called Editor.search_from_start\n")
 
         testobj.gui.srchtype = 1
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Search string not found')\n")
 
@@ -2460,7 +2465,7 @@ class TestMainWindow:
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 "called MainWindow.go_to_result\n")
 
@@ -2475,7 +2480,7 @@ class TestMainWindow:
         assert testobj.gui.srchlist
         assert capsys.readouterr().out == (
                 "called gui.show_dialog with args"
-                f" ({testobj.gui}, <class 'doctree.qtgui.SearchDialog'>, {{'mode': 0}})\n"
+                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 f"called gui.show_nonmodal with args ({testobj.gui}, {testee.gui.ResultsDialog})\n")
 
@@ -2554,15 +2559,15 @@ class TestMainWindow:
                                                  ([1], 'title', 'child2 title', 'child2 title')]
         assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'parent'\n"
                                            "called Tree.getitemtitle with arg `child1`\n"
-                                           "called Tree.getitemdata with arg `child1`\n"
+                                           "called Tree.getitemtext with args ('child1',)\n"
                                            "called Gui.find_needle with arg 'child1 title'\n"
                                            "called Tree.getitemkids with arg 'child1'\n"
                                            "called Tree.getitemtitle with arg `child3`\n"
-                                           "called Tree.getitemdata with arg `child3`\n"
+                                           "called Tree.getitemtext with args ('child3',)\n"
                                            "called Gui.find_needle with arg 'child3 title'\n"
                                            "called Tree.getitemkids with arg 'child3'\n"
                                            "called Tree.getitemtitle with arg `child2`\n"
-                                           "called Tree.getitemdata with arg `child2`\n"
+                                           "called Tree.getitemtext with args ('child2',)\n"
                                            "called Gui.find_needle with arg 'child2 title'\n"
                                            "called Tree.getitemkids with arg 'child2'\n")
         testobj.gui.srchtype = 2
@@ -2571,16 +2576,16 @@ class TestMainWindow:
                                                  ([1], 'text', 'child2 title', 'child2 title')]
         assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'parent'\n"
                                            "called Tree.getitemtitle with arg `child1`\n"
-                                           "called Tree.getitemdata with arg `child1`\n"
-                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemtext with args ('child1',)\n"
+                                           "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child1'\n"
                                            "called Tree.getitemtitle with arg `child3`\n"
-                                           "called Tree.getitemdata with arg `child3`\n"
-                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemtext with args ('child3',)\n"
+                                           "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child3'\n"
                                            "called Tree.getitemtitle with arg `child2`\n"
-                                           "called Tree.getitemdata with arg `child2`\n"
-                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Tree.getitemtext with args ('child2',)\n"
+                                           "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child2'\n")
         testobj.gui.srchtype = 3
         assert testobj.search_from('parent') == [([0], 'title', 'child1 title', 'child1 title'),
@@ -2591,19 +2596,19 @@ class TestMainWindow:
                                                  ([1], 'text', 'child2 title', 'child2 title')]
         assert capsys.readouterr().out == ("called Tree.getitemkids with arg 'parent'\n"
                                            "called Tree.getitemtitle with arg `child1`\n"
-                                           "called Tree.getitemdata with arg `child1`\n"
+                                           "called Tree.getitemtext with args ('child1',)\n"
                                            "called Gui.find_needle with arg 'child1 title'\n"
-                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child1'\n"
                                            "called Tree.getitemtitle with arg `child3`\n"
-                                           "called Tree.getitemdata with arg `child3`\n"
+                                           "called Tree.getitemtext with args ('child3',)\n"
                                            "called Gui.find_needle with arg 'child3 title'\n"
-                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child3'\n"
                                            "called Tree.getitemtitle with arg `child2`\n"
-                                           "called Tree.getitemdata with arg `child2`\n"
+                                           "called Tree.getitemtext with args ('child2',)\n"
                                            "called Gui.find_needle with arg 'child2 title'\n"
-                                           "called Gui.find_needle with arg 'item data'\n"
+                                           "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child2'\n")
 
     def test_go_to_result(self, monkeypatch, capsys):
@@ -2855,23 +2860,25 @@ class TestMainWindow:
                 "called Tree.setitemtext with args ('gui root', 'editor contents')\n"
                 "called Editor.mark_dirty with arg 'False'\n"
                 "called MainWindow.set_project_dirty with arg True\n")
-        testobj.itemdict = {2: ('item title', 'item text')}
-        testobj.gui.tree.getitemkey = mock_getitemkey
-        testobj.check_active()
-        assert capsys.readouterr().out == (
-                "called Tree.getitemkey with arg `active item`\n"
-                "called Editor.get_text_position\n"
-                "called Editor.check_dirty\n"
-                "called Editor.get_contents\n"
-                "called Tree.setitemtext with args ('gui root', 'editor contents')\n"
-                "called Editor.mark_dirty with arg 'False'\n"
-                "called MainWindow.set_project_dirty with arg True\n")
+        # testobj.itemdict = {2: ('item title', 'item text')}  KeyError situatie is verwijderd
+        # testobj.gui.tree.getitemkey = mock_getitemkey
+        # testobj.check_active()
+        # assert capsys.readouterr().out == (
+        #         "called Tree.getitemkey with arg `active item`\n"
+        #         "called Editor.get_text_position\n"
+        #         "called Editor.check_dirty\n"
+        #         "called Editor.get_contents\n"
+        #         "called Tree.setitemtext with args ('gui root', 'editor contents')\n"
+        #         "called Editor.mark_dirty with arg 'False'\n"
+        #         "called MainWindow.set_project_dirty with arg True\n")
         testobj.gui.editor.get_contents = mock_get
         testobj.check_active()
+        assert testobj.opts['RootData'] == ''
         assert capsys.readouterr().out == ("called Tree.getitemkey with arg `active item`\n"
                                            "called Editor.get_text_position\n"
                                            "called Editor.check_dirty\n"
                                            "called Editor.get_contents\n"
+                                           "called Tree.setitemtext with args ('gui root', '')\n"
                                            "called Editor.mark_dirty with arg 'False'\n"
                                            "called MainWindow.set_project_dirty with arg True\n")
 
@@ -3138,7 +3145,7 @@ class TestMainWindow:
                 " ('test.trd', {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100},"
                 " ['', 'A view'], {1: 'xxx'}, [1], 'path_to_images') {'save_images': True}\n"
                 "called MainWindow.set_project_dirty with arg False\n"
-                "called UndoStack.setClean\n"
+                'called Gui.cleanup_after_writing\n'
                 "called MainWindow.confirm with args"
                 " {'setting': 'NotifyOnSave', 'textitem': 'test.trd is opgeslagen'}\n"
                 "called MainGui.show_statusmessage with args ('test.trd is opgeslagen',)\n")
@@ -3155,7 +3162,7 @@ class TestMainWindow:
                 " ('test.trd', {'ActiveView': 1, 'ScreenSize': (10, 20), 'SashPosition': 100},"
                 " ['', 'A view'], {1: 'xxx'}, [1], 'path_to_images') {'save_images': True}\n"
                 "called MainWindow.set_project_dirty with arg False\n"
-                "called UndoStack.setClean\n"
+                'called Gui.cleanup_after_writing\n'
                 "called MainGui.show_statusmessage with args ('test.trd is opgeslagen',)\n")
 
     def test_confirm(self, monkeypatch, capsys):
@@ -3178,12 +3185,12 @@ class TestMainWindow:
         testobj.confirm(setting='this')
         assert capsys.readouterr().out == (
                 f"called gui.show_dialog with args ({testobj.gui},"
-                " <class 'doctree.qtgui.CheckDialog'>, {'message': '', 'option': 'this'})\n"
+                f" {testee.gui.CheckDialog}, {{'message': '', 'option': 'this'}})\n"
                 "called dml.write_to_files with args ('xx', {'this': 'that'}, ['view1'],"
                 " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': False}\n")
         testobj.confirm(setting='this', textitem='zzz')
         assert capsys.readouterr().out == (
                 f"called gui.show_dialog with args ({testobj.gui},"
-                " <class 'doctree.qtgui.CheckDialog'>, {'message': 'zzz', 'option': 'this'})\n"
+                f" {testee.gui.CheckDialog}, {{'message': 'zzz', 'option': 'this'}})\n"
                 "called dml.write_to_files with args ('xx', {'this': 'that'}, ['view1'],"
                 " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': False}\n")

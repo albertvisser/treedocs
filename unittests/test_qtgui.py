@@ -1626,23 +1626,23 @@ class TestTreePanel:
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setText with arg `titel` for col 0\n"
+                "called TreeItem.setTooltip with args (0, 'titel')\n"
                 "called TextDocument.__init__ with args ()\n"
                 "called TextDocument.setHtml with arg 'And this is the text'\n"
                 "called TextDocument.toPlainText\n"
                 "called TreeItem.setData to `plain text` with role 256 for col 0\n"
                 "called TreeItem.setText with arg `itemkey` for col 1\n"
-                "called TreeItem.setTooltip with args (0, 'titel')\n"
                 "called TreeItem.addChild\n")
         testobj.add_to_parent('itemkey', 'titel', parent, pos=1)
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setText with arg `titel` for col 0\n"
+                "called TreeItem.setTooltip with args (0, 'titel')\n"
                 "called TextDocument.__init__ with args ()\n"
                 "called TextDocument.setHtml with arg 'And this is the text'\n"
                 "called TextDocument.toPlainText\n"
                 "called TreeItem.setData to `plain text` with role 256 for col 0\n"
                 "called TreeItem.setText with arg `itemkey` for col 1\n"
-                "called TreeItem.setTooltip with args (0, 'titel')\n"
                 "called TreeItem.insertChild at pos 1\n")
 
     def test_getitemdata(self, monkeypatch, capsys):
@@ -1661,8 +1661,8 @@ class TestTreePanel:
         assert capsys.readouterr().out == ("called Tree.getitemtitle with arg 'item'\n"
                                            "called Tree.getitemkey with arg 'item'\n")
 
-    def test_getitemuserdata(self, monkeypatch, capsys):
-        """unittest for TreePanel.getitemuserdata
+    def test_getitemtext(self, monkeypatch, capsys):
+        """unittest for TreePanel.getitemtext
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         item = mockqtw.MockTreeItem()
@@ -1671,7 +1671,7 @@ class TestTreePanel:
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setData to `data` with role"
                 f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
-        assert testobj.getitemuserdata(item) == "data"
+        assert testobj.getitemtext(item) == "data"
         assert capsys.readouterr().out == (
                 f"called TreeItem.data for col 0 role {testee.core.Qt.ItemDataRole.UserRole}\n")
 
@@ -1688,10 +1688,10 @@ class TestTreePanel:
         """unittest for TreePanel.getitemkey
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        item = mockqtw.MockTreeItem('xxx', 'yyy')
-        assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx', 'yyy')\n"
-        assert testobj.getitemkey(item) == -1
-        assert capsys.readouterr().out == "called TreeItem.text for col 1\n"
+        # item = mockqtw.MockTreeItem('xxx', 'yyy')
+        # assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx', 'yyy')\n"
+        # assert testobj.getitemkey(item) == -1
+        # assert capsys.readouterr().out == "called TreeItem.text for col 1\n"
         item = mockqtw.MockTreeItem('xxx', '111')
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx', '111')\n"
         assert testobj.getitemkey(item) == 111
@@ -1714,7 +1714,8 @@ class TestTreePanel:
         item = mockqtw.MockTreeItem()
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
         testobj.setitemtext(item, 'text')
-        assert capsys.readouterr().out == "called TreeItem.setText with arg `text` for col 1\n"
+        assert capsys.readouterr().out == ("called TreeItem.setData to `text` with role"
+                                           f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
 
     def test_getitemkids(self, monkeypatch, capsys):
         """unittest for TreePanel.getitemkids
@@ -2108,9 +2109,12 @@ class TestEditorPanel:
         def mock_to_html():
             print('called EditorPanel.toHtml')
             return f'img src="{testobj.parent.master.temp_imagepath}/yyy"'
+        def mock_set(*args):
+            print('called Tree.setitemtext with args', args)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.parent.master.temp_imagepath = 'xxx'
         testobj.parent.tree = mockqtw.MockTreeWidget()
+        testobj.parent.tree.setitemtext = mock_set
         item = mockqtw.MockTreeItem()
         testobj.parent.tree.currentItem = lambda: item
         testobj.toHtml = mock_to_html
@@ -2118,10 +2122,10 @@ class TestEditorPanel:
         assert capsys.readouterr().out == ("called Tree.__init__\n"
                                            "called TreeItem.__init__ with args ()\n")
         assert testobj.get_contents() == 'img src="yyy"'
-        assert capsys.readouterr().out == ("called EditorPanel.toPlainText\n"
-                                           "called TreeItem.setData to `plaintext` with role"
-                                           f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n"
-                                           "called EditorPanel.toHtml\n")
+        assert capsys.readouterr().out == (
+                "called EditorPanel.toPlainText\n"
+                f"called Tree.setitemtext with args ({item}, 'plaintext')\n"
+                "called EditorPanel.toHtml\n")
 
     def test_get_text_position(self, monkeypatch, capsys):
         """unittest for EditorPanel.get_text_position
@@ -4090,20 +4094,31 @@ class TestMainGui:
     def test_rebuild_root(self, monkeypatch, capsys):
         """unittest for MainGui.rebuild_root
         """
+        def mock_setkey(*args):
+            print(f'called Tree.setitemkey with args', args)
+        def mock_settitle(*args):
+            print(f'called Tree.setitemtitle with args', args)
+        def mock_settext(*args):
+            print(f'called Tree.setitemtext with args', args)
         monkeypatch.setattr(testee.qtw, 'QTreeWidgetItem', mockqtw.MockTreeItem)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.tree = mockqtw.MockTreeWidget()
+        testobj.tree.setitemkey = mock_setkey
+        testobj.tree.setitemtitle = mock_settitle
+        testobj.tree.setitemtext = mock_settext
         testobj.master = MockEditor()
         testobj.master.opts = {'RootTitle': 'title', 'RootData': 'data'}
         # testobj.root = mockqtw.MockTreeItem()
         # assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
         assert testobj.rebuild_root() == testobj.root
-        assert capsys.readouterr().out == ("called Tree.__init__\n"
-                                           "called Tree.takeTopLevelItem with arg `0`\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.setText with arg `title` for col 0\n"
-                                           "called TreeItem.setText with arg `data` for col 1\n"
-                                           "called Tree.addTopLevelItem\n")
+        assert capsys.readouterr().out == (
+                "called Tree.__init__\n"
+                "called Tree.takeTopLevelItem with arg `0`\n"
+                "called TreeItem.__init__ with args ()\n"
+                f"called Tree.setitemkey with args ({testobj.root}, '-1')\n"
+                f"called Tree.setitemtitle with args ({testobj.root}, 'title')\n"
+                f"called Tree.setitemtext with args ({testobj.root}, 'data')\n"
+                "called Tree.addTopLevelItem\n")
 
     def setup_viewmenu(self, capsys):
         """define a menu with more than 8 options to be used in the next cuople of tests
@@ -4446,3 +4461,11 @@ class TestMainGui:
         testobj.remove_escape_action()
         assert capsys.readouterr().out == ("called Action.shortcuts\n"
                                            "called Action.setShortcuts with arg `['Ctrl-Q']`\n")
+
+    def test_cleanup_after_writing(self, monkeypatch, capsys):
+        def mock_set():
+            print('called UndoStack.setClean')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.undo_stack = types.SimpleNamespace(setClean=mock_set)
+        testobj.cleanup_after_writing()
+        assert capsys.readouterr().out == 'called UndoStack.setClean\n'
