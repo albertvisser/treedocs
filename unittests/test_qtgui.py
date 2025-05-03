@@ -2970,14 +2970,7 @@ class TestEditorPanel:
                                            "called CheckBox.__init__\n"
                                            "called Font.__init__\n")
         testobj.font_changed(font)
-        assert capsys.readouterr().out == (# f"called FontInfo.__init__ with arg {font}\n"
-                                           # "called Font.family\n"
-                                           # "called ComboBox.findText with args ('family name',)\n"
-                                           # "called ComboBox.setCurrentIndex with arg `1`\n"
-                                           # "called Font.pointSize\n"
-                                           # "called ComboBox.findText with args ('fontsize',)\n"
-                                           # "called ComboBox.setCurrentIndex with arg `1`\n"
-                                           "called Font.bold\n"
+        assert capsys.readouterr().out == ("called Font.bold\n"
                                            "called CheckBox.setChecked with arg bold\n"
                                            "called Font.italic\n"
                                            "called CheckBox.setChecked with arg italic\n"
@@ -4095,11 +4088,11 @@ class TestMainGui:
         """unittest for MainGui.rebuild_root
         """
         def mock_setkey(*args):
-            print(f'called Tree.setitemkey with args', args)
+            print('called Tree.setitemkey with args', args)
         def mock_settitle(*args):
-            print(f'called Tree.setitemtitle with args', args)
+            print('called Tree.setitemtitle with args', args)
         def mock_settext(*args):
-            print(f'called Tree.setitemtext with args', args)
+            print('called Tree.setitemtext with args', args)
         monkeypatch.setattr(testee.qtw, 'QTreeWidgetItem', mockqtw.MockTreeItem)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.tree = mockqtw.MockTreeWidget()
@@ -4463,6 +4456,8 @@ class TestMainGui:
                                            "called Action.setShortcuts with arg `['Ctrl-Q']`\n")
 
     def test_cleanup_after_writing(self, monkeypatch, capsys):
+        """unittest for MainGui.cleanup_after_writing
+        """
         def mock_set():
             print('called UndoStack.setClean')
         testobj = self.setup_testobj(monkeypatch, capsys)

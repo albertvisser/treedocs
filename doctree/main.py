@@ -858,7 +858,8 @@ class MainWindow:
         te onthouden"""
         if itemlist is None:
             itemlist = []
-        titel, key = tree.getitemdata(item)
+        titel = tree.getitemtitle(item)
+        key = tree.getitemkey(item)
         itemlist.append(key)
         subtree = []
         for kid in tree.getitemkids(item):
@@ -995,8 +996,9 @@ class MainWindow:
     def add_view(self, *args):
         "handles Menu > View > New view"
         self.check_active()
-        self.opts["ActiveItem"][self.opts["ActiveView"]] = self.gui.tree.getitemdata(
-            self.activeitem)
+        title = self.gui.tree.getitemtitle(self.activeitem)
+        text = self.gui.tree.getitemtext(self.activeitem)
+        self.opts["ActiveItem"][self.opts["ActiveView"]] = (title, text)
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.viewcount += 1
         new_view = f"New View #{self.viewcount}"
@@ -1110,6 +1112,8 @@ class MainWindow:
         self.build_view()
 
     def build_view(self):
+        """create the new view
+        """
         self.gui.rebuild_root()
         self.activeitem = self.gui.root
         tree_item = self.viewtotree()
@@ -1189,8 +1193,6 @@ class MainWindow:
             # treeitem = parent.child(ix)
             title = self.gui.tree.getitemtitle(treeitem)
             text = self.gui.tree.getitemtext(treeitem)
-            # or
-            # title, text = self.gui.tree.getitemdata(treeitem)
             if len(loc) == 1:
                 self.first_title = title
             if self.gui.srchtype & 1 and self.gui.find_needle(title):

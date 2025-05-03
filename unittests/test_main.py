@@ -4,6 +4,7 @@ import datetime
 import pytest
 from doctree import main as testee
 
+
 def mock_ask_yn(*args):
     """stub for doctree.gui.ask_ynquestion: No answer
     """
@@ -147,9 +148,6 @@ class MockTree:
     def getitemtext(self, *args):
         print('called Tree.getitemtext with args', args)
         return 'item text'
-    def getitemdata(self, arg):
-        print(f'called Tree.getitemdata with arg `{arg}`')
-        return 'item data'
     def getitemuserdata(self, arg):
         print(f'called Tree.getitemdata with arg `{arg}`')
         return 'item data'
@@ -754,12 +752,12 @@ class TestMainWindow:
         with pytest.raises(SystemExit):
             testobj = testee.MainWindow('test.trd')
         assert capsys.readouterr().out == (
-                f"called MainGui.__init__ with args () {{'title': 'Doctree'}}\n"
+                "called MainGui.__init__ with args () {'title': 'Doctree'}\n"
                 "called MainGui.setup_screen\n"
                 "called path.resolve with arg test.trd\n"
                 "called path.exists with arg resolved\n"
                 "called MainWindow.read\n"
-                f"called gui.show_message with args ('error',)\n")
+                "called gui.show_message with args ('error',)\n")
 
     def test_get_menu_data(self, monkeypatch, capsys):
         """unittest for MainWindow.get_menu_data
@@ -1597,7 +1595,7 @@ class TestMainWindow:
         assert testobj.copied_item == ''
         assert testobj.cut_from_itemdict == []
         assert not testobj.add_node_on_paste
-        assert testobj.activeitem is 'prev'
+        assert testobj.activeitem == 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
         assert capsys.readouterr().out == (
                 f"called Tree.getsubtree with args ({testobj.gui.tree}, 'current')\n"
@@ -1616,7 +1614,7 @@ class TestMainWindow:
         assert testobj.copied_item == 'x'
         assert testobj.cut_from_itemdict == [(1, ('y', 'yy')), (2, ('z', 'zz'))]
         assert not testobj.add_node_on_paste
-        assert testobj.activeitem is 'prev'
+        assert testobj.activeitem == 'prev'
         assert testobj.opts['ActiveItem'] == ['itemkey', 3]
         assert capsys.readouterr().out == (
                 f"called Tree.getsubtree with args ({testobj.gui.tree}, 'current')\n"
@@ -1864,14 +1862,16 @@ class TestMainWindow:
         tree.getitemkids = mock_get_kids
         counter = 0
         assert testobj.getsubtree(tree, 'item') == (
-                ('item title', 'item key', [('item title', 'item key', []),
-                                            ('item title', 'item key', [])]),
-                ['item key', 'item key', 'item key'])
-        assert capsys.readouterr().out == ("called Tree.getitemdata with arg 'item'\n"
+                ('item title', 'item', [('item title', 'kid1', []), ('item title', 'kid2', [])]),
+                ['item', 'kid1', 'kid2'])
+        assert capsys.readouterr().out == ("called Tree.getitemtitle with arg `item`\n"
+                                           "called Tree.getitemkey with arg `item`\n"
                                            "called Tree.getitemkids with arg 'item'\n"
-                                           "called Tree.getitemdata with arg 'kid1'\n"
+                                           "called Tree.getitemtitle with arg `kid1`\n"
+                                           "called Tree.getitemkey with arg `kid1`\n"
                                            "called Tree.getitemkids with arg 'kid1'\n"
-                                           "called Tree.getitemdata with arg 'kid2'\n"
+                                           "called Tree.getitemtitle with arg `kid2`\n"
+                                           "called Tree.getitemkey with arg `kid2`\n"
                                            "called Tree.getitemkids with arg 'kid2'\n")
 
     def test_putsubtree(self, monkeypatch, capsys):
@@ -2132,13 +2132,15 @@ class TestMainWindow:
         testobj.gui.root = 'gui root'
         testobj.itemdict = {1: ('x', 'xx'), 2: ('y', 'yy')}
         testobj.add_view()
-        assert testobj.opts == {'ActiveItem': ['item0', 'item data', 'item data'], 'ActiveView': 2,
+        assert testobj.opts == {'ActiveItem': ['item0', ('item title', 'item text'),
+                                               ('item title', 'item text')], 'ActiveView': 2,
                                 'ViewNames': ['View0', 'View1', 'New View #2']}
         assert testobj.views == ['', 'A view', [(1, []), (2, [])]]
         assert testobj.viewcount == 2
         assert capsys.readouterr().out == (
                 "called MainWindow.check_active\n"
-                "called Tree.getitemdata with arg `active item`\n"
+                "called Tree.getitemtitle with arg `active item`\n"
+                "called Tree.getitemtext with args ('active item',)\n"
                 "called MainWindow.treetoview\n"
                 "called MainGui.uncheck_viewmenu_option\n"
                 "called MainGui.add_viewmenu_option with arg '&2 New View #2'\n"

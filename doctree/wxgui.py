@@ -1,6 +1,7 @@
 """DocTree: wxPython specific stuff
 """
 import os
+import contextlib
 import tempfile
 import wx
 import wx.adv
@@ -45,7 +46,7 @@ def get_choice(win, caption, options, current):
 
 def get_filename(win, title, start, save=False):
     "routine for selection of filename"
-    name, ext = self.master.FILE_TYPE
+    name, ext = win.master.FILE_TYPE
     filter_ = f"{name} (*{ext})|*{ext}"
     start = os.path.dirname(start)
     if save:
@@ -225,7 +226,7 @@ class ResultsDialog(wx.Dialog):  # FIXME
 
 class TaskbarIcon(wx.adv.TaskBarIcon):
     "icon in the taskbar"
-    id_revive = wx.NewId()
+    id_revive = wx.ID_ANY
     ## id_close = wx.NewId()
 
     def __init__(self, parent):
@@ -282,17 +283,18 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
         ## log('*** in add_to_parent ***')
         ## log('parent is {}, pos is {}'.format(parent, pos))
         new = self.AppendItem(parent, titel) if pos == -1 else self.InsertItem(parent, pos, titel)
-        self.SetItemData(new, itemkey)
+        # self.SetItemData(new, itemkey)
+        self.setitemkey(new, itemkey)
+        self.setitemtext(new, '')  # eigenlijk niet nodig
         return new
 
     def getitemdata(self, item):
         "titel + data in de visual tree ophalen"
-        return self.GetItemText(item), self.getitemkey()  # laatste was self.GetItemData(item)
-                                                         # aangepast in overeenstemming met qt versie
+        return self.getitemtitle(item), self.getitemkey(item)
 
-    def getitemuserdata(self, item):
+    def getitemtext(self, item):
         "data in de visual tree ophalen"
-        return self.GetItemData(item)
+        return self.GetItemData(item)[1]
 
     def getitemtitle(self, item):
         "alleen titel in de visual tree ophalen"
@@ -301,22 +303,29 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
     def getitemkey(self, item):
         "sleutel voor de itemdict ophalen"
         # return self.GetItemData(item)
-        value = self.GetItemData(item)
+        value = self.GetItemData(item)[0]
         try:
             value = int(value)
         except ValueError:  # root element heeft geen numerieke key
             value = -1
         return value
 
+    def setitemkey(self, item, value):
+        "sleutel voor de itemdict onthouden"
+        data = self.GetItemData(item)
+        data = (value, data[1]) if data else (value, '')
+        self.SetItemData(item, data)
+
     def setitemtitle(self, item, title):
         "titel (en tooltip instellen)"
         self.SetItemText(item, title)
 
     def setitemtext(self, item, text):
-        """Meant to set the text for the root item (goes in same place as the keys
-        for the other items)
+        """Meant to set the text for the (root) item
         """
-        self.SetItemData(item, text)
+        data = self.GetItemData(item)
+        data = (data[0], text) if data else (-2, text)
+        self.SetItemData(item, data)
 
     def getitemkids(self, item):
         "children van item ophalen"
@@ -850,13 +859,13 @@ class MainGui(wx.Frame):
                     continue
                 label, handler, shortcut, icon, info = menudef
                 if shortcut == 'Ctrl+Tab':
-                    shortcut= '' # Tab werkt niet in gtk
+                    shortcut = ''  # Tab werkt niet in gtk
                 # (nog) niet in wx geïmplementeerde menukeuzes overslaan
                 if ('monospace' in label.lower() or 'justify' in label.lower()
-                    or 'indent' in label.lower()):
+                        or 'indent' in label.lower()):
                 # for text in ('monospace', 'justify', 'indent'):
                 #     if text in label.lower():
-                        continue
+                    continue
                 # icon is mede bedoeld om van hieruit de toolbar op te zetten
                 if shortcut:
                     firstkey = shortcut.split(',', 1)[0].replace('PgDown', 'PgDn')
@@ -986,6 +995,9 @@ class MainGui(wx.Frame):
     def set_focus_to_editor(self):
         "set focus to the editor panel"
         self.editor.SetFocus()
+        ref = self.tree.getitemkey(self.master.activeitem)
+        with contextlib.suppress(KeyError):
+            self.editor.set_text_position(self.master.text_positions[ref])
         self.in_editor = True
 
     def go(self):
@@ -1025,7 +1037,14 @@ class MainGui(wx.Frame):
         """nieuw item toevoegen (default: onder het geselecteerde)
         """
         origpos = -1  # is dit niet te beperkt?
-        self.master.do_addaction(root, under, origpos, new_title, extra_titles)
+        added_treedata = [new_title, '']  # , []]
+        subel = added_treedata  # [2]
+        for x in extra_titles:
+            new_subel = [x, '']  # , []]
+            subel.append(new_subel)
+            subel = new_subel  # [2]
+        subel.append([])
+        self.master.do_addaction(root, under, origpos, added_treedata)
 
     def set_next_item(self, any_level=False):
         "for go to next"
@@ -1071,8 +1090,11 @@ class MainGui(wx.Frame):
         root = self.tree.AddRoot("hidden_root")
         self.tree.SetItemData(root, '')
         self.root = self.tree.AppendItem(root, self.master.project_file.stem)
-        self.tree.SetItemText(self.root, self.master.opts["RootTitle"].rstrip())
-        self.tree.SetItemData(self.root, self.master.opts["RootData"])
+        # self.tree.SetItemText(self.root, self.master.opts["RootTitle"].rstrip())
+        self.tree.setitemtitle(self.root, self.master.opts["RootTitle"].rstrip())
+        self.tree.setitemkey(self.root, -1)
+        # self.tree.SetItemData(self.root, self.master.opts["RootData"])
+        self.tree.setitemtext(self.root, self.master.opts["RootData"])
         return self.root
 
     def clear_viewmenu(self):
@@ -1225,3 +1247,7 @@ class MainGui(wx.Frame):
 
     def remove_escape_action(self):
         "Remove accelerator to for Esc key to close application"
+
+    def cleanup_after_writing(self):
+        "re-initialize if necessary"
+        # no actions needed (as yet)
