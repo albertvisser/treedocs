@@ -568,7 +568,7 @@ class TestSearchDialog:
         testobj.accept()
         assert testobj.parent.srchtext == 'Zoek'
         assert testobj.parent.srchtype == 3
-        assert testobj.parent.srchflags == testee.gui.QTextDocument.FindFlag
+        assert testobj.parent.srchflags.value == 0
         assert not testobj.parent.srchlist
         assert not testobj.parent.srchwrap
         assert capsys.readouterr().out == ("called LineEdit.text\n"
@@ -2661,53 +2661,79 @@ class TestEditorPanel:
     def test_enlarge_text(self, monkeypatch, capsys):
         """unittest for EditorPanel.enlarge_text
         """
-        def mock_size(arg):
-            print(f'called EditorPanel.text_size with arg {arg}')
+        def mock_size(**kwargs):
+            print('called EditorPanel.text_size with args', kwargs)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.combo_size = mockqtw.MockComboBox()
-        assert capsys.readouterr().out == "called ComboBox.__init__\n"
-        testobj.parent.fontsizes = ['10', '20', '30']
-        testobj.parent.combo_size.currentText = lambda: '20'
-        testobj.text_size = mock_size
+        testobj.set_text_size = mock_size
         testobj.enlarge_text()
-        assert capsys.readouterr().out == "called EditorPanel.text_size with arg 30\n"
-        testobj.parent.combo_size.currentText = lambda: '30'
-        testobj.enlarge_text()
-        assert capsys.readouterr().out == ""
+        assert capsys.readouterr().out == (
+                "called EditorPanel.text_size with args {'enlarge': True}\n")
 
     def test_shrink_text(self, monkeypatch, capsys):
         """unittest for EditorPanel.shrink_text
         """
-        def mock_size(arg):
-            print(f'called EditorPanel.text_size with arg {arg}')
+        def mock_size(**kwargs):
+            print('called EditorPanel.text_size with args', kwargs)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.combo_size = mockqtw.MockComboBox()
-        assert capsys.readouterr().out == "called ComboBox.__init__\n"
-        testobj.parent.fontsizes = ['10', '20', '30']
-        testobj.parent.combo_size.currentText = lambda: '20'
-        testobj.text_size = mock_size
+        testobj.set_text_size = mock_size
         testobj.shrink_text()
-        assert capsys.readouterr().out == "called EditorPanel.text_size with arg 10\n"
-        testobj.parent.combo_size.currentText = lambda: '10'
-        testobj.shrink_text()
-        assert capsys.readouterr().out == ("")
+        assert capsys.readouterr().out == (
+                "called EditorPanel.text_size with args {'shrink': True}\n")
 
-    def test_text_size(self, monkeypatch, capsys):
-        """unittest for EditorPanel.text_size
+    def test_set_text_size(self, monkeypatch, capsys):
+        """unittest for EditorPanel.set_text_size
         """
         def mock_merge(arg):
             print('called EditorPanel.mergeCurrentCharformat')
+        def mock_pointsize(self):
+            print('called TextCharFormat.fontPointSize')
+            return 0
+        def mock_pointsize2():
+            print('called Font.pointSize')
+            return 8
+        class MockFontDatabase:
+            class SystemFont:
+                GeneralFont = "FontDB.System.General"
+            def systemFont(arg):
+                print(f'called FontDatabase.systemFont with arg {arg}')
+                return types.SimpleNamespace(pointSize=mock_pointsize2)
         monkeypatch.setattr(testee.gui, 'QTextCharFormat', mockqtw.MockTextCharFormat)
         monkeypatch.setattr(testee.qtw.QTextEdit, 'setFocus', mockqtw.MockEditorWidget.setFocus)
         testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.parent.fontsizes = ['0', '8', '10', '12']
         testobj.mergeCurrentCharFormat = mock_merge
-        testobj.text_size(0)
-        assert capsys.readouterr().out == ""
-        testobj.text_size(10)
+        testobj.set_text_size()
         assert capsys.readouterr().out == ("called TextCharFormat.__init__ with args ()\n"
-                                           "called TextCharFormat.setFontPointSize with arg 10.0\n"
+                                           "called TextCharFormat.fontPointSize\n")
+        testobj.set_text_size(enlarge=True)
+        assert capsys.readouterr().out == ("called TextCharFormat.__init__ with args ()\n"
+                                           "called TextCharFormat.fontPointSize\n"
+                                           "called TextCharFormat.__init__ with args ()\n"
+                                           "called TextCharFormat.setFontPointSize with arg 12.0\n"
                                            "called EditorPanel.mergeCurrentCharformat\n"
                                            "called Editor.setFocus\n")
+        testobj.set_text_size(shrink=True)
+        assert capsys.readouterr().out == ("called TextCharFormat.__init__ with args ()\n"
+                                           "called TextCharFormat.fontPointSize\n"
+                                           "called TextCharFormat.__init__ with args ()\n"
+                                           "called TextCharFormat.setFontPointSize with arg 8.0\n"
+                                           "called EditorPanel.mergeCurrentCharformat\n"
+                                           "called Editor.setFocus\n")
+        testobj.set_text_size(enlarge=True, shrink=True)
+        assert capsys.readouterr().out == ("called TextCharFormat.__init__ with args ()\n"
+                                           "called TextCharFormat.fontPointSize\n"
+                                           "called TextCharFormat.__init__ with args ()\n"
+                                           "called TextCharFormat.setFontPointSize with arg 12.0\n"
+                                           "called EditorPanel.mergeCurrentCharformat\n"
+                                           "called Editor.setFocus\n")
+        monkeypatch.setattr(mockqtw.MockTextCharFormat, 'fontPointSize', mock_pointsize)
+        monkeypatch.setattr(testee.gui, 'QFontDatabase', MockFontDatabase)
+        testobj.set_text_size(shrink=True)
+        assert capsys.readouterr().out == (
+                "called TextCharFormat.__init__ with args ()\n"
+                "called TextCharFormat.fontPointSize\n"
+                "called FontDatabase.systemFont with arg FontDB.System.General\n"
+                "called Font.pointSize\n")
 
     def test_select_text_color(self, monkeypatch, capsys):
         """unittest for EditorPanel.text_color

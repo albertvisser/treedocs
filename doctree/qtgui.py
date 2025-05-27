@@ -290,14 +290,12 @@ class SearchDialog(qtw.QDialog):
             return
         self.parent.srchtext = zoek
         self.parent.srchtype = mode
-        flags = gui.QTextDocument.FindFlag
+        # trucje om `flags` op een valide waarde te initialiseren
+        flags = gui.QTextDocument.FindFlag.FindBackward & ~gui.QTextDocument.FindFlag.FindBackward
         if self.c_hlett.isChecked():
-            flags = gui.QTextDocument.FindFlag.FindCaseSensitively
+            flags |= gui.QTextDocument.FindFlag.FindCaseSensitively
         if self.c_woord.isChecked():
-            if hasattr(flags, 'value'):
-                flags |= gui.QTextDocument.FindFlag.FindWholeWords
-            else:
-                flags = gui.QTextDocument.FindFlag.FindWholeWords
+            flags |= gui.QTextDocument.FindFlag.FindWholeWords
         self.parent.srchflags = flags
         self.parent.srchlist = self.c_lijst.isChecked()
         self.parent.srchwrap = self.c_wrap.isChecked()
@@ -1068,27 +1066,47 @@ class EditorPanel(qtw.QTextEdit):
 
     def enlarge_text(self):  # , event=None):
         "tekst groter maken"
-        size = self.parent.combo_size.currentText()
-        indx = self.parent.fontsizes.index(size)
-        if indx < len(self.parent.fontsizes) - 1:
-            self.text_size(self.parent.fontsizes[indx + 1])
+        self.set_text_size(enlarge=True)
 
     def shrink_text(self):  # , event=None):
         "tekst kleiner maken"
-        size = self.parent.combo_size.currentText()
-        indx = self.parent.fontsizes.index(size)
-        if indx > 0:
-            self.text_size(self.parent.fontsizes[indx - 1])
+        self.set_text_size(shrink=True)
 
-    def text_size(self, size):
+    def set_text_size(self, enlarge=False, shrink=False):
         "lettergrootte instellen"
+        # size = self.parent.combo_size.currentText()
+        fmt = gui.QTextCharFormat()
+        size = int(fmt.fontPointSize())
+        # print(f'size from charformat {size}')
+        if not size:
+            size = gui.QFontDatabase.systemFont(gui.QFontDatabase.SystemFont.GeneralFont).pointSize()
+        # dit werkt maar één keer en past feitelijk twee keer aan, omdat de uitgelezen grootte
+        # nooit verandert
+        size = str(size)
+        # print(f"in editorpanel.set_text_size {size=} {self.parent.fontsizes=}", flush=True)
+        indx = self.parent.fontsizes.index(size)
+        # print(f'   {indx=} {len(self.parent.fontsizes)=}', flush=True)
+        if enlarge and indx < len(self.parent.fontsizes) - 1:
+            # print('enlarging text...', flush=True)
+            size = self.parent.fontsizes[indx + 1]
+        elif shrink and indx > 0:
+            # print('shrinking text...', flush=True)
+            size = self.parent.fontsizes[indx - 1]
+        else:
+            # print('doing nothing', flush=True)
+            return
+        # print(f'{size=}', flush=True)
         pointsize = float(size)
         if pointsize > 0:
             fmt = gui.QTextCharFormat()
+            # print(f'setting pointsize to {pointsize=}', flush=True)
             fmt.setFontPointSize(pointsize)
             # self.setTabStopWidth(tabsize(pointsize))
             self.mergeCurrentCharFormat(fmt)
+            # dit werkt om het zichtbaar te maken, maar blijkbaar niet om het te onthouden
             self.setFocus()
+        # else:
+        #     print(f'{pointsize=}, still doing nothing...', flush=True)
 
     def select_text_color(self):  # , event=None):
         "tekstkleur instellen"
@@ -1426,7 +1444,7 @@ class MainGui(qtw.QMainWindow):
         # for size in gui.QFontDatabase.standardSizes():
         #     self.combo_size.addItem(str(size))
         #     self.fontsizes.append(str(size))
-        # # self.fontsizes = [str(x) for x in gui.QFontDataBase.standardsizes()]
+        self.fontsizes = [str(x) for x in gui.QFontDatabase.standardSizes()]
         # # self.combo.size.additems(self.fontsizes)
         # # self.combo_size.activated[str].connect(self.editor.text_size)
         # self.combo_size.activated.connect(self.editor.text_size)
