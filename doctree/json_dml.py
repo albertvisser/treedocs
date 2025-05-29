@@ -100,8 +100,7 @@ def determine_highest_in_zipfile(filename):
     """
     # in de zipped_imagelist alleen kijken naar bestanden met extensie .png
     # niet nodig omdat het data file nummer 00000 oplevert
-    zipfile = filename.with_suffix('.zip')
-    with zpf.ZipFile(str(zipfile)) as zipped:
+    with zpf.ZipFile(str(filename)) as zipped:
         names_in_target = zipped.namelist()
     highest = int(max(names_in_target).split('.')[0]) if names_in_target else 0
     return names_in_target, highest

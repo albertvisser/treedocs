@@ -299,14 +299,14 @@ def test_determine_highest_in_zipfile(monkeypatch, capsys):
     filename = pathlib.Path('testfile.trd')
     monkeypatch.setattr(MockZipFileOk, 'namelist', mock_namelist)
     assert testee.determine_highest_in_zipfile(filename) == ([], 0)
-    assert capsys.readouterr().out == ("called zipfile.ZipFile with args ('testfile.zip',) {}\n"
+    assert capsys.readouterr().out == ("called zipfile.ZipFile with args ('testfile.trd',) {}\n"
                                        "called ZipFile.__enter__\n"
                                        "called ZipFile.namelist\n"
                                        "called ZipFile.__exit__\n")
     monkeypatch.setattr(MockZipFileOk, 'namelist', mock_namelist_2)
     assert testee.determine_highest_in_zipfile(filename) == (['00005.png', '00001.png',
                                                               '00003.png'], 5)
-    assert capsys.readouterr().out == ("called zipfile.ZipFile with args ('testfile.zip',) {}\n"
+    assert capsys.readouterr().out == ("called zipfile.ZipFile with args ('testfile.trd',) {}\n"
                                        "called ZipFile.__enter__\n"
                                        "called ZipFile.namelist\n"
                                        "called ZipFile.__exit__\n")
