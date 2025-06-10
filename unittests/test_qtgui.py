@@ -721,24 +721,25 @@ class TestResultsDialog:
         testobj.result_list = mockqtw.MockTreeWidget()
         assert capsys.readouterr().out == "called Tree.__init__\n"
         testobj.populate_list()
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.setText with arg `xxx` for col 0\n"
-                                           "called TreeItem.setData to `1` with role 256 for col 0\n"
-                                           "called TreeItem.setText with arg `yyy` for col 1\n"
-                                           "called TreeItem.setData to `1` with role 256 for col 1\n"
-                                           "called Tree.addTopLevelItem\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.setText with arg `aaa` for col 0\n"
-                                           "called TreeItem.setData to `2` with role 256 for col 0\n"
-                                           "called TreeItem.setText with arg `bbb` for col 1\n"
-                                           "called TreeItem.setData to `2` with role 256 for col 1\n"
-                                           "called Tree.addTopLevelItem\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.setText with arg `qqq` for col 0\n"
-                                           "called TreeItem.setData to `3` with role 256 for col 0\n"
-                                           "called TreeItem.setText with arg `rrr` for col 1\n"
-                                           "called TreeItem.setData to `3` with role 256 for col 1\n"
-                                           "called Tree.addTopLevelItem\n")
+        assert capsys.readouterr().out == (
+                "called TreeItem.__init__ with args ()\n"
+                "called TreeItem.setText with args (0, 'xxx')\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 1)\n"
+                "called TreeItem.setText with args (1, 'yyy')\n"
+                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 1)\n"
+                "called Tree.addTopLevelItem\n"
+                "called TreeItem.__init__ with args ()\n"
+                "called TreeItem.setText with args (0, 'aaa')\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 2)\n"
+                "called TreeItem.setText with args (1, 'bbb')\n"
+                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 2)\n"
+                "called Tree.addTopLevelItem\n"
+                "called TreeItem.__init__ with args ()\n"
+                "called TreeItem.setText with args (0, 'qqq')\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 3)\n"
+                "called TreeItem.setText with args (1, 'rrr')\n"
+                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 3)\n"
+                "called Tree.addTopLevelItem\n")
 
     def test_goto_next(self, monkeypatch, capsys):
         """unittest for ResultsDialog.goto_next
@@ -816,20 +817,22 @@ class TestResultsDialog:
                 "called PushButton.__init__ with args () {}\n"
                 "called Tree.__init__\n"
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setData to `xxx` with role 256 for col 0\n")
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 'xxx')\n")
         testobj.result_list.currentItem = mock_current
         testobj.goto_selected()
         assert testobj.parent.master.srchno == "xxx"
-        assert capsys.readouterr().out == ("called PushButton.setEnabled with arg `True`\n"
-                                           "called PushButton.setEnabled with arg `True`\n"
-                                           "called Tree.currentItem\n"
-                                           "called TreeItem.data for col 0 role 256\n"
-                                           "called Editor.go_to_result\n")
+        assert capsys.readouterr().out == (
+                "called PushButton.setEnabled with arg `True`\n"
+                "called PushButton.setEnabled with arg `True`\n"
+                "called Tree.currentItem\n"
+                "called TreeItem.data with args (0, <ItemDataRole.UserRole: 256>)\n"
+                "called Editor.go_to_result\n")
         testobj.goto_selected()
         assert testobj.parent.master.srchno == "xxx"
-        assert capsys.readouterr().out == ("called Tree.currentItem\n"
-                                           "called TreeItem.data for col 0 role 256\n"
-                                           "called Editor.go_to_result\n")
+        assert capsys.readouterr().out == (
+                "called Tree.currentItem\n"
+                "called TreeItem.data with args (0, <ItemDataRole.UserRole: 256>)\n"
+                "called Editor.go_to_result\n")
 
     def test_goto_and_close(self, monkeypatch, capsys):
         """unittest for ResultsDialog.goto_and_close
@@ -1356,6 +1359,7 @@ class TestTreePanel:
                 "called Tree.__init__\n"
                 "called Tree.setColumnCount with arg `2`\n"
                 "called Tree.hideColumn\n"
+                "called Tree.headerItem\n"
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setHidden with arg `True`\n"
                 "called Tree.setAcceptDrops with arg True\n"
@@ -1536,18 +1540,24 @@ class TestTreePanel:
         testobj.parent.root = 'root'
         testobj.create_popupmenu('item')
         assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
+                                           "called Menu.actions\n"
                                            "called Menu.addSeparator\n"
                                            "called Action.__init__ with args ('-----', None)\n"
+                                           "called Menu.actions\n"
                                            "called Tree.visualItemRect with arg item\n"
                                            "called Tree.mapToGlobal with arg center\n"
                                            "called Menu.exec with args ('mapped-to-global',) {}\n")
         testobj.create_popupmenu('root')
         assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
+                                           "called Menu.actions\n"
                                            "called Menu.addSeparator\n"
                                            "called Action.__init__ with args ('-----', None)\n"
+                                           "called Menu.actions\n"
                                            "called Tree.visualItemRect with arg root\n"
                                            "called Tree.mapToGlobal with arg center\n"
-                                           "called Menu.exec with args ('mapped-to-global',) {}\n")
+                                           "called Menu.exec with args ('mapped-to-global',) {}\n"
+                                           "called Menu.actions\n"
+                                           "called Menu.actions\n")
         testobj.parent.notemenu.addAction(mockqtw.MockAction('&Add', ''))
         testobj.parent.notemenu.addAction(mockqtw.MockAction('&Delete', ''))
         testobj.parent.notemenu.addAction(mockqtw.MockAction('&Forward', ''))
@@ -1568,6 +1578,7 @@ class TestTreePanel:
                                            "called Menu.addAction\n")
         testobj.create_popupmenu('item')
         assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
+                                           "called Menu.actions\n"
                                            "called Menu.addAction\n"
                                            "called Menu.addAction\n"
                                            "called Menu.addAction\n"
@@ -1575,12 +1586,14 @@ class TestTreePanel:
                                            "called Menu.addAction\n"
                                            "called Menu.addSeparator\n"
                                            "called Action.__init__ with args ('-----', None)\n"
+                                           "called Menu.actions\n"
                                            "called Menu.addAction\n"
                                            "called Tree.visualItemRect with arg item\n"
                                            "called Tree.mapToGlobal with arg center\n"
                                            "called Menu.exec with args ('mapped-to-global',) {}\n")
         testobj.create_popupmenu('root')
         assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
+                                           "called Menu.actions\n"
                                            "called Menu.addAction\n"
                                            "called Action.text\n"
                                            "called Action.setEnabled with arg `False`\n"
@@ -1597,11 +1610,13 @@ class TestTreePanel:
                                            "called Action.text\n"
                                            "called Menu.addSeparator\n"
                                            "called Action.__init__ with args ('-----', None)\n"
+                                           "called Menu.actions\n"
                                            "called Menu.addAction\n"
                                            "called Action.setEnabled with arg `False`\n"
                                            "called Tree.visualItemRect with arg root\n"
                                            "called Tree.mapToGlobal with arg center\n"
                                            "called Menu.exec with args ('mapped-to-global',) {}\n"
+                                           "called Menu.actions\n"
                                            "called Action.text\n"
                                            "called Action.setEnabled with arg `True`\n"
                                            "called Action.text\n"
@@ -1611,6 +1626,7 @@ class TestTreePanel:
                                            "called Action.text\n"
                                            "called Action.setEnabled with arg `True`\n"
                                            "called Action.text\n"
+                                           "called Menu.actions\n"
                                            "called Action.setEnabled with arg `True`\n")
 
     def test_add_to_parent(self, monkeypatch, capsys):
@@ -1625,24 +1641,24 @@ class TestTreePanel:
         testobj.add_to_parent('itemkey', 'titel', parent)
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with arg `titel` for col 0\n"
+                "called TreeItem.setText with args (0, 'titel')\n"
                 "called TreeItem.setTooltip with args (0, 'titel')\n"
                 "called TextDocument.__init__ with args ()\n"
                 "called TextDocument.setHtml with arg 'And this is the text'\n"
                 "called TextDocument.toPlainText\n"
-                "called TreeItem.setData to `plain text` with role 256 for col 0\n"
-                "called TreeItem.setText with arg `itemkey` for col 1\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 'plain text')\n"
+                "called TreeItem.setText with args (1, 'itemkey')\n"
                 "called TreeItem.addChild\n")
         testobj.add_to_parent('itemkey', 'titel', parent, pos=1)
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with arg `titel` for col 0\n"
+                "called TreeItem.setText with args (0, 'titel')\n"
                 "called TreeItem.setTooltip with args (0, 'titel')\n"
                 "called TextDocument.__init__ with args ()\n"
                 "called TextDocument.setHtml with arg 'And this is the text'\n"
                 "called TextDocument.toPlainText\n"
-                "called TreeItem.setData to `plain text` with role 256 for col 0\n"
-                "called TreeItem.setText with arg `itemkey` for col 1\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 'plain text')\n"
+                "called TreeItem.setText with args (1, 'itemkey')\n"
                 "called TreeItem.insertChild at pos 1\n")
 
     def test_getitemdata(self, monkeypatch, capsys):
@@ -1669,11 +1685,11 @@ class TestTreePanel:
         item.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'data')
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setData to `data` with role"
-                f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
+                "called TreeItem.setData with args"
+                f" (0, {testee.core.Qt.ItemDataRole.UserRole!r}, 'data')\n")
         assert testobj.getitemtext(item) == "data"
         assert capsys.readouterr().out == (
-                f"called TreeItem.data for col 0 role {testee.core.Qt.ItemDataRole.UserRole}\n")
+                f"called TreeItem.data with args (0, {testee.core.Qt.ItemDataRole.UserRole!r})\n")
 
     def test_getitemtitle(self, monkeypatch, capsys):
         """unittest for TreePanel.getitemtitle
@@ -1682,7 +1698,7 @@ class TestTreePanel:
         item = mockqtw.MockTreeItem('xxx')
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx',)\n"
         assert testobj.getitemtitle(item) == "xxx"
-        assert capsys.readouterr().out == "called TreeItem.text for col 0\n"
+        assert capsys.readouterr().out == "called TreeItem.text with arg 0\n"
 
     def test_getitemkey(self, monkeypatch, capsys):
         """unittest for TreePanel.getitemkey
@@ -1695,7 +1711,7 @@ class TestTreePanel:
         item = mockqtw.MockTreeItem('xxx', '111')
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx', '111')\n"
         assert testobj.getitemkey(item) == 111
-        assert capsys.readouterr().out == "called TreeItem.text for col 1\n"
+        assert capsys.readouterr().out == "called TreeItem.text with arg 1\n"
 
     def test_setitemtitle(self, monkeypatch, capsys):
         """unittest for TreePanel.setitemtitle
@@ -1704,7 +1720,7 @@ class TestTreePanel:
         item = mockqtw.MockTreeItem()
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
         testobj.setitemtitle(item, 'title')
-        assert capsys.readouterr().out == ("called TreeItem.setText with arg `title` for col 0\n"
+        assert capsys.readouterr().out == ("called TreeItem.setText with args (0, 'title')\n"
                                            "called TreeItem.setTooltip with args (0, 'title')\n")
 
     def test_setitemtext(self, monkeypatch, capsys):
@@ -1714,8 +1730,9 @@ class TestTreePanel:
         item = mockqtw.MockTreeItem()
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
         testobj.setitemtext(item, 'text')
-        assert capsys.readouterr().out == ("called TreeItem.setData to `text` with role"
-                                           f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
+        assert capsys.readouterr().out == (
+                "called TreeItem.setData with args"
+                f" (0, {testee.core.Qt.ItemDataRole.UserRole!r}, 'text')\n")
 
     def test_getitemkids(self, monkeypatch, capsys):
         """unittest for TreePanel.getitemkids
@@ -3452,7 +3469,13 @@ class TestMainGui:
         assert len(testobj.menulist[5].actions()) == 1
         assert isinstance(testobj.undo_item, testee.gui.QAction)
         assert testobj.undo_item.text() == '&Undo'
-        assert capsys.readouterr().out == 'called Action.text\n'
+        assert capsys.readouterr().out == ('called Menu.actions\n'
+                                           'called Menu.actions\n'
+                                           'called Menu.actions\n'
+                                           'called Menu.actions\n'
+                                           'called Menu.actions\n'
+                                           'called Menu.actions\n'
+                                           'called Action.text\n')
         assert testobj.undo_item.shortcuts() == ['Ctrl+Z']
         assert capsys.readouterr().out == 'called Action.shortcuts\n'
         assert isinstance(testobj.redo_item, testee.gui.QAction)
@@ -4184,8 +4207,11 @@ class TestMainGui:
         testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
         testobj.clear_viewmenu()
         assert len(list(testobj.viewmenu.actions())) == 8
-        assert capsys.readouterr().out == (f"called Menu.removeaction with arg {action9}\n"
-                                           f"called Menu.removeaction with arg {action0}\n")
+
+        assert capsys.readouterr().out == ('called Menu.actions\n'
+                                           f"called Menu.removeaction with arg {action9}\n"
+                                           f"called Menu.removeaction with arg {action0}\n"
+                                           'called Menu.actions\n')
 
     def test_add_viewmenu_option(self, monkeypatch, capsys):
         """unittest for MainGui.add_viewmenu_option
@@ -4200,6 +4226,8 @@ class TestMainGui:
         assert capsys.readouterr().out == (
                 "called Menu.__init__ with args ()\n"
                 f"called Action.__init__ with args ('optiontext', {testobj})\n"
+                "called Action.setStatusTip with arg 'switch to this view'\n"
+                "called Action.setCheckable with arg `True`\n"
                 f"called Signal.connect with args ({testobj.master.select_view},)\n"
                 "called Menu.addAction\n")
 
@@ -4225,6 +4253,7 @@ class TestMainGui:
                                            "called Action.setChecked with arg `True`\n")
         assert testobj.check_viewmenu_option() == "&2 x10"
         assert capsys.readouterr().out == ("called MainWindow.sender\n"
+                                           "called Menu.actions\n"
                                            "called Action.isChecked\n"
                                            "called Action.setChecked with arg `False`\n"
                                            "called Action.text\n"
@@ -4239,7 +4268,8 @@ class TestMainGui:
         testobj.master = MockEditor()
         testobj.master.opts = {'ActiveView': 1}
         testobj.uncheck_viewmenu_option()
-        assert capsys.readouterr().out == ("called Action.setChecked with arg `False`\n")
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.setChecked with arg `False`\n")
         # alleen: welke wordt er nu precies unchecked?
 
     def test_rename_viewmenu_option(self, monkeypatch, capsys):
@@ -4250,7 +4280,8 @@ class TestMainGui:
         testobj.master = MockEditor()
         testobj.master.opts = {'ActiveView': 1}
         testobj.rename_viewmenu_option('newname')
-        assert capsys.readouterr().out == ("called Action.text\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.text\n"
                                            "called Action.setText with arg `&1 newname`\n")
 
     def test_check_next_viewmenu_option(self, monkeypatch, capsys):
@@ -4261,7 +4292,8 @@ class TestMainGui:
         action9.setChecked(True)
         assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
         testobj.check_next_viewmenu_option()
-        assert capsys.readouterr().out == ("called Action.isChecked\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.isChecked\n"
                                            "called Action.setChecked with arg `False`\n"
                                            "called Action.isChecked\n"
                                            "called Action.setChecked with arg `True`\n")
@@ -4276,7 +4308,8 @@ class TestMainGui:
         action0.setChecked(True)
         assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
         testobj.check_next_viewmenu_option()
-        assert capsys.readouterr().out == ("called Action.isChecked\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.isChecked\n"
                                            "called Action.isChecked\n"
                                            "called Action.setChecked with arg `False`\n"
                                            "called Action.setChecked with arg `True`\n")
@@ -4291,7 +4324,8 @@ class TestMainGui:
         action9.setChecked(True)
         assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
         testobj.check_next_viewmenu_option(prev=True)
-        assert capsys.readouterr().out == ("called Action.isChecked\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.isChecked\n"
                                            "called Action.isChecked\n"
                                            "called Action.setChecked with arg `False`\n"
                                            "called Action.setChecked with arg `True`\n")
@@ -4306,7 +4340,8 @@ class TestMainGui:
         action9.setChecked(True)
         assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
         testobj.check_next_viewmenu_option(prev=True)
-        assert capsys.readouterr().out == ("called Action.isChecked\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.isChecked\n"
                                            "called Action.isChecked\n"
                                            "called Action.setChecked with arg `False`\n"
                                            "called Action.setChecked with arg `True`\n")
@@ -4321,7 +4356,8 @@ class TestMainGui:
         testobj.master = MockEditor()
         testobj.master.opts = {'ActiveView': 1}
         assert testobj.remove_viewmenu_option('xx9') == action0
-        assert capsys.readouterr().out == ("called Action.text\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.text\n"
                                            f"called Menu.removeaction with arg {action9}\n"
                                            "called Action.text\n"
                                            "called Action.setText with arg `&1 x10`\n")
@@ -4334,7 +4370,8 @@ class TestMainGui:
         testobj.master = MockEditor()
         testobj.master.opts = {'ActiveView': 2}
         assert testobj.remove_viewmenu_option('x10') == action9
-        assert capsys.readouterr().out == ("called Action.text\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.text\n"
                                            "called Action.text\n"
                                            f"called Menu.removeaction with arg {action0}\n")
 
@@ -4349,7 +4386,8 @@ class TestMainGui:
         testobj.master = MockEditor()
         testobj.master.opts = {'ActiveView': 2}
         assert testobj.remove_viewmenu_option('xx9') == action0
-        assert capsys.readouterr().out == ("called Action.text\n"
+        assert capsys.readouterr().out == ("called Menu.actions\n"
+                                           "called Action.text\n"
                                            f"called Menu.removeaction with arg {action9}\n"
                                            "called Action.text\n"
                                            "called Action.setText with arg `&1 x10`\n"

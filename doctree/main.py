@@ -1179,7 +1179,6 @@ class MainWindow:
 
     def search_from(self, parent, loc=None):
         """recursive search in tree items
-        assumes item.text(0) contains title, item.data(0) contains text without format
         result is a list of 3-tuples with items:
         - node address in the form of a series of sequence numbers
         - indication of where the string was found (title or text)

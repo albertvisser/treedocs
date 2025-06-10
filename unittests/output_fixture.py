@@ -228,30 +228,35 @@ called Menu.__init__ with args ('xxx',)
 called MenuBar.addMenu with arg  yyy
 called Menu.__init__ with args ('yyy',)
 called Action.__init__ with args ('B', {testobj})
+called Action.setCheckable with arg `True`
 called Font.__init__
 called Font.setBold with arg `True`
 called Action.setFont
 called Signal.connect with args ({callbacks[2]},)
 called Menu.addAction
 called Action.__init__ with args ('I', {testobj})
+called Action.setCheckable with arg `True`
 called Font.__init__
 called Font.setItalic with arg `True`
 called Action.setFont
 called Signal.connect with args ({callbacks[3]},)
 called Menu.addAction
 called Action.__init__ with args ('U', {testobj})
+called Action.setCheckable with arg `True`
 called Font.__init__
 called Font.setUnderline with arg `True`
 called Action.setFont
 called Signal.connect with args ({callbacks[4]},)
 called Menu.addAction
 called Action.__init__ with args ('S', {testobj})
+called Action.setCheckable with arg `True`
 called Font.__init__
 called Font.setStrikeOut with arg `True`
 called Action.setFont
 called Signal.connect with args ({callbacks[5]},)
 called Menu.addAction
 called Action.__init__ with args ('M', {testobj})
+called Action.setCheckable with arg `True`
 called Font.__init__
 called Font.setFixedPitch with arg `True`
 called Action.setFont
@@ -260,6 +265,7 @@ called Menu.addAction
 called Menu.addSeparator
 called Action.__init__ with args ('-----', None)
 called Action.__init__ with args ('X', {testobj})
+called Action.setCheckable with arg `True`
 called Signal.connect with args ({callbacks[6]},)
 called Menu.addAction
 called Menu.addSeparator
@@ -268,13 +274,16 @@ called MenuBar.addMenu with arg  zzz
 called Menu.__init__ with args ('zzz',)
 called Action.__init__ with args ('&Undo', {testobj})
 called Action.setShortcuts with arg `['Ctrl+Z']`
+called Action.setStatusTip with arg 'undo'
 called Signal.connect with args ({callbacks[7]},)
 called Menu.addAction
 called Action.__init__ with args ('&Redo', {testobj})
 called Action.setShortcuts with arg `['Ctrl+Y']`
+called Action.setStatusTip with arg 'redo'
 called Signal.connect with args ({callbacks[8]},)
 called Menu.addAction
 called Action.__init__ with args ('', {testobj})
+called Action.setStatusTip with arg 'xxx'
 called Signal.connect with args ({callbacks[0]},)
 called MenuBar.addMenu with arg  bbb
 called Menu.__init__ with args ('bbb',)
