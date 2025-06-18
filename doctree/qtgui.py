@@ -3,6 +3,7 @@
 import os
 import sys
 import contextlib
+import subprocess
 import PyQt6.QtGui as gui
 import PyQt6.QtWidgets as qtw
 import PyQt6.QtCore as core
@@ -863,21 +864,35 @@ class EditorPanel(qtw.QTextEdit):
         "reimplemented"
         if source.hasImage():
             image = source.imageData()
-            cursor = self.textCursor()
-            document = self.document()
-            num = self.parent.master.opts['ImageCount']
-            num += 1
-            self.parent.master.opts['ImageCount'] = num
-            ## urlname = '{}_{:05}.png'.format(str(self.parent.project_file), num)
-            url = self.parent.master.temp_imagepath / f'{num:05}.png'
-            image.save(str(url))
-            ## urlname = os.path.basename(urlname)  # make name "relative"
-            document.addResource(gui.QTextDocument.ResourceType.ImageResource, core.QUrl(str(url)),
-                                 image)
-            # cursor.insertImage(url.name)
-            cursor.insertImage(str(url))
+        elif self.islocalimage(source):
+            image = gui.QImage()
+            image.load(source.text().strip().removeprefix('file://'))
         else:
             super().insertFromMimeData(source)
+            return
+        cursor = self.textCursor()
+        document = self.document()
+        num = self.parent.master.opts['ImageCount']
+        num += 1
+        self.parent.master.opts['ImageCount'] = num
+        url = self.parent.master.temp_imagepath / f'{num:05}.png'
+        image.save(str(url))
+        document.addResource(gui.QTextDocument.ResourceType.ImageResource, core.QUrl(str(url)),
+                             image)
+        cursor.insertImage(str(url))
+
+    def islocalimage(self, source):
+        source = source.text()
+        try:
+            if source.startswith('file://'):
+                source = source.removeprefix('file://')
+        except AttributeError:     # not a string
+            return False
+        source = source.strip()
+        if not os.path.exists(source):  # does not exist
+            return False
+        test = subprocess.run(['file', '-bi', source], capture_output=True)
+        return test.stdout.decode().startswith('image')  # is an image or not
 
     def set_contents(self, data):
         """load contents into editor

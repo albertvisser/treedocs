@@ -2073,6 +2073,12 @@ class TestEditorPanel:
     def test_insertFromMimeData(self, monkeypatch, capsys):
         """unittest for EditorPanel.insertFromMimeData
         """
+        def mock_islocal(arg):
+            print(f'called EditorPanel.islocalimage with arg {arg}')
+            return True
+        def mock_islocal2(arg):
+            print(f'called EditorPanel.islocalimage with arg {arg}')
+            return False
         def mock_save(arg):
             print(f"called Image.save with arg '{arg}'")
         monkeypatch.setattr(testee.gui, 'QImage', mockqtw.MockImage)
@@ -2082,24 +2088,77 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.qtw.QTextEdit, 'textCursor', mockqtw.MockEditorWidget.textCursor)
         monkeypatch.setattr(testee.qtw.QTextEdit, 'document', mockqtw.MockEditorWidget.document)
         testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.islocalimage = mock_islocal
         testobj.parent.master.opts = {'ImageCount': 1}
         testobj.parent.master.temp_imagepath = pathlib.Path('xxx')
-        source = types.SimpleNamespace(hasImage=lambda *x: False)
-        testobj.insertFromMimeData(source)
-        assert capsys.readouterr().out == (
-                f"called Editor.insertFromMimeData with args ({source},)\n")
         source = types.SimpleNamespace(hasImage=lambda *x: True,
                                        imageData=lambda: types.SimpleNamespace(save=mock_save))
         testobj.insertFromMimeData(source)
         assert capsys.readouterr().out == (
                 "called Editor.textCursor\n"
                 "called TextCursor.__init__\n"
+                "called Editor.document\n"
                 "called TextDocument.__init__ with args ()\n"
                 "called Image.save with arg 'xxx/00002.png'\n"
                 "called Url.__init__ with args ('xxx/00002.png',)\n"
                 "called TextDocument.addResource with args"
                 " (2, <class 'mockgui.mockqtwidgets.MockUrl'>, <class 'types.SimpleNamespace'>)\n"
                 "called Cursor.insertImage with arg xxx/00002.png\n")
+        source = types.SimpleNamespace(hasImage=lambda *x: False,
+                                       text=lambda: 'image filename\n')
+        testobj.insertFromMimeData(source)
+        assert capsys.readouterr().out == (
+                f"called EditorPanel.islocalimage with arg {source}\n"
+                "called Image.__init__ with args ()\n"
+                "called image.load with args ('image filename',)\n"
+                "called Editor.textCursor\n"
+                "called TextCursor.__init__\n"
+                "called Editor.document\n"
+                "called TextDocument.__init__ with args ()\n"
+                "called image.save with arg xxx/00003.png\n"
+                "called Url.__init__ with args ('xxx/00003.png',)\n"
+                "called TextDocument.addResource with args"
+                " (2, <class 'mockgui.mockqtwidgets.MockUrl'>,"
+                " <class 'mockgui.mockqtwidgets.MockImage'>)\n"
+                "called Cursor.insertImage with arg xxx/00003.png\n")
+        testobj.islocalimage = mock_islocal2
+        source = types.SimpleNamespace(hasImage=lambda *x: False)
+        testobj.insertFromMimeData(source)
+        assert capsys.readouterr().out == (
+                f"called EditorPanel.islocalimage with arg {source}\n"
+                f"called Editor.insertFromMimeData with args ({source},)\n")
+
+    def test_islocalimage(self, monkeypatch, capsys):
+        """unittest for EditorPanel.islocalimage
+        """
+        def mock_run(*args, **kwargs):
+            print('called subprocess.run with args', args, kwargs)
+            return types.SimpleNamespace(stdout=b'qqqqq')
+        def mock_run2(*args, **kwargs):
+            print('called subprocess.run with args', args, kwargs)
+            return types.SimpleNamespace(stdout=b'image/png')
+        monkeypatch.setattr(testee.os.path, 'exists', lambda *x: False)
+        monkeypatch.setattr(testee.subprocess, 'run', mock_run)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        source = types.SimpleNamespace(text=lambda *x: 42)
+        assert not testobj.islocalimage(source)
+        assert capsys.readouterr().out == ""
+
+        source = types.SimpleNamespace(text=lambda *x: 'file://path/to/file\n')
+        assert not testobj.islocalimage(source)
+        assert capsys.readouterr().out == ""
+
+        monkeypatch.setattr(testee.os.path, 'exists', lambda *x: True)
+        assert not testobj.islocalimage(source)
+        assert capsys.readouterr().out == (
+                "called subprocess.run with args"
+                " (['file', '-bi', 'path/to/file'],) {'capture_output': True}\n")
+
+        monkeypatch.setattr(testee.subprocess, 'run', mock_run2)
+        source = types.SimpleNamespace(text=lambda *x: 'xxx')
+        assert testobj.islocalimage(source)
+        assert capsys.readouterr().out == ("called subprocess.run with args"
+                                           " (['file', '-bi', 'xxx'],) {'capture_output': True}\n")
 
     def test_set_contents(self, monkeypatch, capsys):
         """unittest for EditorPanel.set_contents
@@ -3160,7 +3219,8 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.qtw.QTextEdit, 'document', mockqtw.MockEditorWidget.document)
         testobj = self.setup_testobj(monkeypatch, capsys)
         assert testobj.check_dirty() == "modified"
-        assert capsys.readouterr().out == ("called TextDocument.__init__ with args ()\n"
+        assert capsys.readouterr().out == ("called Editor.document\n"
+                                           "called TextDocument.__init__ with args ()\n"
                                            "called textDocument.isModified\n")
 
     def test_mark_dirty(self, monkeypatch, capsys):
@@ -3169,7 +3229,8 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.qtw.QTextEdit, 'document', mockqtw.MockEditorWidget.document)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.mark_dirty('value')
-        assert capsys.readouterr().out == ("called TextDocument.__init__ with args ()\n"
+        assert capsys.readouterr().out == ("called Editor.document\n"
+                                           "called TextDocument.__init__ with args ()\n"
                                            "called TextDocument.setModified with arg value\n")
 
     def test_openup(self, monkeypatch, capsys):
