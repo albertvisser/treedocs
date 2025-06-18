@@ -1441,4 +1441,4 @@ class MainWindow:
             # opslaan zonder vragen, backuppen en zippen
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
                                self.text_positions, self.temp_imagepath, backup=False,
-                               save_images=False)
+                               save_images=not self.images_embedded)

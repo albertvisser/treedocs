@@ -3184,15 +3184,17 @@ class TestMainWindow:
         testobj.confirm(setting='this')
         assert capsys.readouterr().out == ("")
         testobj.opts = {'this': 'that'}
+        testobj.images_embedded = True
         testobj.confirm(setting='this')
         assert capsys.readouterr().out == (
                 f"called gui.show_dialog with args ({testobj.gui},"
                 f" {testee.gui.CheckDialog}, {{'message': '', 'option': 'this'}})\n"
                 "called dml.write_to_files with args ('xx', {'this': 'that'}, ['view1'],"
                 " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': False}\n")
+        testobj.images_embedded = False
         testobj.confirm(setting='this', textitem='zzz')
         assert capsys.readouterr().out == (
                 f"called gui.show_dialog with args ({testobj.gui},"
                 f" {testee.gui.CheckDialog}, {{'message': 'zzz', 'option': 'this'}})\n"
                 "called dml.write_to_files with args ('xx', {'this': 'that'}, ['view1'],"
-                " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': False}\n")
+                " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': True}\n")
