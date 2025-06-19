@@ -496,32 +496,69 @@ class TestSearchDialog:
     def test_check_modes(self, monkeypatch, capsys):
         """unittest for SearchDialog.check_modes
         """
-        c_curr = mockqtw.MockCheckBox()
-        assert capsys.readouterr().out == "called CheckBox.__init__\n"
         def mock_sender():
             print('called SearchDialog.sender')
-            return c_curr
+            return testobj.c_curr
         def mock_sender_2():
             print('called SearchDialog.sender')
-            return None
+            return testobj.c_titl
+        def mock_sender_3():
+            print('called SearchDialog.sender')
+            return testobj.c_text
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.c_curr = c_curr
+        testobj.c_curr = mockqtw.MockCheckBox()
         testobj.c_titl = mockqtw.MockCheckBox()
         testobj.c_text = mockqtw.MockCheckBox()
         testobj.c_lijst = mockqtw.MockCheckBox()
         assert capsys.readouterr().out == ("called CheckBox.__init__\n"
                                            "called CheckBox.__init__\n"
+                                           "called CheckBox.__init__\n"
                                            "called CheckBox.__init__\n")
         testobj.sender = mock_sender
         testobj.check_modes()
         assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           # "called CheckBox.setChecked with arg False\n"
+                                           # "called CheckBox.setChecked with arg False\n"
+                                           # "called CheckBox.setEnabled with arg False\n")
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.c_curr.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.check_modes()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
                                            "called CheckBox.setChecked with arg False\n"
                                            "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.isChecked\n"
                                            "called CheckBox.setEnabled with arg False\n")
         testobj.sender = mock_sender_2
         testobj.check_modes()
         assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg False\n")
+        testobj.c_titl.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.check_modes()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
                                            "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.sender = mock_sender_3
+        testobj.check_modes()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.c_text.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.check_modes()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.isChecked\n"
                                            "called CheckBox.setEnabled with arg True\n")
 
     def test_accept(self, monkeypatch, capsys):

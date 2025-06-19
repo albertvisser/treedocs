@@ -212,15 +212,20 @@ class SearchDialog(qtw.QDialog):
         hbox.addStretch()
         vbox.addLayout(hbox)
 
-        vbox.addSpacing(5)
-        hbox = qtw.QHBoxLayout()
+        vbox.addSpacing(10)
+        # hbox = qtw.QHBoxLayout()
         self.c_wrap = qtw.QCheckBox('Wrap around', self)
-        hbox.addWidget(self.c_wrap)
-        vbox.addLayout(hbox)
-        hbox = qtw.QHBoxLayout()
+        # hbox.addWidget(self.c_wrap)
+        # vbox.addLayout(hbox)
+        vbox.addWidget(self.c_wrap)
+        # hbox = qtw.QHBoxLayout()
         self.c_lijst = qtw.QCheckBox('Toon lijst met zoekresultaten', self)
-        hbox.addWidget(self.c_lijst)
-        vbox.addLayout(hbox)
+        # hbox.addWidget(self.c_lijst)
+        # vbox.addLayout(hbox)
+        vbox.addWidget(self.c_lijst)
+        # self.c_resperdoc = qtw.QCheckBox('Toon 1 Resultaat per document', self)
+        # # self.c_resperdoc.setEnabled(False)
+        # vbox.addWidget(self.c_resperdoc)
 
         hbox = qtw.QHBoxLayout()
         hbox.addStretch(1)
@@ -236,10 +241,14 @@ class SearchDialog(qtw.QDialog):
         self.setLayout(vbox)
         if mode == 0:
             self.c_curr.setChecked(True)
+            # self.c_resperdoc.setEnabled(False)
         elif mode == 1:
             self.c_titl.setChecked(True)
+            # self.c_resperdoc.setEnabled(True)
+            # self.c_resperdoc.setChecked(True)
         else:  # if mode == 2:
             self.c_text.setChecked(True)
+            # self.c_resperdoc.setEnabled(False)
         if self.parent.srchtext:
             self.t_zoek.setText(self.parent.srchtext)
 
@@ -264,16 +273,15 @@ class SearchDialog(qtw.QDialog):
             lijst en search backwards activeren
         """
         this_object = self.sender()
-        # other_object = self.c_titl if this_object == self.c_text else self.c_text
-        if this_object == self.c_curr:
-            self.c_titl.setChecked(False)
-            self.c_text.setChecked(False)
-            ## self.c_richt.setEnabled(False)
-            self.c_lijst.setEnabled(False)
-        else:
-            self.c_curr.setChecked(False)
-            ## self.c_richt.setEnabled(False) # True)
-            self.c_lijst.setEnabled(True)
+        if this_object.isChecked():
+            if this_object == self.c_curr:
+                self.c_titl.setChecked(False)
+                self.c_text.setChecked(False)
+            else:
+                self.c_curr.setChecked(False)
+        self.c_lijst.setEnabled(not self.c_curr.isChecked())
+        # self.c_resperdoc.setChecked(self.c_text.isChecked())
+        # self.c_resperdoc.setEnabled(self.c_text.isChecked())
 
     def accept(self):
         "afsluiten met bijwerken"

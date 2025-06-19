@@ -95,14 +95,10 @@ called HBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockVBoxLay
 called HBox.addStretch
 called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
 called VBox.addSpacing
-called HBox.__init__
 called CheckBox.__init__ with text 'Wrap around'
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
-called HBox.__init__
+called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
 called CheckBox.__init__ with text 'Toon lijst met zoekresultaten'
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
 called HBox.__init__
 called HBox.addStretch
 called PushButton.__init__ with args ('&Ok', {testobj}) {{}}
