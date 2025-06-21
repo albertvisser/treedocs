@@ -198,6 +198,8 @@ class MockEditor:
     def getsubtree(self, *args, **kwargs):
         print('called Editor.getsubtree with args', args, kwargs)
         return []
+    def search_from_start(self):
+        print('called Editor.search_from_start')
 
 
 class MockMainGui:
@@ -4539,12 +4541,12 @@ class TestMainGui:
     def test_goto_searchresult(self, monkeypatch, capsys):
         """unittest for MainGui.goto_searchresult
         """
-        def mock_find(text, options):
-            print(f"called Editor.find with args '{text}' '{options}'")
-            return False
-        def mock_find2(text, options):
-            print(f"called Editor.find with args '{text}' '{options}'")
-            return True
+        # def mock_find(text, options):
+        #     print(f"called Editor.find with args '{text}' '{options}'")
+        #     return False
+        # def mock_find2(text, options):
+        #     print(f"called Editor.find with args '{text}' '{options}'")
+        #     return True
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.tree = mockqtw.MockTreeWidget()
         testobj.root = mockqtw.MockTreeItem('root')
@@ -4559,7 +4561,7 @@ class TestMainGui:
                                            "called TreeItem.__init__ with args ('level2',)\n"
                                            "called TreeItem.addChild\n")
         testobj.editor = MockEditor()
-        testobj.editor.find = mock_find
+        # testobj.editor.find = mock_find
         testobj.srchtext = 'needle'
         testobj.srchflags = 'searchflags'
         testobj.srchtype = 1
@@ -4572,14 +4574,15 @@ class TestMainGui:
         assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
                                            "called TreeItem.child with arg 0\n"
                                            f"called Tree.setCurrentItem with arg `{item2}`\n"
-                                           "called Editor.find with args 'needle' 'searchflags'\n")
-        testobj.editor.find = mock_find2
-        testobj.goto_searchresult([0, 0])
-        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{item2}`\n"
-                                           "called Editor.find with args 'needle' 'searchflags'\n"
-                                           "called Editor.ensureCursorVisible\n")
+                                           # "called Editor.find with args 'needle' 'searchflags'\n")
+                                           "called Editor.search_from_start\n")
+        # testobj.editor.find = mock_find2
+        # testobj.goto_searchresult([0, 0])
+        # assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
+        #                                    "called TreeItem.child with arg 0\n"
+        #                                    f"called Tree.setCurrentItem with arg `{item2}`\n"
+        #                                    "called Editor.find with args 'needle' 'searchflags'\n"
+        #                                    "called Editor.ensureCursorVisible\n")
 
     def test_add_escape_action(self, monkeypatch, capsys):
         """unittest for MainGui.add_escape_action

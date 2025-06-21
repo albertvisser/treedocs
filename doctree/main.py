@@ -952,7 +952,8 @@ class MainWindow:
 
         # save_images = self.toolkit != 'wx'
         dml.write_to_files(other_file, opts, views, itemdict, positions, self.temp_imagepath,
-                           extra_images, save_images=not self.images_embedded)
+                           # extra_images, save_images=not self.images_embedded)
+                           save_images=not self.images_embedded)
 
     def order_top(self, *args):
         """order items directly under the top level"""
@@ -1123,7 +1124,6 @@ class MainWindow:
     def search(self, *args, mode=0):
         """start search action
         """
-        # print('starting new search, srchlist =', self.gui.srchlist)
         if self.gui.srchlist:
             gui.show_message(self.gui, 'Cannot start new search while results screen is showing')
             return
@@ -1143,6 +1143,10 @@ class MainWindow:
             self.gui.srchlist = False
             gui.show_message(self.gui, 'Search string not found')
             return
+        # print("in main.search, search_results is:")
+        # for item in self.search_results:
+        #     print(item)
+        # print(flush=True)
         if self.gui.srchlist:
             gui.show_nonmodal(self.gui, gui.ResultsDialog)
         else:
@@ -1198,6 +1202,8 @@ class MainWindow:
                 result.append((loc, 'title', self.first_title, title))
             if self.gui.srchtype & 2 and self.gui.find_needle(text):
                 result.append((loc, 'text', self.first_title, title))
+                # TODO: verder zoeken in document als de switch daarvoor aan staat
+                # cursorpos = self.gui.find_needle(text, cursorpos) - extra arg om dit aan te geven
             test = self.search_from(treeitem, loc)
             if test:
                 result.extend(test)
@@ -1205,6 +1211,7 @@ class MainWindow:
 
     def go_to_result(self):
         "view search result"
+        # print('in main.go_to_result', flush=True)
         msg = ''
         if self.srchno >= len(self.search_results):
             if self.gui.srchwrap:

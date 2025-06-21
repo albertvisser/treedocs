@@ -1992,7 +1992,8 @@ class TestMainWindow:
                 "called add_item_to_view with args (['new', 'copied', 'item'], [])\n"
                 "called dml.write_to_files with args (PosixPath('newname.trd'),"
                 " {'Version': 'xx'}, [[]], {'item': 'dict'}, {4: 1, 5: 2},"
-                " PosixPath('/tmp/path/to/imagefiles'), ['images']) {'save_images': True}\n")
+                # " PosixPath('/tmp/path/to/imagefiles'), ['images']) {'save_images': True}\n")
+                " PosixPath('/tmp/path/to/imagefiles')) {'save_images': True}\n")
 
         monkeypatch.setattr(testee.gui, 'get_filename', mock_get_filename_2)
         monkeypatch.setattr(testee.pathlib.Path, 'exists', lambda x: True)
@@ -2022,7 +2023,8 @@ class TestMainWindow:
                 "called add_item_to_view with args (['new', 'copied', 'item'], 'list')\n"
                 "called dml.write_to_files with args (PosixPath('newname.trd'),"
                 " {'opts': 'dict'}, ['views', 'list'], {'item': 'dict'}, {4: 1, 5: 2},"
-                " PosixPath('/tmp/path/to/imagefiles'), []) {'save_images': False}\n")
+                # " PosixPath('/tmp/path/to/imagefiles'), []) {'save_images': False}\n")
+                " PosixPath('/tmp/path/to/imagefiles')) {'save_images': False}\n")
 
     def test_order_top(self, monkeypatch, capsys):
         """unittest for MainWindow.order_top

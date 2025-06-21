@@ -1770,14 +1770,18 @@ class MainGui(qtw.QMainWindow):
 
     def goto_searchresult(self, loc):
         "position on found data in text"
+        # print(f'in gui.goto_searchresult, {loc=}', flush=True)
         treeitem = self.root
         for x in loc:
             treeitem = treeitem.child(x)
+        # print('setting current item', flush=True)
         self.tree.setCurrentItem(treeitem)
+        # print(f'{self.srchtype=}', flush=True)
         if self.srchtype & 2:
-            ok = self.editor.find(self.srchtext, self.srchflags)
-            if ok:
-                self.editor.ensureCursorVisible()
+            # ok = self.editor.find(self.srchtext, self.srchflags)
+            # if ok:
+            #     self.editor.ensureCursorVisible()
+            self.editor.search_from_start()   # bij de gratie van altijd naar de eerste gaan
 
     def add_escape_action(self):
         "Add accelerator to for Esc key to close application"
