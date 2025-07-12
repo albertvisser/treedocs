@@ -2140,8 +2140,7 @@ class TestEditorPanel:
                 "called TextDocument.__init__ with args ()\n"
                 "called Image.save with arg 'xxx/00002.png'\n"
                 "called Url.__init__ with args ('xxx/00002.png',)\n"
-                "called TextDocument.addResource with args"
-                " (2, <class 'mockgui.mockqtwidgets.MockUrl'>, <class 'types.SimpleNamespace'>)\n"
+                "called TextDocument.addResource with args (2, MockUrl, SimpleNamespace)\n"
                 "called Cursor.insertImage with arg xxx/00002.png\n")
         source = types.SimpleNamespace(hasImage=lambda *x: False,
                                        text=lambda: 'image filename\n')
@@ -2156,9 +2155,7 @@ class TestEditorPanel:
                 "called TextDocument.__init__ with args ()\n"
                 "called image.save with arg xxx/00003.png\n"
                 "called Url.__init__ with args ('xxx/00003.png',)\n"
-                "called TextDocument.addResource with args"
-                " (2, <class 'mockgui.mockqtwidgets.MockUrl'>,"
-                " <class 'mockgui.mockqtwidgets.MockImage'>)\n"
+                "called TextDocument.addResource with args (2, MockUrl, MockImage)\n"
                 "called Cursor.insertImage with arg xxx/00003.png\n")
         testobj.islocalimage = mock_islocal2
         source = types.SimpleNamespace(hasImage=lambda *x: False)
@@ -3447,7 +3444,7 @@ class TestMainGui:
             print('called MainGui.get_menu_data')
             return 'menudata'
         def mock_icon(self, arg):
-            print(f'called Icon.__init__ with arg of type {type(arg)}')
+            print(f'called Icon.__init__ with arg {type(arg).__name__}')
         def mock_seticon(self, data):
             print('called Action.setIcon')
         # monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
@@ -3624,7 +3621,7 @@ class TestMainGui:
             print(f'called MainGui.addToolBar with arg {arg}')
             return toolbar
         def mock_icon(self, arg):
-            print(f'called Icon.__init__ with arg of type {type(arg)}')
+            print(f'called Icon.__init__ with arg {type(arg).__name__}')
         monkeypatch.setattr(testee.gui, 'QFontDatabase',
                             types.SimpleNamespace(standardSizes=lambda: [10, 12, 20]))
         monkeypatch.setattr(mockqtw.MockFontComboBox, 'currentTextChanged',

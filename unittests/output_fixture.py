@@ -10,16 +10,16 @@ called PushButton.__init__ with args ('&Ok', {testobj}) {{}}
 called Signal.connect with args ({testobj.klaar},)
 called VBox.__init__
 called HBox.__init__
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLabel'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called HBox.addWidget with arg MockLabel
+called VBox.addLayout with arg MockHBoxLayout
 called HBox.__init__
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
+called HBox.addWidget with arg MockPushButton
 called HBox.insertStretch
 called HBox.addStretch
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addLayout with arg MockHBoxLayout
 called HBox.__init__
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called HBox.addWidget with arg MockCheckBox
+called VBox.addLayout with arg MockHBoxLayout
 called Dialog.setLayout
 """
 create_optionsdialog = """\
@@ -29,26 +29,26 @@ called Dialog.setWindowTitle with args ('A Propos Settings',)
 called VBox.__init__
 called Grid.__init__
 called Label.__init__ with args ('xxxxxxxxxxxxxx', {testobj})
-called Grid.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLabel'> at (1, 0)
+called Grid.addWidget with arg MockLabel at (1, 0)
 called CheckBox.__init__ with text ''
 called CheckBox.setChecked with arg True
-called Grid.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'> at (1, 1)
+called Grid.addWidget with arg MockCheckBox at (1, 1)
 called Label.__init__ with args ('yyyyyyyyyyyyyyy', {testobj})
-called Grid.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLabel'> at (2, 0)
+called Grid.addWidget with arg MockLabel at (2, 0)
 called CheckBox.__init__ with text ''
 called CheckBox.setChecked with arg False
-called Grid.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'> at (2, 1)
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockGridLayout'>
+called Grid.addWidget with arg MockCheckBox at (2, 1)
+called VBox.addLayout with arg MockGridLayout
 called HBox.__init__
 called HBox.addStretch
 called PushButton.__init__ with args ('&Apply', {testobj}) {{}}
 called Signal.connect with args ({testobj.accept},)
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
+called HBox.addWidget with arg MockPushButton
 called PushButton.__init__ with args ('&Close', {testobj}) {{}}
 called Signal.connect with args ({testobj.reject},)
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
+called HBox.addWidget with arg MockPushButton
 called HBox.addStretch
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addLayout with arg MockHBoxLayout
 called Dialog.setLayout
 """
 create_searchdialog = """\
@@ -58,12 +58,12 @@ called Dialog.setWindowIcon with args ('Icon',)
 called VBox.__init__
 called HBox.__init__
 called Label.__init__ with args ('Zoek naar: ', {testobj})
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLabel'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called HBox.addWidget with arg MockLabel
+called VBox.addLayout with arg MockHBoxLayout
 called LineEdit.__init__
 called HBox.__init__
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLineEdit'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called HBox.addWidget with arg MockLineEdit
+called VBox.addLayout with arg MockHBoxLayout
 called CheckBox.__init__ with text 'Alle titels'
 called Signal.connect with args ({testobj.check_modes},)
 called CheckBox.__init__ with text 'Alle teksten'
@@ -75,40 +75,40 @@ called HBox.addStretch
 called VBox.__init__
 called VBox.addSpacing
 called Label.__init__ with args ('In: ', {testobj})
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLabel'>
+called VBox.addWidget with arg MockLabel
 called VBox.addStretch
-called HBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockVBoxLayout'>
+called HBox.addLayout with arg MockVBoxLayout
 called VBox.__init__
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called HBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockVBoxLayout'>
+called VBox.addWidget with arg MockCheckBox
+called VBox.addWidget with arg MockCheckBox
+called VBox.addWidget with arg MockCheckBox
+called HBox.addLayout with arg MockVBoxLayout
 called HBox.addStretch
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addLayout with arg MockHBoxLayout
 called HBox.__init__
 called CheckBox.__init__ with text 'Hoofdlettergevoelig'
 called CheckBox.__init__ with text 'Hele woorden'
 called VBox.__init__
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
-called HBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockVBoxLayout'>
+called VBox.addWidget with arg MockCheckBox
+called VBox.addWidget with arg MockCheckBox
+called HBox.addLayout with arg MockVBoxLayout
 called HBox.addStretch
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addLayout with arg MockHBoxLayout
 called VBox.addSpacing
 called CheckBox.__init__ with text 'Wrap around'
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
+called VBox.addWidget with arg MockCheckBox
 called CheckBox.__init__ with text 'Toon lijst met zoekresultaten'
-called VBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockCheckBox'>
+called VBox.addWidget with arg MockCheckBox
 called HBox.__init__
 called HBox.addStretch
 called PushButton.__init__ with args ('&Ok', {testobj}) {{}}
 called Signal.connect with args ({testobj.accept},)
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
+called HBox.addWidget with arg MockPushButton
 called PushButton.__init__ with args ('&Cancel', {testobj}) {{}}
 called Signal.connect with args ({testobj.reject},)
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
+called HBox.addWidget with arg MockPushButton
 called HBox.addStretch
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addLayout with arg MockHBoxLayout
 called Dialog.setLayout
 called CheckBox.setChecked with arg True
 """
@@ -131,16 +131,16 @@ called Dialog.setWindowIcon with args ('Icon',)
 called VBox.__init__
 called HBox.__init__
 called Label.__init__ with args ('Showing results of searching for `Find` in all {where}\\nDoubleclick to go to an entry', {testobj})
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockLabel'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called HBox.addWidget with arg MockLabel
+called VBox.addLayout with arg MockHBoxLayout
 called HBox.__init__
 called Tree.__init__
 called Tree.setColumnCount with arg `2`
 called Tree.setHeaderLabels with arg `('Node Root', 'Node Title')`
 called Signal.connect with args ({testobj.goto_selected},)
 called ResultsDialog.populate_list
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockTreeWidget'>
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called HBox.addWidget with arg MockTreeWidget
+called VBox.addLayout with arg MockHBoxLayout
 called HBox.__init__
 called PushButton.__init__ with args ('&Goto', {testobj}) {{}}
 called Signal.connect with args ({testobj.goto_selected},)
@@ -154,13 +154,13 @@ called PushButton.setEnabled with arg `False`
 called PushButton.__init__ with args ('&Close', {testobj}) {{}}
 called Signal.connect with args ({testobj.accept},)
 called HBox.addStretch
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
-called HBox.addWidget with arg of type <class 'mockgui.mockqtwidgets.MockPushButton'>
+called HBox.addWidget with arg MockPushButton
+called HBox.addWidget with arg MockPushButton
+called HBox.addWidget with arg MockPushButton
+called HBox.addWidget with arg MockPushButton
+called HBox.addWidget with arg MockPushButton
 called HBox.addStretch
-called VBox.addLayout with arg of type <class 'mockgui.mockqtwidgets.MockHBoxLayout'>
+called VBox.addLayout with arg MockHBoxLayout
 called Dialog.setLayout
 called Tree.itemAt with args (0, 0)
 called Tree.setCurrentItem with arg `item at (0, 0)`
@@ -171,7 +171,7 @@ called Action.__init__ with args ()
 called Action.__init__ with args ()
 called MenuBar.__init__
 called MainWindow.move with args (10, 10)
-called Icon.__init__ with arg of type <class 'str'>
+called Icon.__init__ with arg str
 called Application.setWindowIcon
 called TrayIcon.__init__
 called TrayIcon.setToolTip with args ('Click to revive DocTree',)
@@ -184,29 +184,29 @@ called MainWindow.resize with args (1, 2)
 called MainWindow.setWindowTitle with arg `title`
 called MainWindow.menuBar
 called Splitter.__init__
-called MainWidget.setCentralWindow with arg of type `<class 'mockgui.mockqtwidgets.MockSplitter'>`
+called MainWidget.setCentralWindow with arg `MockSplitter`
 called TreePanel.__init__ with args ({testobj},)
-called Splitter.addWidget with arg of type <class 'test_qtgui.MockTree'>
+called Splitter.addWidget with arg MockTree
 called Editor.setReadOnly with arg True
-called Splitter.addWidget with arg of type <class 'test_qtgui.MockEditor'>
+called Splitter.addWidget with arg MockEditor
 called MainGui.get_menu_data
 called MainGui.create_menu with args ({menubar}, 'menudata')
 called gui.UndoRedoStack.__init__ with arg {testobj}
 called MainGui.create_styletoolbar
 called Pixmap.__init__
 called Pixmap.fill with arg 'color 1'
-called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>
+called Icon.__init__ with arg MockPixmap
 called Action.setIcon
 called Pixmap.__init__
 called Pixmap.fill with arg 'color 2'
-called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>
+called Icon.__init__ with arg MockPixmap
 called Action.setIcon
 """
 main_menu = """\
 called MenuBar.addMenu with arg  aaa
 called Menu.__init__ with args ('aaa',)
 called Icon.__init__ with arg `{testobj.master.HERE}/aaa.ico`
-called Action.__init__ with args ('item of type Icon', 'aaaa', {testobj})
+called Action.__init__ with args ('Icon', 'aaaa', {testobj})
 called MainGui.addToolBar with arg aaa
 called Size.__init__ with args (16, 16)
 called ToolBar.setIconSize
@@ -214,7 +214,7 @@ called ToolBar.addAction
 called Signal.connect with args ({callbacks[0]},)
 called Menu.addAction
 called Icon.__init__ with arg `{testobj.master.HERE}/exit.ico`
-called Action.__init__ with args ('item of type Icon', 'exit', {testobj})
+called Action.__init__ with args ('Icon', 'exit', {testobj})
 called ToolBar.addAction
 called Action.setShortcuts with arg `['Ctrl+X', 'Esc']`
 called Signal.connect with args ({callbacks[1]},)
@@ -312,26 +312,26 @@ main_toolbar = """\
 called MainGui.addToolBar with arg styles
 called Pixmap.__init__
 called Pixmap.fill with arg {testobj.setcoloraction_color}
-called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>
-called Action.__init__ with args ('item of type Icon', 'Change text color', {testobj})
+called Icon.__init__ with arg MockPixmap
+called Action.__init__ with args ('Icon', 'Change text color', {testobj})
 called Signal.connect with args ({testobj.editor.select_text_color},)
 called ToolBar.addAction
 called Pixmap.__init__
 called Pixmap.fill with arg {testobj.setcoloraction_color}
-called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>
-called Action.__init__ with args ('item of type Icon', 'Set text color', {testobj})
+called Icon.__init__ with arg MockPixmap
+called Action.__init__ with args ('Icon', 'Set text color', {testobj})
 called Signal.connect with args ({testobj.editor.set_text_color},)
 called ToolBar.addAction
 called Pixmap.__init__
 called Pixmap.fill with arg {testobj.setbackgroundcoloraction_color}
-called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>
-called Action.__init__ with args ('item of type Icon', 'Change background color', {testobj})
+called Icon.__init__ with arg MockPixmap
+called Action.__init__ with args ('Icon', 'Change background color', {testobj})
 called Signal.connect with args ({testobj.editor.select_background_color},)
 called ToolBar.addAction
 called Pixmap.__init__
 called Pixmap.fill with arg {testobj.setbackgroundcoloraction_color}
-called Icon.__init__ with arg of type <class 'mockgui.mockqtwidgets.MockPixmap'>
-called Action.__init__ with args ('item of type Icon', 'Set background color', {testobj})
+called Icon.__init__ with arg MockPixmap
+called Action.__init__ with args ('Icon', 'Set background color', {testobj})
 called Signal.connect with args ({testobj.editor.set_background_color},)
 called ToolBar.addAction
 """
