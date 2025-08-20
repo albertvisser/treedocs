@@ -9,6 +9,7 @@ mongo = test_mongo_dml.py
 pickle = test_pickle_dml.py
 qtgui = test_qtgui.py
 wxgui = test_wxgui.py
+print = test_doctree2print.py
 
 [testees]
 main = doctree/main.py
@@ -18,4 +19,5 @@ mongo = doctree/mongo_dml.py
 pickle = doctree/pickle_dml.py
 qtgui = doctree/qtgui.py
 wxgui = doctree/wxgui.py
+print = doctree/doctree2print.py
 

@@ -2,7 +2,7 @@
 """output contents of DocTree data file to one or more documents
 """
 import argparse
-from doctree.doctree_2print import main
+from doctree.doctree2print import main
 
 
 if __name__ == '__main__':
