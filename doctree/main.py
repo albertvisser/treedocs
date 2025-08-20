@@ -205,8 +205,8 @@ class MainWindow:
                  'Show settings for some display options'),
                 ("e&Xit", self.gui.close, 'Ctrl+Q,Escape', 'icons/exit.png', 'Exit program'))),
             ("&Note", (
-                ("&New", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
-                ("&Add", self.insert_item, 'Insert', '', 'Add note (after current)'),
+                ("&New (add under)", self.add_item, 'Ctrl+N', '', 'Add note (below current level)'),
+                ("&Add (add after)", self.insert_item, 'Insert', '', 'Add note (after current)'),
                 ("New &under root", self.root_item, 'Shift+Ctrl+N', '',
                  'Add note (below root)'),
                 ("&Delete", self.delete_item, 'Ctrl+D,Delete', '', 'Remove note'),
