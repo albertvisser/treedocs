@@ -1,7 +1,7 @@
 """DocTree: Main program, meant to be gui-toolkit agnostic
 """
 # import os
-# import sys
+import sys
 import pathlib
 import shutil
 from datetime import datetime
@@ -157,22 +157,32 @@ class MainWindow:
         # self.toolkit = gui.toolkit
         self.images_embedded = gui.toolkit == 'wx'
         self.gui = gui.MainGui(self, title="Doctree")
-        self.gui.setup_screen()
+        # self.gui.setup_screen()
+        self.gui.create_splitter()
+        self.gui.create_tree_on_left()
+        self.gui.create_editor_on_right()
+        self.gui.create_menu(self.get_menu_data())
+        self.gui.create_statusbar_at_bottom()
+        self.gui.finalize_display()
+        self.srchtext = ''
+        self.srchtype = 0
+        self.srchflags = {}
+        self.srchlist = self.srchwrap = False
+
         if fname:
             self.project_file = pathlib.Path(fname).resolve()
             if not self.project_file.exists():
+                self.gui.disable_menu()
                 ok = gui.ask_ynquestion(self.gui,
                                         fname + " does not exist, do you want to create it?")
                 if ok:
                     self.new(filename=fname, ask_ok=False)
                     self.set_project_dirty(True)
-                else:
-                    self.gui.disable_menu()
             else:
                 err = self.read()
                 if err:
                     gui.show_message(self.gui, err[0])
-                    import sys; sys.exit()
+                    sys.exit()
         else:
             self.new(ask_ok=False)
         reset_toolkit_file_if_needed()
@@ -373,8 +383,8 @@ class MainWindow:
         self.gui.set_window_dimensions(self.opts['ScreenSize'][0], self.opts['ScreenSize'][1])
         if self.gui.menu_disabled:
             self.gui.disable_menu(False)
-        self.gui.clear_viewmenu()
-        self.gui.add_viewmenu_option('&1 Default')
+        self.clear_viewmenu()
+        self.gui.add_viewmenu_option('&1 Default', self.select_view_from_menu)
         self.gui.init_app()
         self.activeitem = self.gui.rebuild_root()  # item_to_activate =
         # print('in new() - after creating self.activeitem:', self.activeitem)
@@ -876,15 +886,6 @@ class MainWindow:
             self.putsubtree(tree, new, subtitel, subkey, subsubtree)
         return new
 
-    @staticmethod
-    def get_setttexts():
-        """returns texts associated with the message dialogs that can be hidden
-        """
-        return {'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
-                'NotifyOnLoad': 'Notify that the data has been reloaded',
-                'NotifyOnSave': 'Notify that the data has been saved',
-                'EscapeClosesApp': 'Application can be closed by pressing Escape'}
-
     def move_to_file(self, *args):
         "afhandelen Menu > Move / Ctrl-M"
 
@@ -930,7 +931,7 @@ class MainWindow:
         # 3a. Make a list of the images contained in self.cut_from_itemdict
         #      so they can be copied over to the other zipfile
 
-        extra_images = []
+        # extra_images = []
         # if self.toolkit != 'wx':    # wx xml bevat plaatjes inline
         if not self.images_embedded:
             self.cut_from_itemdict, extra_images = dml.verify_imagenames(self.cut_from_itemdict,
@@ -991,8 +992,19 @@ class MainWindow:
 
     def set_options(self, *args):
         """check settings for showing various messages"""
-        if gui.show_dialog(self.gui, gui.OptionsDialog):
+        # if gui.show_dialog(self.gui, gui.OptionsDialog):
+        #     self.set_escape_action()
+        dialogparent = SetOptions(self, {
+            'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
+            'NotifyOnLoad': 'Notify that the data has been reloaded',
+            'NotifyOnSave': 'Notify that the data has been saved',
+            'EscapeClosesApp': 'Application can be closed by pressing Escape'})
+        ok, result = gui.show_dialog(dialogparent)
+        if ok:
+            for setting, value in result.items():
+                self.opts[setting] = value
             self.set_escape_action()
+        self.dp = dialogparent   # alleen t.b.v. unittest
 
     def add_view(self, *args):
         "handles Menu > View > New view"
@@ -1006,9 +1018,10 @@ class MainWindow:
         self.opts["ViewNames"].append(new_view)
         active = self.opts["ActiveItem"][self.opts["ActiveView"]]
         self.opts["ActiveItem"].append(active)
-        self.gui.uncheck_viewmenu_option()
-        action = self.gui.add_viewmenu_option(f'&{self.viewcount} {new_view}')
-        self.gui.check_viewmenu_option(action)
+        self.uncheck_viewmenu_option()
+        action = self.gui.add_viewmenu_option(f'&{self.viewcount} {new_view}',
+                                              self.select_view_from_menu)
+        self.check_viewmenu_option(action)
         self.opts["ActiveView"] = self.opts["ViewNames"].index(new_view)
         self.gui.rebuild_root()
         self.activeitem = self.gui.root
@@ -1025,7 +1038,7 @@ class MainWindow:
         oldname = self.opts["ViewNames"][self.opts["ActiveView"]]
         ok, newname = gui.get_text(self.gui, 'Geef een nieuwe naam voor de huidige view', oldname)
         if ok and newname != oldname:
-            self.gui.rename_viewmenu_option(newname)
+            self.rename_viewmenu_option(newname)
             self.opts["ViewNames"][self.opts["ActiveView"]] = newname
             self.set_project_dirty(True)
 
@@ -1044,8 +1057,7 @@ class MainWindow:
         self.views.pop(self.opts["ActiveView"])
         if self.opts["ActiveView"] > 0:
             self.opts["ActiveView"] -= 1
-        action_to_check = self.gui.remove_viewmenu_option(viewname)
-        self.gui.check_viewmenu_option(action_to_check)
+        self.remove_viewmenu_option(viewname)
         self.gui.rebuild_root()
         self.activeitem = None
         self.set_project_dirty(True)
@@ -1064,52 +1076,52 @@ class MainWindow:
         if self.viewcount == 1:
             gui.show_message(self.gui, "This is the only view")
             return
-        self.check_active()
-        self.views[self.opts["ActiveView"]] = self.treetoview()
-        self.gui.editor.clear()
         if goto_next:
-            self.gui.check_next_viewmenu_option()
-            self.opts["ActiveView"] += 1
-            if self.opts["ActiveView"] >= len(self.opts["ViewNames"]):
-                self.opts["ActiveView"] = 0
+            newview = self.opts['ActiveView'] + 1
+            if newview >= len(self.opts["ViewNames"]):
+                newview = 0
+            menuitem = "next"
         else:
-            self.gui.check_next_viewmenu_option(prev=True)
-            self.opts["ActiveView"] -= 1
-            if self.opts["ActiveView"] < 0:
-                self.opts["ActiveView"] = len(self.opts["ViewNames"]) - 1
-        self.build_view()
-        # self.gui.rebuild_root()
-        # self.activeitem = self.gui.root
-        # tree_item = self.viewtotree()
-        # self.set_window_title()
-        # self.gui.tree.set_item_selected(tree_item)
+            newview = self.opts['ActiveView'] - 1
+            if newview < 0:
+                newview = len(self.opts["ViewNames"]) - 1
+            menuitem = "prev"
+        self.select_view(newview, menuitem)
 
-    def select_view_from_dropdown(self):
+    def select_view_from_dropdown(self, *args):
         "handles Menu > View > Goto View"
         ok, newview = gui.get_choice(self.gui, 'Select a view:', self.opts["ViewNames"],
                                      self.opts["ActiveView"])
         if not ok:
             return
-        self.check_active()
-        self.views[self.opts["ActiveView"]] = self.treetoview()
-        self.gui.editor.clear()
-        self.opts["ActiveView"] = self.opts["ViewNames"].index(newview)
-        self.build_view()
-        # self.gui.rebuild_root()
-        # self.activeitem = self.gui.root
-        # tree_item = self.viewtotree()
-        # self.set_window_title()
-        # self.gui.tree.set_item_selected(tree_item)
+        # print(newview, flush=True)
+        for item in self.gui.get_viewmenu_options()[7:]:
+            # print(self.gui.get_menuitem_text(item), flush=True)
+            if self.gui.get_menuitem_text(item).split(None, 1)[1] == newview:
+                menuitem = item
+                break
+        else:
+            raise ValueError('No menuoption for select_view')
+        self.select_view(self.opts["ViewNames"].index(newview), menuitem)
 
-    def select_view(self):
+    def select_view_from_menu(self, *args):
         "handles Menu > View > <view name>"
-        # uitvoeren is eigenlijk niet nodig als de reeds geselecteerde view geselecteerd wordt
+        menuitem = self.gui.determine_viewmenuitem(*args)
+        newview = self.gui.get_menuitem_text(menuitem).split(None, 1)[1]
+        self.select_view(self.opts["ViewNames"].index(newview), menuitem)
+
+    def select_view(self, newview, menuitem):
+        "rebuild the data to show in the selected view"
         self.check_active()
         self.views[self.opts["ActiveView"]] = self.treetoview()
         self.gui.editor.clear()
-        newview = self.gui.check_viewmenu_option()
-        newviewtext = str(newview).split(None, 1)[1]
-        self.opts["ActiveView"] = self.opts["ViewNames"].index(newviewtext)
+        if menuitem == 'next':
+            self.check_next_viewmenu_option()
+        elif menuitem == 'prev':
+            self.check_next_viewmenu_option(prev=True)
+        else:
+            self.check_viewmenu_option(menuitem)
+        self.opts["ActiveView"] = newview
         self.build_view()
 
     def build_view(self):
@@ -1124,31 +1136,36 @@ class MainWindow:
     def search(self, *args, mode=0):
         """start search action
         """
-        if self.gui.srchlist:
+        if self.srchlist:
             gui.show_message(self.gui, 'Cannot start new search while results screen is showing')
             return
-        ok = gui.show_dialog(self.gui, gui.SearchDialog, {'mode': mode})
+        dialogparent = SetSearch(self, mode=mode)
+        self.dp1 = dialogparent   # alleen t.b.v. unittest
+        ok = gui.show_dialog(dialogparent)[0]
+        # ok = gui.show_dialog(self.gui, gui.SearchDialog, {'mode': mode})
         if not ok:
             return
-        if self.gui.srchtype == 0:
+        if self.srchtype == 0:
             ok = self.gui.editor.search_from_start()
             if not ok:
                 gui.show_message(self.gui, 'Search string not found')
             return
-        if self.gui.srchtype not in (1, 2, 3):  # failsafe
+        if self.srchtype not in (1, 2, 3):  # failsafe
             gui.show_message(self.gui, 'Wrong search type')
             return
         self.search_results = self.search_from(self.gui.root)
         if not self.search_results:
-            self.gui.srchlist = False
+            self.srchlist = False
             gui.show_message(self.gui, 'Search string not found')
             return
         # print("in main.search, search_results is:")
         # for item in self.search_results:
         #     print(item)
         # print(flush=True)
-        if self.gui.srchlist:
-            gui.show_nonmodal(self.gui, gui.ResultsDialog)
+        if self.srchlist:
+            dialogparent = Results(self)
+            self.dp2 = dialogparent   # alleen t.b.v. unittest
+            gui.show_nonmodal(dialogparent)
         else:
             self.srchno = 0
             self.go_to_result()
@@ -1163,9 +1180,9 @@ class MainWindow:
 
     def find_next(self, *args):
         "search forward"
-        if not self.gui.srchtext:
+        if not self.srchtext:
             return
-        if self.gui.srchtype:
+        if self.srchtype:
             self.srchno += 1
             self.go_to_result()
         else:
@@ -1173,9 +1190,9 @@ class MainWindow:
 
     def find_prev(self, *args):
         "search backward"
-        if not self.gui.srchtext:
+        if not self.srchtext:
             return
-        if self.gui.srchtype:
+        if self.srchtype:
             self.srchno -= 1
             self.go_to_result()
         else:
@@ -1198,9 +1215,9 @@ class MainWindow:
             text = self.gui.tree.getitemtext(treeitem)
             if len(loc) == 1:
                 self.first_title = title
-            if self.gui.srchtype & 1 and self.gui.find_needle(title):
+            if self.srchtype & 1 and self.gui.find_needle(title):
                 result.append((loc, 'title', self.first_title, title))
-            if self.gui.srchtype & 2 and self.gui.find_needle(text):
+            if self.srchtype & 2 and self.gui.find_needle(text):
                 result.append((loc, 'text', self.first_title, title))
                 # TODO: verder zoeken in document als de switch daarvoor aan staat
                 # cursorpos = self.gui.find_needle(text, cursorpos) - extra arg om dit aan te geven
@@ -1214,13 +1231,13 @@ class MainWindow:
         # print('in main.go_to_result', flush=True)
         msg = ''
         if self.srchno >= len(self.search_results):
-            if self.gui.srchwrap:
+            if self.srchwrap:
                 self.srchno = 0
             else:
                 self.srchno = len(self.search_results) - 1
                 msg = 'No next result'
         elif self.srchno < 0:
-            if self.gui.srchwrap:
+            if self.srchwrap:
                 self.srchno = len(self.search_results) - 1
             else:
                 self.srchno = 0
@@ -1309,6 +1326,7 @@ class MainWindow:
     def check_active(self):
         """zorgen dat de editor inhoud voor het huidige item bewaard wordt in de treectrl"""
         if self.activeitem:
+            # print(f'in main.check_active, {self.activeitem=}')
             ref = self.gui.tree.getitemkey(self.activeitem)
             pos = self.gui.editor.get_text_position()
             if ref != -1:
@@ -1323,10 +1341,12 @@ class MainWindow:
                     self.itemdict[ref] = (titel, content)
                 self.gui.editor.mark_dirty(False)
                 self.set_project_dirty(True)
+        # print('end of main.check_active')
 
     def activate_item(self, item):
         """meegegeven item "actief" maken (accentueren en in de editor zetten)"""
         self.activeitem = item
+        # print(f'in main.activate_item, nieuw {self.activeitem=}')
         ref = self.gui.tree.getitemkey(item)
         tekst = self.opts['RootData'] if ref == -1 else self.itemdict[ref][1]
         self.gui.editor.set_contents(tekst)  # , titel)
@@ -1337,6 +1357,7 @@ class MainWindow:
                 self.text_positions[ref] = self.gui.editor.get_text_position()
         self.gui.editor.mark_dirty(False)
         self.gui.editor.openup(True)
+        # print('end of main.activate_item')
 
     def update_current_text(self):
         """haal de tekst nog een keer op voor het geval er iets gewijzigd is
@@ -1413,11 +1434,79 @@ class MainWindow:
 
     def setup_viewmenu(self):
         "set new viewmenu options"
-        self.gui.clear_viewmenu()
+        self.clear_viewmenu()
         for idx, name in enumerate(self.opts["ViewNames"]):
-            action = self.gui.add_viewmenu_option(f'&{idx + 1} {name}')
+            action = self.gui.add_viewmenu_option(f'&{idx + 1} {name}', self.select_view_from_menu)
             if idx == self.opts["ActiveView"]:
-                self.gui.check_viewmenu_option(action)
+                self.check_viewmenu_option(action)
+
+    def clear_viewmenu(self):
+        "remove all view actions from viewmenu"
+        for menuitem in self.gui.get_viewmenu_options()[7:]:
+            self.gui.remove_menuoption(self.gui.viewmenu, menuitem)
+
+    def uncheck_viewmenu_option(self):
+        "uncheck the active viewmenu action"
+        menuitem = self.gui.get_viewmenu_options()[self.opts["ActiveView"] + 7]
+        self.gui.check_menuitem_option(menuitem, False)
+
+    def check_viewmenu_option(self, newview):
+        "check the given view action and uncheck the others if needed"
+        # if self.gui.check_given_option(arg):
+        #     return ''
+        for menuitem in self.gui.get_viewmenu_options()[7:]:
+            if self.gui.get_menuitem_text(menuitem) == newview:
+                self.gui.check_menuitem_option(menuitem, True)
+            elif self.gui.get_viewmenuoption_state(menuitem):
+                self.gui.check_menuitem_option(menuitem, False)
+        return newview
+
+    def check_next_viewmenu_option(self, prev=False):
+        "find the currently checked option, uncheck it and check the next/previous one"
+        menuitem_list = self.gui.get_viewmenu_options()[7:]
+        # if prev:
+        #     menuitem_list.reverse()
+        new_ix = -1
+        # huidige viewitem zoeken en uitzetten
+        for ix, menuitem in enumerate(menuitem_list):
+            if self.gui.get_viewmenuoption_state(menuitem):
+                if prev:
+                    new_ix = ix - 1
+                    if new_ix < 0:
+                        new_ix = len(menuitem_list) - 1
+                else:
+                    new_ix = ix + 1
+                    if new_ix == len(menuitem_list):
+                        new_ix = 0
+                self.gui.check_menuitem_option(menuitem, False)
+                break
+        # nieuwe viewitem aanzetten
+        if new_ix >= 0:
+            self.gui.check_menuitem_option(menuitem_list[new_ix], True)
+
+    def rename_viewmenu_option(self, newname):
+        "update action text"
+        menuitem = self.gui.get_viewmenu_options()[self.opts["ActiveView"] + 7]
+        oldtext = self.gui.get_menuitem_text(menuitem)
+        self.gui.set_menuitem_text(menuitem, f'{oldtext.split()[0]} {newname}')
+
+    def remove_viewmenu_option(self, viewname):
+        "find the currently checked option, remove it and check the next one"
+        menuitem_list = self.gui.get_viewmenu_options()[7:]
+        removed = False
+        item_to_check = None
+        for menuitem in menuitem_list:
+            num, naam = self.gui.get_menuitem_text(menuitem).split(None, 1)
+            # menu items "opschuiven" (volgnummers aanpassen)
+            if removed:
+                self.gui.set_menuitem_text(menuitem, f'{int(num) - 1} {naam}')
+                if not item_to_check:
+                    item_to_check = menuitem
+            # menu item verwijderen
+            if naam == viewname:
+                self.gui.remove_menuoption(self.gui.viewmenu, menuitem)
+                removed = True
+        self.gui.check_menuitem_option(item_to_check or menuitem_list[0], True)
 
     def write(self, meld=True):
         """settings en tree data in een structuur omzetten en opslaan"""
@@ -1444,8 +1533,195 @@ class MainWindow:
     def confirm(self, setting='', textitem=''):
         "ask for confirmation when changing a setting"
         if self.opts[setting]:
-            gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
+            # gui.show_dialog(self.gui, gui.CheckDialog, {'message': textitem, 'option': setting})
+            dialogparent = SetCheck(self, message=textitem)  # , optionvalue=not self.opts[setting])
+            self.dp = dialogparent                      # alleen t.b.v. unittest
+            ok, value = gui.show_dialog(dialogparent)
+            self.opts[setting] = not value
             # opslaan zonder vragen, backuppen en zippen
             dml.write_to_files(self.project_file, self.opts, self.views, self.itemdict,
                                self.text_positions, self.temp_imagepath, backup=False,
                                save_images=not self.images_embedded)
+
+
+class SetOptions:
+    """Toon en wijzig desgewenst instellingen
+    """
+    def __init__(self, parent, sett2text):
+        self.parent = parent
+        self.dialog_data = {}
+        self.gui = gui.OptionsDialog(self, parent.gui, title='DocTree Settings')
+        self.controls = []
+        row = 0
+        for sett, text in sett2text.items():
+            row += 1
+            check = self.gui.add_checkbox_line_to_grid(row, text, self.parent.opts[sett])
+            self.controls.append((sett, check))
+        self.gui.add_buttonbox(okvalue='&Apply', cancelvalue='&Close')
+
+    def confirm(self):
+        """exchange data with caller
+        """
+        return {text: self.gui.get_checkbox_value(control) for text, control in self.controls}
+
+
+class SetCheck:
+    """Geef een melding en vraag of deze gegeven moet blijven worden
+    """
+    def __init__(self, parent, message):
+        self.parent = parent
+        self.dialog_data = None
+        self.gui = gui.CheckDialog(self, parent.gui, title='DocTree')
+        self.gui.add_label(message)
+        self.check = self.gui.add_checkbox("Don't show this message again")
+        self.gui.add_ok_buttonbox()
+
+    def confirm(self):
+        "get the input before closing the dialog"
+        return self.gui.get_checkbox_value(self.check)
+
+
+class SetSearch:
+    "Show a search dialog and process the input"
+    def __init__(self, parent, mode):
+        self.parent = parent
+        self.dialog_data = None  # nodig voor het show_dialog mechanisme
+        self.gui = gui.SearchDialog(self, parent.gui)
+        self.gui.add_label('Zoek naar: ')
+        self.t_zoek = self.gui.add_textentry()
+        self.c_titl, self.c_text, self.c_curr = self.gui.build_search_selector(
+            ['Alle titels', 'Alle teksten', 'Alleen huidige tekst'], self.gui.set_modechecks)
+        self.c_hlett, self.c_woord = self.gui.build_options_selector(['Hoofdlettergevoelig',
+                                                                      'Hele woorden'])
+        self.gui.add_vertical_space(10)
+        self.c_wrap = self.gui.add_checkbox('Wrap around')
+        self.c_lijst = self.gui.add_checkbox('Toon lijst met zoekresultaten')
+        # self.c_resperdoc = self.gui.add_checkbox('Toon 1 Resultaat per document')
+        self.gui.add_buttons()
+        if mode == 0:
+            self.gui.set_checkbox_value(self.c_curr, True)
+            # self.c_resperdoc.setEnabled(False)
+        elif mode == 1:
+            self.gui.set_checkbox_value(self.c_titl, True)
+            # self.c_resperdoc.setEnabled(True)
+            # self.c_resperdoc.setChecked(True)
+        else:  # if mode == 2:
+            self.gui.set_checkbox_value(self.c_text, True)
+            # self.c_resperdoc.setEnabled(False)
+        if self.parent.srchtext:
+            self.gui.set_textentry_value(self.t_zoek, self.parent.srchtext)
+        # with contextlib.suppress(AttributeError):
+            # if self.gui.case_sensitive_search():
+        if self.parent.srchflags.get('case', False):
+            self.gui.set_checkbox_value(self.c_hlett, True)
+            # if self.gui.search_for_whole_words():
+        if self.parent.srchflags.get('words', False):
+            self.gui.set_checkbox_value(self.c_woord, True)
+        if self.parent.srchlist:
+            self.gui.set_checkbox_value(self.c_lijst, True)
+        if self.parent.srchwrap:
+            self.gui.set_checkbox_value(self.c_wrap, True)
+        self.gui.set_focus_to(self.t_zoek)
+
+    def set_search_parameters(self):
+        "afsluiten met bijwerken"
+        zoek = self.gui.get_textentry_value(self.t_zoek)
+        if not zoek:
+            gui.show_message(self.gui, 'Wel iets te zoeken opgeven')
+            return False
+        mode = 0
+        if self.gui.get_checkbox_value(self.c_titl):
+            mode += 1
+        if self.gui.get_checkbox_value(self.c_text):
+            mode += 2
+        if not mode and not self.gui.get_checkbox_value(self.c_curr):
+            gui.show_message(self.gui, 'Wel een zoek modus kiezen')
+            return False
+        self.parent.srchtext = zoek
+        self.parent.srchtype = mode
+        self.parent.srchflags['case'] = self.gui.get_checkbox_value(self.c_hlett)
+        self.parent.srchflags['words'] = self.gui.get_checkbox_value(self.c_woord)
+        self.parent.srchlist = self.gui.get_checkbox_value(self.c_lijst)
+        self.parent.srchwrap = self.gui.get_checkbox_value(self.c_wrap)
+        return True
+
+
+class Results:
+    "Show the results of a search action"
+    def __init__(self, parent):
+        self.parent = parent
+        self.gui = gui.ResultsDialog(self, parent)
+        text = (f"Showing results of searching for `{self.parent.srchtext}`"
+                f" in all {self.determine_where()}\nDoubleclick to go to an entry")
+        self.gui.set_toptext(text)
+        self.result_list = self.gui.add_results_list(('Node Root', 'Node Title'),
+                                                     self.goto_selected)
+        self.populate_list(self.result_list)
+        self.next_button, self.prev_button = self.gui.add_buttons([
+            ("&Goto", self.goto_selected, True), ("g&Oto and Close", self.goto_and_close, True),
+            ("Goto &Next", self.goto_next, True), ("Goto &Previous", self.goto_prev, False),
+            ("&Close", self.gui.accept, True)])[2:4]
+        # self.master.result_list.setCurrentItem(self.master.result_list.itemAt(0, 0))
+        self.gui.disable_widget(self.prev_button)
+
+    def determine_where(self):
+        "return for what part(s) of the items the search is performed"
+        where = ''
+        if self.parent.srchtype & 1:
+            where += 'titles'
+        if self.parent.srchtype & 2:
+            if where:  # self.parent.srchtype & 1:
+                where += ' and '
+            where += 'texts'
+        return where
+
+    def populate_list(self, listbox):
+        "zoekresultaten vullen in list"
+        oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
+        for ix, item in enumerate(self.parent.master.search_results):
+            loc, newtype, root, title = item
+            if loc != oldloc:
+                if oldloc is not None:
+                    self.gui.add_item_to_list(listbox, oldloc, oldroot, oldtitle)
+                in_title = 0    # wordt opgehoogd maar verder (nog) niet gebruikt
+                in_text = 0    # idem
+            if newtype == 'title':
+                in_title += 1
+            else:  # if newtype == 'text':  # something else currently not possible
+                in_text += 1
+            oldloc, oldtype, oldroot, oldtitle = loc, newtype, root, title
+            # oldix = ix
+        self.gui.add_item_to_list(listbox, oldloc, oldroot, oldtitle)
+
+    def goto_next(self):
+        "sync displays voor zoek volgende"
+        new = self.gui.get_next_item(self.result_list)
+        if new:
+            self.gui.setselection(self.result_list, new)
+            self.goto_selected()
+        else:
+            self.gui.disable_widget(self.next_button)
+            gui.show_message(self, 'This is the last one')
+
+    def goto_prev(self):
+        "sync displays voor zoek vorige"
+        new = self.gui.get_prev_item(self.result_list)
+        if new:
+            self.gui.setselection(self.result_list, new)
+            self.goto_selected()
+        else:
+            self.gui.disable_widget(self.prev_button)
+            gui.show_message(self, 'This is the first one')
+
+    def goto_selected(self):
+        "toon geselecteerd zoekresultaat"
+        self.gui.enable_button_if_disabled(self.next_button)
+        self.gui.enable_button_if_disabled(self.prev_button)
+        selected = self.gui.getselection(self.result_list)
+        self.parent.master.srchno = self.gui.get_item_data(selected)
+        self.parent.master.go_to_result()
+
+    def goto_and_close(self):
+        "toon zoekresultaat en sluit dialoog"
+        self.goto_selected()
+        self.gui.accept()

@@ -1,56 +1,7 @@
+"""fixtures for unittests (output predictions)
+"""
 import pytest
 
-create_checkdialog = """\
-called Dialog.__init__ with args {testobj.parent} () {{}}
-called Dialog.setWindowTitle with args ('DocTree',)
-called Dialog.setWindowIcon with args ('Icon',)
-called Label.__init__ with args ('{message}', {testobj})
-called CheckBox.__init__ with text 'Deze melding niet meer laten zien'
-called PushButton.__init__ with args ('&Ok', {testobj}) {{}}
-called Signal.connect with args ({testobj.klaar},)
-called VBox.__init__
-called HBox.__init__
-called HBox.addWidget with arg MockLabel
-called VBox.addLayout with arg MockHBoxLayout
-called HBox.__init__
-called HBox.addWidget with arg MockPushButton
-called HBox.insertStretch
-called HBox.addStretch
-called VBox.addLayout with arg MockHBoxLayout
-called HBox.__init__
-called HBox.addWidget with arg MockCheckBox
-called VBox.addLayout with arg MockHBoxLayout
-called Dialog.setLayout
-"""
-create_optionsdialog = """\
-called shared.get_setttexts
-called Dialog.__init__ with args {testobj.parent} () {{}}
-called Dialog.setWindowTitle with args ('A Propos Settings',)
-called VBox.__init__
-called Grid.__init__
-called Label.__init__ with args ('xxxxxxxxxxxxxx', {testobj})
-called Grid.addWidget with arg MockLabel at (1, 0)
-called CheckBox.__init__ with text ''
-called CheckBox.setChecked with arg True
-called Grid.addWidget with arg MockCheckBox at (1, 1)
-called Label.__init__ with args ('yyyyyyyyyyyyyyy', {testobj})
-called Grid.addWidget with arg MockLabel at (2, 0)
-called CheckBox.__init__ with text ''
-called CheckBox.setChecked with arg False
-called Grid.addWidget with arg MockCheckBox at (2, 1)
-called VBox.addLayout with arg MockGridLayout
-called HBox.__init__
-called HBox.addStretch
-called PushButton.__init__ with args ('&Apply', {testobj}) {{}}
-called Signal.connect with args ({testobj.accept},)
-called HBox.addWidget with arg MockPushButton
-called PushButton.__init__ with args ('&Close', {testobj}) {{}}
-called Signal.connect with args ({testobj.reject},)
-called HBox.addWidget with arg MockPushButton
-called HBox.addStretch
-called VBox.addLayout with arg MockHBoxLayout
-called Dialog.setLayout
-"""
 create_searchdialog = """\
 called Dialog.__init__ with args {testobj.parent} () {{}}
 called Dialog.setWindowTitle with args ('Title',)
@@ -109,7 +60,7 @@ called Signal.connect with args ({testobj.reject},)
 called HBox.addWidget with arg MockPushButton
 called HBox.addStretch
 called VBox.addLayout with arg MockHBoxLayout
-called Dialog.setLayout
+called Dialog.setLayout with arg MockVBoxLayout
 called CheckBox.setChecked with arg True
 """
 search_middle = """\
@@ -161,7 +112,7 @@ called HBox.addWidget with arg MockPushButton
 called HBox.addWidget with arg MockPushButton
 called HBox.addStretch
 called VBox.addLayout with arg MockHBoxLayout
-called Dialog.setLayout
+called Dialog.setLayout with arg MockVBoxLayout
 called Tree.itemAt with args (0, 0)
 called Tree.setCurrentItem with arg `item at (0, 0)`
 """
@@ -184,11 +135,12 @@ called MainWindow.resize with args (1, 2)
 called MainWindow.setWindowTitle with arg `title`
 called MainWindow.menuBar
 called Splitter.__init__
-called MainWidget.setCentralWindow with arg `MockSplitter`
+called MainWidget.setCentralWidget with arg `MockSplitter`
 called TreePanel.__init__ with args ({testobj},)
 called Splitter.addWidget with arg MockTree
+called EditorPanel.__init__ with args ({testobj},)
 called Editor.setReadOnly with arg True
-called Splitter.addWidget with arg MockEditor
+called Splitter.addWidget with arg MockEditorPanel
 called MainGui.get_menu_data
 called MainGui.create_menu with args ({menubar}, 'menudata')
 called gui.UndoRedoStack.__init__ with arg {testobj}
@@ -203,6 +155,7 @@ called Icon.__init__ with arg MockPixmap
 called Action.setIcon
 """
 main_menu = """\
+called MainGui.MenuBar
 called MenuBar.addMenu with arg  aaa
 called Menu.__init__ with args ('aaa',)
 called Icon.__init__ with arg `{testobj.master.HERE}/aaa.ico`
@@ -309,6 +262,7 @@ called ComboBox.findText with args ('fontsize',)
 called ComboBox.setCurrentIndex with arg `1`
 """
 main_toolbar = """\
+called EditorPanel.__init__ with args ()
 called MainGui.addToolBar with arg styles
 called Pixmap.__init__
 called Pixmap.fill with arg {testobj.setcoloraction_color}
@@ -338,8 +292,8 @@ called ToolBar.addAction
 
 @pytest.fixture
 def expected_output():
-    return {'checkdialog': create_checkdialog, 'optionsdialog': create_optionsdialog,
-            'searchdialog': create_searchdialog + search_end,
+    "fixture for output predictions"
+    return {'searchdialog': create_searchdialog + search_end,
             'searchdialog1': create_searchdialog + search_middle + search_end,
             'searchdialog2': create_searchdialog + search_middle + search_middle2 + search_end,
             'resultsdialog': create_resultsdialog, 'maingui': main_gui, 'menu': main_menu,

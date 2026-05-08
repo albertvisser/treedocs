@@ -26,7 +26,7 @@ def test_ask_ynquestion(monkeypatch, capsys):
         else:
             print('called MessageBox.question with args'
                   f' `{parent}` `{caption}` `{message}` `{buttons}`')
-        return testee.qtw.QMessageBox.Yes
+        return testee.qtw.QMessageBox.StandardButton.Yes
     monkeypatch.setattr(testee.qtw, 'QMessageBox', mockqtw.MockMessageBox)
     assert not testee.ask_ynquestion('win', 'text')
     assert capsys.readouterr().out == (
@@ -47,7 +47,7 @@ def test_ask_yncquestion(monkeypatch, capsys):
         else:
             print('called MessageBox.question with args'
                   f' `{parent}` `{caption}` `{message}` `{buttons}`')
-        return testee.qtw.QMessageBox.Yes
+        return testee.qtw.QMessageBox.StandardButton.Yes
     def mock_ask_2(parent, caption, message, buttons, defaultButton=None):
         if defaultButton:
             print('called MessageBox.question with args'
@@ -55,7 +55,7 @@ def test_ask_yncquestion(monkeypatch, capsys):
         else:
             print('called MessageBox.question with args'
                   f' `{parent}` `{caption}` `{message}` `{buttons}`')
-        return testee.qtw.QMessageBox.Cancel
+        return testee.qtw.QMessageBox.StandardButton.Cancel
     monkeypatch.setattr(testee.qtw, 'QMessageBox', mockqtw.MockMessageBox)
     assert testee.ask_yncquestion('win', 'text') == (False, False)
     assert capsys.readouterr().out == (
@@ -139,31 +139,26 @@ def test_show_dialog(monkeypatch, capsys):
         return testee.qtw.QDialog.DialogCode.Accepted
     # monkeypatch.setattr(testee.qtw, 'QDialog', mockqtw.MockDialog)
     # cls = testee.qtw.QDialog
-    cls = mockqtw.MockDialog
-    assert not testee.show_dialog('win', cls)
-    assert capsys.readouterr().out == ("called Dialog.__init__ with args win () {}\n"
-                                       "called Dialog.exec\n")
-    monkeypatch.setattr(mockqtw.MockDialog, 'exec_', mock_exec)
-    assert not testee.show_dialog('win', cls, {'greet': 'hello'})
-    assert capsys.readouterr().out == ("called Dialog.__init__ with args win () {'greet': 'hello'}\n"
-                                       "called Dialog.exec\n")
+    dlg = types.SimpleNamespace(gui=mockqtw.MockDialog(), dialog_data='xxx')
+    assert capsys.readouterr().out == "called Dialog.__init__ with args None () {}\n"
+    assert testee.show_dialog(dlg) == (False, 'xxx')
+    assert capsys.readouterr().out == "called Dialog.exec\n"
+    monkeypatch.setattr(mockqtw.MockDialog, 'exec', mock_exec)
+    assert testee.show_dialog(dlg) == (True, 'xxx')
+    assert capsys.readouterr().out == "called Dialog.exec\n"
 
 
 def test_show_nonmodal(monkeypatch, capsys):
     """unittest for qtgui.show_nonmodal
     """
-    cls = mockqtw.MockDialog
-    testee.show_nonmodal('win', cls)
-    assert capsys.readouterr().out == ("called Dialog.__init__ with args win () {}\n"
+    dlg = types.SimpleNamespace(gui=mockqtw.MockDialog())
+    testee.show_nonmodal(dlg)
+    assert capsys.readouterr().out == ("called Dialog.__init__ with args None () {}\n"
                                        "called Dialog.show\n")
 
 
 class MockMainWindow:
     "stub for main.MainWindow object"
-
-
-class MockEditor:
-    "stub for main.Editor object"
     def __init__(self, *args):
         self.project_dirty = False
         if args:
@@ -176,12 +171,6 @@ class MockEditor:
         print('called Editor.activate_item with arg {item}')
     def set_window_title(self):
         print('called Editor.set_window_title')
-    def set_text_position(self, pos):
-        print(f'called Editor.set_text_position with arg {pos}')
-    def ensureCursorVisible(self):
-        print('called Editor.ensureCursorVisible')
-    def setFocus(self):
-        print('called Editor.setFocus')
     def do_addaction(self, *args):
         print("called Editor.do_addaction with args", args)
         return 'data'
@@ -191,15 +180,11 @@ class MockEditor:
     def do_copyaction(self, *args):
         print("called Editor.do_addaction with args", args)
         return 'opts', 'views'
-    def setReadOnly(self, value):
-        print(f'called Editor.setReadOnly with arg {value}')
     def putsubtree(self, *args, **kwargs):
         print('called Editor.putsubtree with args', args, kwargs)
     def getsubtree(self, *args, **kwargs):
         print('called Editor.getsubtree with args', args, kwargs)
         return []
-    def search_from_start(self):
-        print('called Editor.search_from_start')
 
 
 class MockMainGui:
@@ -228,17 +213,33 @@ class MockTree:
         return 'title', 'text', 'subtree'
 
 
+class MockEditorPanel:
+    "stub for qtqui.EditorPanel object"
+    def __init__(self, *args):
+        print('called EditorPanel.__init__ with args', args)
+    def setReadOnly(self, value):
+        print(f'called Editor.setReadOnly with arg {value}')
+    def ensureCursorVisible(self):
+        print('called Editor.ensureCursorVisible')
+    def setFocus(self):
+        print('called Editor.setFocus')
+    def set_text_position(self, pos):
+        print(f'called Editor.set_text_position with arg {pos}')
+    def search_from_start(self):
+        print('called Editor.search_from_start')
+
+
 class MockStack:
     "stub for qtgui.UndoRedoStack object"
     def __init__(self, parent):
         print(f'called gui.UndoRedoStack.__init__ with arg {parent}')
 
 
-class TestCheckDialog:
-    """unittest for qtgui.CheckDialog
+class TestMainGui:
+    """unittest for qtgui.MainGui
     """
     def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.CheckDialog object
+        """stub for qtgui.MainGui object
 
         create the object skipping the normal initialization
         intercept messages during creation
@@ -247,1104 +248,1358 @@ class TestCheckDialog:
         def mock_init(self, *args):
             """stub
             """
-            print('called CheckDialog.__init__ with args', args)
-        monkeypatch.setattr(testee.CheckDialog, '__init__', mock_init)
-        testobj = testee.CheckDialog()
-        testobj.parent = MockMainGui()
-        testobj.parent.master = MockEditor()
-        assert capsys.readouterr().out == 'called CheckDialog.__init__ with args ()\n'
+            print('called MainGui.__init__ with args', args)
+        monkeypatch.setattr(testee.MainGui, '__init__', mock_init)
+        testobj = testee.MainGui()
+        assert capsys.readouterr().out == 'called MainGui.__init__ with args ()\n'
         return testobj
 
-    def test_init(self, monkeypatch, capsys, expected_output):
-        """unittest for CheckDialog.__init__
+    def test_init(self, monkeypatch, capsys):
+        """unittest for MainGui.__init__
         """
-        def mock_klaar(self):
-            "stub for CheckDialog.klaar method"
-        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
-        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
-        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
-        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
-        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
-        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
-        monkeypatch.setattr(testee.CheckDialog, 'klaar', mock_klaar)
-        parent = MockMainGui()
-        parent.nt_icon = 'Icon'
-        testobj = testee.CheckDialog(parent)
-        assert testobj.parent == parent
-        assert testobj.option == ''
-        assert isinstance(testobj.check, testee.qtw.QCheckBox)
-        assert capsys.readouterr().out == expected_output['checkdialog'].format(testobj=testobj,
-                                                                                message='')
-        message = 'Do something'
-        testobj = testee.CheckDialog(parent, message, 'this')
-        assert testobj.parent == parent
-        assert testobj.option == 'this'
-        assert isinstance(testobj.check, testee.qtw.QCheckBox)
-        assert capsys.readouterr().out == expected_output['checkdialog'].format(testobj=testobj,
-                                                                                message=message)
+        def mock_init(self, *args, **kwargs):
+            print('called MainWindow.__init__')
+        def mock_icon(self, arg):
+            print(f'called Icon.__init__ with arg {type(arg).__name__}')
+        monkeypatch.setattr(testee.gui.QIcon, '__init__', mock_icon)
+        monkeypatch.setattr(testee.qtw, 'QSystemTrayIcon', mockqtw.MockSysTrayIcon)
+        monkeypatch.setattr(testee.qtw.QApplication, '__init__',
+                            mockqtw.MockApplication.__init__)
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'setWindowTitle',
+                            mockqtw.MockMainWindow.setWindowTitle)
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'setWindowIcon',
+                            mockqtw.MockMainWindow.setWindowIcon)
+        monkeypatch.setattr(testee.qtw.QMainWindow, '__init__', mock_init)
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'move', mockqtw.MockMainWindow.move)
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'resize', mockqtw.MockMainWindow.resize)
+        master = types.SimpleNamespace(HERE=pathlib.Path(__file__).parent.resolve(),
+                                       opts={'ScreenSize': (1, 2)})
+        testobj = testee.MainGui(master, 'title')
+        assert testobj.master == master
+        assert testobj.title == 'title'
+        assert isinstance(testobj.app, testee.qtw.QApplication)
+        assert isinstance(testobj.nt_icon, testee.gui.QIcon)
+        assert isinstance(testobj.tray_icon, testee.qtw.QSystemTrayIcon)
+        assert testobj.menulist == []
+        assert testobj.mainactiondict == {}
+        assert testobj.styleactiondict == {}
+        assert not testobj.in_editor
+        assert capsys.readouterr().out == (
+                "called Application.__init__\n"
+                 "called MainWindow.__init__\n"
+                 "called MainWindow.move with args (10, 10)\n"
+                 "called Icon.__init__ with arg str\n"
+                 "called MainWindow.setWindowIcon\n"
+                 "called TrayIcon.__init__\n"
+                 "called TrayIcon.setToolTip with args ('Click to revive DocTree',)\n"
+                 f"called Signal.connect with args ({testobj.revive},)\n"
+                 "called TrayIcon.hide\n"
+                 "called MainWindow.resize with args (1, 2)\n"
+                 "called MainWindow.setWindowTitle with arg `title`\n")
 
-    def test_klaar(self, monkeypatch, capsys):
-        """unittest for CheckDialog.klaar
+    def test_create_splitter(self, monkeypatch, capsys):
+        """unittest for MainGui.create_splitter
         """
-        monkeypatch.setattr(testee.qtw.QDialog, 'done', mockqtw.MockDialog.done)
+        monkeypatch.setattr(testee.qtw, 'QSplitter', mockqtw.MockSplitter)
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'setCentralWidget',
+                            mockqtw.MockMainWindow.setCentralWidget)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.option = 'something'
-        testobj.parent.master.opts = {}
-        testobj.check = mockqtw.MockCheckBox()
-        assert capsys.readouterr().out == "called CheckBox.__init__\n"
-        testobj.klaar()
-        assert testobj.parent.master.opts == {}
-        assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
-                                           "called Dialog.done with arg `0`\n")
-        testobj.check.setChecked(True)
-        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
-        testobj.klaar()
-        assert testobj.parent.master.opts == {'something': False}
-        assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
-                                           "called Dialog.done with arg `0`\n")
+        testobj.create_splitter()
+        assert isinstance(testobj.splitter, testee.qtw.QSplitter)
+        assert capsys.readouterr().out == (
+                "called Splitter.__init__\n"
+                "called MainWidget.setCentralWidget with arg `MockSplitter`\n")
 
-
-class TestOptionsDialog:
-    """unittest for qtgui.OptionsDialog
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.OptionsDialog object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
+    def test_tree_on_left(self, monkeypatch, capsys):
+        """unittest for MainGui.tree_on_left
         """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called OptionsDialog.__init__ with args', args)
-        monkeypatch.setattr(testee.OptionsDialog, '__init__', mock_init)
-        testobj = testee.OptionsDialog()
-        testobj.parent = MockMainGui()
-        testobj.parent.master = MockEditor()
-        assert capsys.readouterr().out == 'called OptionsDialog.__init__ with args ()\n'
-        return testobj
-
-    def test_init(self, monkeypatch, capsys, expected_output):
-        """unittest for OptionsDialog.__init__
-        """
-        def mock_get():
-            print('called shared.get_setttexts')
-            return {'xxx': 'xxxxxxxxxxxxxx', 'yyy': 'yyyyyyyyyyyyyyy'}
-        # monkeypatch.setattr(testee.shared, 'get_setttexts', mock_get)
-        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
-        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
-        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
-        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
-        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
-        monkeypatch.setattr(testee.qtw, 'QGridLayout', mockqtw.MockGridLayout)
-        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
-        parent = MockMainGui()
-        parent.master = MockEditor()
-        parent.master.get_setttexts = mock_get
-        parent.master.opts = {'xxx': True, 'yyy': False, 'zzz': False}
-        testobj = testee.OptionsDialog(parent)
-        assert len(testobj.controls) == len(['xxx', 'yyy'])
-        assert isinstance(testobj.controls[0][1], testee.qtw.QCheckBox)
-        assert isinstance(testobj.controls[1][1], testee.qtw.QCheckBox)
-        assert capsys.readouterr().out == expected_output['optionsdialog'].format(testobj=testobj)
-
-    def test_accept(self, monkeypatch, capsys):
-        """unittest for OptionsDialog.accept
-        """
-        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
+        monkeypatch.setattr(testee, 'TreePanel', MockTree)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.master.opts = {}
-        checkbox1 = mockqtw.MockCheckBox()
-        checkbox1.setChecked(True)
-        checkbox2 = mockqtw.MockCheckBox()
-        assert capsys.readouterr().out == ("called CheckBox.__init__\n"
-                                           "called CheckBox.setChecked with arg True\n"
-                                           "called CheckBox.__init__\n")
-        testobj.controls = [('xxx', checkbox1), ('yyy', checkbox2)]
-        testobj.accept()
-        assert testobj.parent.master.opts == {'xxx': True, 'yyy': False}
-        assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called Dialog.accept\n")
+        testobj.splitter = mockqtw.MockSplitter()
+        assert capsys.readouterr().out == "called Splitter.__init__\n"
+        testobj.create_tree_on_left()
+        assert isinstance(testobj.tree, testee.TreePanel)
+        assert capsys.readouterr().out == (
+                f"called TreePanel.__init__ with args ({testobj},)\n"
+                "called Splitter.addWidget with arg MockTree\n")
 
-
-class TestSearchDialog:
-    """unittest for qtgui.SearchDialog
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.SearchDialog object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
+    def test_editor_on_right(self, monkeypatch, capsys):
+        """unittest for MainGui.editor_on_right
         """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called SearchDialog.__init__ with args', args)
-        monkeypatch.setattr(testee.SearchDialog, '__init__', mock_init)
-        testobj = testee.SearchDialog()
-        testobj.parent = MockMainGui()
-        testobj.parent.master = MockEditor()
-        assert capsys.readouterr().out == 'called SearchDialog.__init__ with args ()\n'
-        return testobj
+        monkeypatch.setattr(testee, 'EditorPanel', MockEditorPanel)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.splitter = mockqtw.MockSplitter()
+        assert capsys.readouterr().out == "called Splitter.__init__\n"
+        testobj.create_editor_on_right()
+        assert isinstance(testobj.editor, testee.EditorPanel)
+        assert capsys.readouterr().out == (
+                f"called EditorPanel.__init__ with args ({testobj},)\n"
+                "called Editor.setReadOnly with arg True\n"
+                "called Splitter.addWidget with arg MockEditorPanel\n")
 
-    def test_init(self, monkeypatch, capsys, expected_output):
-        """unittest for SearchDialog.__init__
+    def test_statusbar_at_bottom(self, monkeypatch, capsys):
+        """unittest for MainGui.statusbar_at_bottom
         """
-        def mock_check(self):
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'statusBar', mockqtw.MockMainWindow.statusBar)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.create_statusbar_at_bottom()
+        assert isinstance(testobj.statusbar, mockqtw.MockStatusBar)
+        assert capsys.readouterr().out == ("called MainWindow.statusBar\n"
+                                           "called StatusBar.__init__ with args ()\n"
+                                           "called StatusBar.showMessage with arg `Ready`\n")
+
+    def test_create_menu(self, monkeypatch, capsys, expected_output):
+        """unittest for MainGui.create_menu
+        """
+        def mock_add(arg):
+            print(f'called MainGui.addToolBar with arg {arg}')
+            return toolbar
+        def mock_menubar():
+            print('called MainGui.MenuBar')
+            return menubar
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
+        monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
+        monkeypatch.setattr(testee.core, 'QSize', mockqtw.MockSize)
+        monkeypatch.setattr(testee.gui, 'QFont', mockqtw.MockFont)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = types.SimpleNamespace(HERE=pathlib.Path(__file__).parent.resolve())
+        testobj.menulist = []
+        testobj.mainactiondict = {}
+        testobj.styleactiondict = {}
+        toolbar = mockqtw.MockToolBar()
+        assert capsys.readouterr().out == "called ToolBar.__init__\n"
+        testobj.addToolBar = mock_add
+        menubar = mockqtw.MockMenuBar()
+        assert capsys.readouterr().out == "called MenuBar.__init__\n"
+        testobj.menuBar = mock_menubar
+        testobj.create_menu([])
+        assert capsys.readouterr().out == "called MainGui.MenuBar\n"
+        callbacks = [lambda: x for x in range(12)]
+        menudata = [('aaa', [('aaaa', callbacks[0], '', 'aaa.ico', ''),
+                             ('exit', callbacks[1], 'Ctrl+X,Esc', 'exit.ico', '')]),
+                    ('xxx', [('LinE sPacINg', '', '', '', ''),
+                             ('pARAgraph sPAcinG', '', '', '', '')]),
+                    ('yyy', [('B', callbacks[2], '', '', 'CheckB'),
+                             ('I', callbacks[3], '', '', 'CheckI'),
+                             ('U', callbacks[4], '', '', 'CheckU'),
+                             ('S', callbacks[5], '', '', 'CheckS'),
+                             ('M', callbacks[11], '', '', 'CheckM'),
+                             (),
+                             (),
+                             ('X', callbacks[6], '', '', 'Check'),
+                             ()]),
+                    ('zzz', [('&Undo', callbacks[7], 'Ctrl+Z', '', 'undo'),
+                             ('&Redo', callbacks[8], 'Ctrl+Y', '', 'redo'),
+                             ('', callbacks[0], '', '', 'xxx')]),
+                    ('bbb', [('bbbb', callbacks[9], '', '', '')]),
+                    ('ccc', [('cccc', callbacks[10], '', '', '')])]
+        testobj.create_menu(menudata)
+        assert capsys.readouterr().out == expected_output['menu'].format(testobj=testobj,
+                                                                         testee=testee,
+                                                                         callbacks=callbacks)
+        assert len(testobj.menulist) == 6
+        assert isinstance(testobj.viewmenu, mockqtw.MockMenu)
+        assert isinstance(testobj.notemenu, mockqtw.MockMenu)
+        assert isinstance(testobj.treemenu, mockqtw.MockMenu)
+        assert testobj.menulist[1] == testobj.notemenu
+        assert testobj.menulist[2] == testobj.viewmenu
+        assert testobj.menulist[3] == testobj.treemenu
+        assert len(testobj.menulist[0].actions()) == 2
+        assert capsys.readouterr().out == 'called Menu.actions\n'
+        assert len(testobj.menulist[1].actions()) == 0
+        assert capsys.readouterr().out == 'called Menu.actions\n'
+        assert len(testobj.menulist[2].actions()) == 8
+        assert capsys.readouterr().out == 'called Menu.actions\n'
+        assert len(testobj.menulist[3].actions()) == 2
+        assert capsys.readouterr().out == 'called Menu.actions\n'
+        assert len(testobj.menulist[4].actions()) == 1
+        assert capsys.readouterr().out == 'called Menu.actions\n'
+        assert len(testobj.menulist[5].actions()) == 1
+        assert capsys.readouterr().out == 'called Menu.actions\n'
+        assert isinstance(testobj.undo_item, testee.gui.QAction)
+        assert testobj.undo_item.text() == '&Undo'
+        assert capsys.readouterr().out == 'called Action.text\n'
+        assert testobj.undo_item.shortcuts() == ['Ctrl+Z']
+        assert capsys.readouterr().out == 'called Action.shortcuts\n'
+        assert isinstance(testobj.redo_item, testee.gui.QAction)
+        assert testobj.redo_item.text() == '&Redo'
+        assert capsys.readouterr().out == 'called Action.text\n'
+        assert testobj.redo_item.shortcuts() == ['Ctrl+Y']
+        assert capsys.readouterr().out == 'called Action.shortcuts\n'
+        assert isinstance(testobj.quit_action, testee.gui.QAction)
+        assert testobj.quit_action.text() == 'exit'
+        assert capsys.readouterr().out == 'called Action.text\n'
+        assert testobj.quit_action.shortcuts() == ['Ctrl+X', 'Esc']
+        assert capsys.readouterr().out == 'called Action.shortcuts\n'
+        # assert testobj.mainactiondict == {'aaa': callback0, 'exit': callback99}
+        assert len(testobj.mainactiondict) == 2
+        # assert testobj.styleactiondict == {'ccc': callback7}
+        assert len(testobj.styleactiondict) == 1
+
+    def test_finalize_display(self, monkeypatch, capsys):
+        """unittest for MainGui.finalize_display
+        """
+        def mock_toolbar():
+            print('called MainGui.create_styletoolbar')
+        def mock_seticon(self, data):
+            print('called Action.setIcon')
+        monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
+        monkeypatch.setattr(testee.gui, 'QPixmap', mockqtw.MockPixmap)
+        monkeypatch.setattr(testee, 'UndoRedoStack', MockStack)
+        # monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlag', 'searchflags')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        # testobj.app = mockqtw.MockApplication()
+        # testobj.title = 'title'
+        # testobj.create_menu = mock_menu
+        testobj.create_stylestoolbar = mock_toolbar
+        testobj.setcoloraction_color = mockqtw.MockColor(1)
+        monkeypatch.setattr(mockqtw.MockAction, 'setIcon', mock_seticon)
+        testobj.setcolor_action = mockqtw.MockAction()
+        testobj.setbackgroundcoloraction_color = mockqtw.MockColor(2)
+        testobj.setbackgroundcolor_action = mockqtw.MockAction()
+        assert capsys.readouterr().out == ("called Action.__init__ with args ()\n"
+                                           "called Action.__init__ with args ()\n")
+        # menubar = mockqtw.MockMenuBar()
+        # testobj.menuBar = mock_menubar
+        # testobj.master.get_menu_data = mock_getmenu
+
+        testobj.finalize_display()
+        assert isinstance(testobj.undo_stack, testee.UndoRedoStack)
+        # assert testobj.editor.new_content
+        assert not testobj.menu_disabled
+        assert capsys.readouterr().out == (
+                f"called gui.UndoRedoStack.__init__ with arg {testobj}\n"
+                "called MainGui.create_styletoolbar\n")
+
+    def test_disable_menu(self, monkeypatch, capsys):
+        """unittest for MainGui.disable_menu
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.menulist = [mockqtw.MockMenu(), mockqtw.MockMenu(), mockqtw.MockMenu()]
+        testobj.mainactiondict = {'&Open': mockqtw.MockAction(), '&Init': mockqtw.MockAction,
+                                  'Anything': mockqtw.MockAction(), 'e&Xit': mockqtw.MockAction()}
+        assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
+                                           "called Menu.__init__ with args ()\n"
+                                           "called Menu.__init__ with args ()\n"
+                                           "called Action.__init__ with args ()\n"
+                                           "called Action.__init__ with args ()\n"
+                                           "called Action.__init__ with args ()\n")
+        testobj.disable_menu()
+        assert testobj.menu_disabled
+        assert capsys.readouterr().out == ("called Menu.setDisabled with arg 'True'\n"
+                                           "called Menu.setDisabled with arg 'True'\n"
+                                           "called Action.setDisabled with arg `True`\n")
+        testobj.disable_menu(False)
+        assert not testobj.menu_disabled
+        assert capsys.readouterr().out == ("called Menu.setDisabled with arg 'False'\n"
+                                           "called Menu.setDisabled with arg 'False'\n"
+                                           "called Action.setDisabled with arg `False`\n")
+
+    def test_create_stylestoolbar(self, monkeypatch, capsys, expected_output):
+        """unittest for MainGui.create_stylestoolbar
+        """
+        def mock_add(arg):
+            print(f'called MainGui.addToolBar with arg {arg}')
+            return toolbar
+        def mock_icon(self, arg):
+            print(f'called Icon.__init__ with arg {type(arg).__name__}')
+        monkeypatch.setattr(testee.gui, 'QFontDatabase',
+                            types.SimpleNamespace(standardSizes=lambda: [10, 12, 20]))
+        monkeypatch.setattr(mockqtw.MockFontComboBox, 'currentTextChanged',
+                            {str: mockqtw.MockSignal()})
+        monkeypatch.setattr(testee.qtw, 'QFontComboBox', mockqtw.MockFontComboBox)
+        monkeypatch.setattr(testee.qtw, 'QComboBox', mockqtw.MockComboBox)
+        monkeypatch.setattr(testee.gui, 'QPixmap', mockqtw.MockPixmap)
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
+        monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
+        monkeypatch.setattr(mockqtw.MockIcon, '__init__', mock_icon)
+        toolbar = mockqtw.MockToolBar()
+        assert capsys.readouterr().out == ("called Signal.__init__\n"
+                                           "called ToolBar.__init__\n")
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.styleactiondict = {}
+        testobj.addToolBar = mock_add
+        testobj.editor = MockEditorPanel()
+        testobj.editor.text_family = lambda: 'family'
+        testobj.editor.text_size = lambda: 'size'
+        testobj.editor.font = lambda: mockqtw.MockFont()
+        testobj.editor.select_text_color = lambda: 'text color'
+        testobj.editor.set_text_color = lambda: 'text color'
+        testobj.editor.select_background_color = lambda: 'bg color'
+        testobj.editor.set_background_color = lambda: 'bg color'
+        testobj.create_stylestoolbar()
+        # assert isinstance(testobj.combo_font, testee.qtw.QFontComboBox)
+        # assert isinstance(testobj.combo_size, testee.qtw.QComboBox)
+        assert testobj.setcoloraction_color == testee.core.Qt.GlobalColor.black
+        assert isinstance(testobj.setcolor_action, testee.gui.QAction)
+        assert testobj.setbackgroundcoloraction_color == testee.core.Qt.GlobalColor.white
+        assert isinstance(testobj.setbackgroundcolor_action, testee.gui.QAction)
+        assert list(testobj.styleactiondict) == ['&Color...', '&Background...']
+        for item in testobj.styleactiondict.values():
+            assert isinstance(item, testee.gui.QAction)
+        assert capsys.readouterr().out == expected_output['toolbar'].format(testobj=testobj)
+
+    def test_show_statusmessage(self, monkeypatch, capsys):
+        """unittest for MainGui.show_statusmessage
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.statusbar = mockqtw.MockStatusBar()
+        assert capsys.readouterr().out == "called StatusBar.__init__ with args ()\n"
+        testobj.show_statusmessage('text')
+        assert capsys.readouterr().out == ("called StatusBar.showMessage with arg `text`\n")
+
+    def test_set_version(self, monkeypatch, capsys):
+        """unittest for MainGui.set_version
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.opts = {}
+        testobj.set_version()
+        assert testobj.master.opts["Version"] == "Qt"
+
+    def test_set_window_dimensions(self, monkeypatch, capsys):
+        """unittest for MainGui.set_window_dimensions
+        """
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'resize', mockqtw.MockMainWindow.resize)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.set_window_dimensions('x', 'y')
+        assert capsys.readouterr().out == ("called MainWindow.resize with args ('x', 'y')\n")
+
+    def test_get_screensize(self, monkeypatch, capsys):
+        """unittest for MainGui.get_screensize
+        """
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'width', mockqtw.MockMainWindow.width)
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'height', mockqtw.MockMainWindow.height)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        assert testobj.get_screensize() == ('width', 'height')
+        assert capsys.readouterr().out == ("called MainWindow.width with args ()\n"
+                                           "called MainWindow.height with args ()\n")
+
+    def test_set_windowtitle(self, monkeypatch, capsys):
+        """unittest for MainGui.set_windowtitle
+        """
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'setWindowTitle',
+                            mockqtw.MockMainWindow.setWindowTitle)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.set_windowtitle('title')
+        assert capsys.readouterr().out == ("called MainWindow.setWindowTitle with arg `title`\n")
+
+    def test_set_window_split(self, monkeypatch, capsys):
+        """unittest for MainGui.set_window_split
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.splitter = mockqtw.MockSplitter()
+        assert capsys.readouterr().out == "called Splitter.__init__\n"
+        testobj.set_window_split('pos')
+        assert capsys.readouterr().out == "called Splitter.setSizes with args ('pos',)\n"
+
+    def test_get_splitterpos(self, monkeypatch, capsys):
+        """unittest for MainGui.get_splitterpos
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.splitter = mockqtw.MockSplitter()
+        assert capsys.readouterr().out == "called Splitter.__init__\n"
+        assert testobj.get_splitterpos() == ('left this wide', 'right that wide')
+
+    def test_init_app(self, monkeypatch, capsys):
+        """unittest for MainGui.init_app
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
+        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
+        testobj.init_app()
+        assert capsys.readouterr().out == "called UndoRedoStack.clear\n"
+
+    def test_set_focus_to_tree(self, monkeypatch, capsys):
+        """unittest for MainGui.set_focus_to_tree
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.tree = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == "called Tree.__init__\n"
+        testobj.set_focus_to_tree()
+        assert not testobj.in_editor
+        assert capsys.readouterr().out == "called Tree.setFocus\n"
+
+    def test_set_focus_to_editor(self, monkeypatch, capsys):
+        """unittest for MainGui.set_focus_to_editor
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = 'active item'
+        testobj.master.text_positions = {'itemkey': 99}
+        testobj.tree = MockTree()
+        testobj.editor = MockEditorPanel()
+        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
+                                           "called EditorPanel.__init__ with args ()\n")
+        testobj.set_focus_to_editor()
+        assert testobj.in_editor
+        assert capsys.readouterr().out == ("called Editor.setFocus\n"
+                                           "called TreePanel.getitemkey with arg 'active item'\n"
+                                           "called Editor.set_text_position with arg 99\n")
+
+    def test_go(self, monkeypatch, capsys):
+        """unittest for MainGui.go
+        """
+        def mock_set():
+            print('called MainGui.set_focus_to_editor')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.app = mockqtw.MockApplication()
+        assert capsys.readouterr().out == "called Application.__init__\n"
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
+        testobj.set_focus_to_editor = mock_set
+        with pytest.raises(SystemExit):
+            testobj.go()
+        assert capsys.readouterr().out == ("called MainWindow.show\n"
+                                           "called MainGui.set_focus_to_editor\n"
+                                           "called Application.exec\n")
+
+    def test_close(self, monkeypatch, capsys):
+        """unittest for MainGui.close
+        """
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'close', mockqtw.MockMainWindow.close)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.close()
+        assert capsys.readouterr().out == ("called MainWindow.close\n")
+
+    def test_closeEvent(self, monkeypatch, capsys):
+        """unittest for MainGui.closeEvent
+        """
+        def mock_cleanup():
+            print('called MainWindow.cleanup_files')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.cleanup_files = mock_cleanup
+        event = mockqtw.MockEvent()
+        testobj.master.handle_save_needed = lambda: False
+        testobj.closeEvent(event)
+        assert capsys.readouterr().out == ("called event.ignore\n")
+        testobj.master.handle_save_needed = lambda: True
+        testobj.closeEvent(event)
+        assert capsys.readouterr().out == ("called MainWindow.cleanup_files\n"
+                                           "called event.accept\n")
+
+    def test_hide_me(self, monkeypatch, capsys):
+        """unittest for MainGui.hide_me
+        """
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'hide', mockqtw.MockMainWindow.hide)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.tray_icon = mockqtw.MockSysTrayIcon()
+        assert capsys.readouterr().out == "called TrayIcon.__init__\n"
+        testobj.hide_me()
+        assert capsys.readouterr().out == ("called TrayIcon.show\n"
+                                           "called MainWindow.hide\n")
+
+    def test_revive(self, monkeypatch, capsys):
+        """unittest for MainGui.revive
+        """
+        monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.tray_icon = mockqtw.MockSysTrayIcon()
+        assert capsys.readouterr().out == "called TrayIcon.__init__\n"
+        testobj.revive()
+        assert capsys.readouterr().out == ("called MainWindow.show\n"
+                                           "called TrayIcon.hide\n")
+        testobj.revive(testee.qtw.QSystemTrayIcon.ActivationReason.Unknown)
+        assert capsys.readouterr().out == (
+                "called TrayIcon.showMessage with args ('DocTree', 'Click to revive DocTree')\n")
+        testobj.revive(testee.qtw.QSystemTrayIcon.ActivationReason.Context)
+        assert capsys.readouterr().out == ""
+
+    def test_expand_root(self, monkeypatch, capsys):
+        """unittest for MainGui.expand_root
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.root = mockqtw.MockTreeItem()
+        assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
+        testobj.expand_root()
+        assert capsys.readouterr().out == "called TreeItem.setExpanded with arg `True`\n"
+
+    def test_start_add(self, monkeypatch, capsys):
+        """unittest for MainGui.start_add
+        """
+        class MockAdd:
             "stub"
-            print('SearchDialog.check_modes')
-        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
-        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
-        monkeypatch.setattr(testee.qtw, 'QLineEdit', mockqtw.MockLineEdit)
-        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
-        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
-        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
-        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
-        monkeypatch.setattr(testee.SearchDialog, 'check_modes', mock_check)
-        parent = MockMainGui()
-        parent.title = 'Title'
-        parent.nt_icon = 'Icon'
-        parent.srchtext = ''
-        parent.srchflags = testee.gui.QTextDocument.FindFlag
-        parent.srchlist = False
-        parent.srchwrap = False
-        parent.master = MockEditor()
-        testobj = testee.SearchDialog(parent)
-        assert capsys.readouterr().out == expected_output['searchdialog'].format(testobj=testobj)
-        assert isinstance(testobj.t_zoek, testee.qtw.QLineEdit)
-        assert isinstance(testobj.c_titl, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_text, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_curr, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_hlett, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_woord, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_wrap, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_lijst, testee.qtw.QCheckBox)
-        assert testobj.c_curr.isChecked()
-        assert not testobj.c_titl.isChecked()
-        assert not testobj.c_text.isChecked()
-        assert testobj.t_zoek.text() == ''
-        assert not testobj.c_hlett.isChecked()
-        assert not testobj.c_woord.isChecked()
-        assert not testobj.c_lijst.isChecked()
-        assert not testobj.c_wrap.isChecked()
-        assert capsys.readouterr().out == ("called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\ncalled LineEdit.text\n"
-                                           "called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\ncalled CheckBox.isChecked\n")
-
-        parent.srchtext = 'Find'
-        parent.srchflags = testee.gui.QTextDocument.FindFlag.FindBackward
-        parent.srchlist = True
-        parent.srchwrap = True
-        testobj = testee.SearchDialog(parent, mode=1)
-        assert capsys.readouterr().out == expected_output['searchdialog1'].format(testobj=testobj)
-        assert isinstance(testobj.t_zoek, testee.qtw.QLineEdit)
-        assert isinstance(testobj.c_titl, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_text, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_curr, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_hlett, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_woord, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_wrap, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_lijst, testee.qtw.QCheckBox)
-        assert not testobj.c_curr.isChecked()
-        assert testobj.c_titl.isChecked()
-        assert not testobj.c_text.isChecked()
-        assert testobj.t_zoek.text() == 'Find'
-        assert not testobj.c_hlett.isChecked()
-        assert not testobj.c_woord.isChecked()
-        assert testobj.c_lijst.isChecked()
-        assert testobj.c_wrap.isChecked()
-        assert capsys.readouterr().out == ("called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\ncalled LineEdit.text\n"
-                                           "called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\ncalled CheckBox.isChecked\n")
-
-        parent.srchflags = (testee.gui.QTextDocument.FindFlag.FindCaseSensitively
-                            | testee.gui.QTextDocument.FindFlag.FindWholeWords)
-        testobj = testee.SearchDialog(parent, mode=2)
-        assert capsys.readouterr().out == expected_output['searchdialog2'].format(testobj=testobj)
-        assert isinstance(testobj.t_zoek, testee.qtw.QLineEdit)
-        assert isinstance(testobj.c_titl, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_text, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_curr, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_hlett, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_woord, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_wrap, testee.qtw.QCheckBox)
-        assert isinstance(testobj.c_lijst, testee.qtw.QCheckBox)
-        assert not testobj.c_curr.isChecked()
-        assert not testobj.c_titl.isChecked()
-        assert testobj.c_text.isChecked()
-        assert testobj.t_zoek.text() == 'Find'
-        assert testobj.c_hlett.isChecked()
-        assert testobj.c_woord.isChecked()
-        assert testobj.c_lijst.isChecked()
-        assert testobj.c_wrap.isChecked()
-        assert capsys.readouterr().out == ("called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\ncalled LineEdit.text\n"
-                                           "called CheckBox.isChecked\ncalled CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\ncalled CheckBox.isChecked\n")
-
-    def test_check_modes(self, monkeypatch, capsys):
-        """unittest for SearchDialog.check_modes
-        """
-        def mock_sender():
-            print('called SearchDialog.sender')
-            return testobj.c_curr
-        def mock_sender_2():
-            print('called SearchDialog.sender')
-            return testobj.c_titl
-        def mock_sender_3():
-            print('called SearchDialog.sender')
-            return testobj.c_text
+            def __init__(self, *args, **kwargs):
+                print('called AddCommand.__init__ with args', args, kwargs)
+        monkeypatch.setattr(testee, 'AddCommand', MockAdd)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.c_curr = mockqtw.MockCheckBox()
-        testobj.c_titl = mockqtw.MockCheckBox()
-        testobj.c_text = mockqtw.MockCheckBox()
-        testobj.c_lijst = mockqtw.MockCheckBox()
-        assert capsys.readouterr().out == ("called CheckBox.__init__\n"
-                                           "called CheckBox.__init__\n"
-                                           "called CheckBox.__init__\n"
-                                           "called CheckBox.__init__\n")
-        testobj.sender = mock_sender
-        testobj.check_modes()
-        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
-                                           # "called CheckBox.setChecked with arg False\n"
-                                           # "called CheckBox.setChecked with arg False\n"
-                                           # "called CheckBox.setEnabled with arg False\n")
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setEnabled with arg True\n")
-        testobj.c_curr.setChecked(True)
-        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
-        testobj.check_modes()
-        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setChecked with arg False\n"
-                                           "called CheckBox.setChecked with arg False\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setEnabled with arg False\n")
-        testobj.sender = mock_sender_2
-        testobj.check_modes()
-        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setEnabled with arg False\n")
-        testobj.c_titl.setChecked(True)
-        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
-        testobj.check_modes()
-        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setChecked with arg False\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setEnabled with arg True\n")
-        testobj.sender = mock_sender_3
-        testobj.check_modes()
-        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setEnabled with arg True\n")
-        testobj.c_text.setChecked(True)
-        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
-        testobj.check_modes()
-        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setChecked with arg False\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
+        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
+        testobj.start_add()
+        assert capsys.readouterr().out == (
+                f"called AddCommand.__init__ with args ({testobj}, None, True, '', None) {{}}\n"
+                "called UndoRedoStack.push\n")
+        testobj.start_add(root='root', under=False, new_title='xxx', extra_titles=[])
+        assert capsys.readouterr().out == (
+                f"called AddCommand.__init__ with args ({testobj}, 'root', False, 'xxx', []) {{}}\n"
+                "called UndoRedoStack.push\n")
 
-    def test_accept(self, monkeypatch, capsys):
-        """unittest for SearchDialog.accept
+    def test_set_next_item(self, monkeypatch, capsys):
+        """unittest for MainGui.set_next_item
+        # activeitem zonder children en zonder parent
+        #  1. geen any_level: stopt (result is False)
+        #  2. wel any_level: stopt (result is False)
+        # activeitem met 1 child eronder en geen parent
+        #  3. any_level: gaat naar child (eerste 4 regels)
+        #  4: geen any_level: stopt (result is False) (5e regel, rest overslaan; )
+        # activeitem met 1 child eronder en wel een parent (en een sibling volgend)
+        #  5: zonder any_level: stopt (esult is False)
+        #  6: met any_level: gaat naar child (weer eerste 4 regels)
         """
-        def mock_show(*args):
-            print('called show_message with args', args)
-        # def mock_find():
-        #     print("called TextDocument.FindFlags")
-        #     return 0
-        monkeypatch.setattr(testee, 'show_message', mock_show)
-        # monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlags', mock_find)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
-        testobj.t_zoek = mockqtw.MockLineEdit()
-        testobj.c_curr = mockqtw.MockCheckBox()
-        testobj.c_titl = mockqtw.MockCheckBox()
-        testobj.c_text = mockqtw.MockCheckBox()
-        testobj.c_hlett = mockqtw.MockCheckBox()
-        testobj.c_woord = mockqtw.MockCheckBox()
-        testobj.c_lijst = mockqtw.MockCheckBox()
-        testobj.c_wrap = mockqtw.MockCheckBox()
-        assert capsys.readouterr().out == ("called LineEdit.__init__\ncalled CheckBox.__init__\n"
-                                           "called CheckBox.__init__\ncalled CheckBox.__init__\n"
-                                           "called CheckBox.__init__\ncalled CheckBox.__init__\n"
-                                           "called CheckBox.__init__\ncalled CheckBox.__init__\n")
-        testobj.accept()
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.master.activeitem._parent = None
+        testobj.tree = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n")
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+        assert not testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n")
+
+        child = mockqtw.MockTreeItem()
+        testobj.master.activeitem.addChild(child)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{child}`\n")
+
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+
+        parent = mockqtw.MockTreeItem()
+        next_one = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        parent.addChild(next_one)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 1\n"
+                                           f"called Tree.setCurrentItem with arg `{next_one}`\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{child}`\n")
+
+    def test_set_next_item_2(self, monkeypatch, capsys):
+        """unittest for MainGui.set_next_item
+        geen children, wel een parent met een sibling volgend op parent niveau
+        geen any_level: stopt (result is False)
+        wel any_level: gaat naar parent's sibling
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        parent._parent = None
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n")
+        assert not testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n")
+        gp = mockqtw.MockTreeItem()
+        gp.addChild(parent)
+        next_p = mockqtw.MockTreeItem()
+        gp.addChild(next_p)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        # breakpoint()
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 1\n"
+                                           f"called Tree.setCurrentItem with arg `{next_p}`\n")
+
+    def test_set_next_item_3(self, monkeypatch, capsys):
+        """unittest for MainGui.set_next_item
+        geen children, wel een parent met een parent en een sibling volgend op grandparent niveau
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        gp = mockqtw.MockTreeItem()
+        gp.addChild(parent)
+        ggp = mockqtw.MockTreeItem()
+        ggp.addChild(gp)
+        next_p = mockqtw.MockTreeItem()
+        ggp.addChild(next_p)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        assert not testobj.set_next_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n")
+        assert testobj.set_next_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 1\n"
+                                           f"called Tree.setCurrentItem with arg `{next_p}`\n")
+
+    def test_set_prev_item(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + (no parent)
+        |--  active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.master.activeitem._parent = None
+        testobj.tree = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n")
+        assert not testobj.set_prev_item()
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+        assert not testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == "called TreeItem.parent\n"
+
+    def test_set_prev_item_2(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n")
+        assert not testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           f"called Tree.setCurrentItem with arg `{parent}`\n")
+
+    def test_set_prev_item_3(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |-- prev_one
+        |-- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        prev_one = mockqtw.MockTreeItem()
+        parent.addChild(prev_one)
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+
+    def test_set_prev_item_4(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |-+ prev_parent
+          |-- prev_one
+        |-- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        prev_one = mockqtw.MockTreeItem()
+        prev_parent = mockqtw.MockTreeItem()
+        prev_parent.addChild(prev_one)
+        parent.addChild(prev_parent)
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_parent}`\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+
+    def test_set_prev_item_5(self, monkeypatch, capsys):
+        """unittest for MainGui.set_prev_item
+        + parent
+        |-+ prev_parent
+          |-+ prev_child
+            |-- prev_one
+        |-- active item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = MockMainWindow()
+        testobj.master.activeitem = mockqtw.MockTreeItem()
+        testobj.tree = mockqtw.MockTreeWidget()
+        parent = mockqtw.MockTreeItem()
+        prev_parent = mockqtw.MockTreeItem()
+        prev_child = mockqtw.MockTreeItem()
+        prev_one = mockqtw.MockTreeItem()
+        prev_child.addChild(prev_one)
+        prev_parent.addChild(prev_child)
+        parent.addChild(prev_parent)
+        parent.addChild(testobj.master.activeitem)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.addChild\n")
+        assert testobj.set_prev_item()
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_parent}`\n")
+        assert testobj.set_prev_item(any_level=True)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
+                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
+
+    def test_start_copy(self, monkeypatch, capsys):
+        """unittest for MainGui.start_copy
+        """
+        class MockCopy:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called CopyCommand.__init__ with args', args, kwargs)
+        monkeypatch.setattr(testee, 'CopyCommand', MockCopy)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
+        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
+        testobj.start_copy()
         assert capsys.readouterr().out == (
-                "called LineEdit.text\n"
-                f"called show_message with args ({testobj}, 'Wel iets te zoeken opgeven')\n")
-        testobj.t_zoek.setText('Zoek')
-        assert capsys.readouterr().out == "called LineEdit.setText with arg `Zoek`\n"
-        testobj.accept()
+                f"called CopyCommand.__init__ with args ({testobj}, False, True, None) {{}}\n"
+                "called UndoRedoStack.push\n")
+        testobj.start_copy(True, False, 'current')
         assert capsys.readouterr().out == (
-                "called LineEdit.text\n"
-                "called CheckBox.isChecked\n"
-                "called CheckBox.isChecked\n"
-                "called CheckBox.isChecked\n"
-                f"called show_message with args ({testobj}, 'Wel een zoek modus kiezen')\n")
-        testobj.c_titl.setChecked(True)
-        testobj.c_text.setChecked(True)
-        assert capsys.readouterr().out == ("called CheckBox.setChecked with arg True\n"
-                                           "called CheckBox.setChecked with arg True\n")
-        testobj.accept()
-        assert testobj.parent.srchtext == 'Zoek'
-        assert testobj.parent.srchtype == 3
-        assert testobj.parent.srchflags.value == 0
-        assert not testobj.parent.srchlist
-        assert not testobj.parent.srchwrap
-        assert capsys.readouterr().out == ("called LineEdit.text\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called Dialog.accept\n")
-        testobj.c_titl.setChecked(False)
-        testobj.c_text.setChecked(False)
-        testobj.c_curr.setChecked(True)
-        testobj.c_woord.setChecked(True)
-        testobj.c_lijst.setChecked(True)
-        testobj.c_wrap.setChecked(True)
-        assert capsys.readouterr().out == ("called CheckBox.setChecked with arg False\n"
-                                           "called CheckBox.setChecked with arg False\n"
-                                           "called CheckBox.setChecked with arg True\n"
-                                           "called CheckBox.setChecked with arg True\n"
-                                           "called CheckBox.setChecked with arg True\n"
-                                           "called CheckBox.setChecked with arg True\n")
-        testobj.accept()
-        assert testobj.parent.srchtext == 'Zoek'
-        assert testobj.parent.srchtype == 0
-        assert testobj.parent.srchflags.value == 4
-        assert testobj.parent.srchlist
-        assert testobj.parent.srchwrap
-        assert capsys.readouterr().out == ("called LineEdit.text\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called Dialog.accept\n")
-        testobj.c_hlett.setChecked(True)
-        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
-        testobj.accept()
-        assert testobj.parent.srchtext == 'Zoek'
-        assert testobj.parent.srchtype == 0
-        assert testobj.parent.srchflags.value == 6
-        assert testobj.parent.srchlist
-        assert testobj.parent.srchwrap
-        assert capsys.readouterr().out == ("called LineEdit.text\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called Dialog.accept\n")
+                f"called CopyCommand.__init__ with args ({testobj}, True, False, 'current') {{}}\n"
+                "called UndoRedoStack.push\n")
 
-        testobj.parent.srchflags = testee.gui.QTextDocument.FindFlag
-        testobj.c_woord.setChecked(False)
-        assert capsys.readouterr().out == "called CheckBox.setChecked with arg False\n"
-        testobj.accept()
-        assert testobj.parent.srchtext == 'Zoek'
-        assert testobj.parent.srchtype == 0
-        assert testobj.parent.srchflags.value == 2
-        assert testobj.parent.srchlist
-        assert testobj.parent.srchwrap
-        assert capsys.readouterr().out == ("called LineEdit.text\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called CheckBox.isChecked\n"
-                                           "called Dialog.accept\n")
-
-
-class TestResultsDialog:
-    """unittest for qtgui.ResultsDialog
-
-    wordt alleen gestuurd als er resultaten zijn voor zoeken in titels en/of teksten
-    dus current_text (mode 0) en geen zoekresultaten hoeven niet getest worden
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.ResultsDialog object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
+    def test_start_paste(self, monkeypatch, capsys):
+        """unittest for MainGui.start_paste
         """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called ResultsDialog.__init__ with args', args)
-        monkeypatch.setattr(testee.ResultsDialog, '__init__', mock_init)
-        testobj = testee.ResultsDialog()
-        testobj.parent = MockMainGui()
-        testobj.parent.master = MockEditor()
-        assert capsys.readouterr().out == 'called ResultsDialog.__init__ with args ()\n'
-        return testobj
+        class MockPaste:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called PasteCommand.__init__ with args', args, kwargs)
+        monkeypatch.setattr(testee, 'PasteCommand', MockPaste)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
+        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
+        testobj.start_paste()
+        assert capsys.readouterr().out == (
+                f"called PasteCommand.__init__ with args ({testobj}, True, False, None) {{}}\n"
+                "called UndoRedoStack.push\n")
+        testobj.start_paste(False, True, 'dest')
+        assert capsys.readouterr().out == (
+                f"called PasteCommand.__init__ with args ({testobj}, False, True, 'dest') {{}}\n"
+                "called UndoRedoStack.push\n")
 
-    def test_init(self, monkeypatch, capsys, expected_output):
-        """unittest for ResultsDialog.__init__
+    def test_reorder_items(self, monkeypatch, capsys):
+        """unittest for MainGui.reorder_items
         """
-        def mock_populate(self):
-            print('called ResultsDialog.populate_list')
-        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
-        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
-        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
-        monkeypatch.setattr(testee.qtw, 'QLineEdit', mockqtw.MockLineEdit)
-        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
-        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
-        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
-        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
-        monkeypatch.setattr(testee.qtw, 'QTreeWidget', mockqtw.MockTreeWidget)
-        monkeypatch.setattr(testee.ResultsDialog, 'populate_list', mock_populate)
-        parent = MockMainGui()
-        parent.title = 'Title'
-        parent.nt_icon = 'Icon'
-        parent.srchtype = 0  # hoeft eigenlijk niet
-        parent.srchtext = 'Find'
-        testobj = testee.ResultsDialog(parent)
-        assert isinstance(testobj.result_list, testee.qtw.QTreeWidget)
-        assert isinstance(testobj.next_button, testee.qtw.QPushButton)
-        assert isinstance(testobj.prev_button, testee.qtw.QPushButton)
-        assert capsys.readouterr().out == expected_output['resultsdialog'].format(testobj=testobj,
-                                                                                  where='')
-        parent.srchtype = 1
-        testobj = testee.ResultsDialog(parent)
-        assert capsys.readouterr().out == expected_output['resultsdialog'].format(testobj=testobj,
-                                                                                  where='titles')
-        parent.srchtype = 2
-        testobj = testee.ResultsDialog(parent)
-        assert capsys.readouterr().out == expected_output['resultsdialog'].format(testobj=testobj,
-                                                                                  where='texts')
-        parent.srchtype = 3
-        testobj = testee.ResultsDialog(parent)
-        assert capsys.readouterr().out == expected_output['resultsdialog'].format(
-                testobj=testobj, where='titles and texts')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        root = mockqtw.MockTreeItem()
+        root.addChild(mockqtw.MockTreeItem('xxx'))
+        root.addChild(mockqtw.MockTreeItem('yyy'))
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ('xxx',)\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ('yyy',)\n"
+                                           "called TreeItem.addChild\n")
+        testobj.reorder_items(root)
+        assert capsys.readouterr().out == (
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n")
+        testobj.reorder_items(root, recursive=True)
+        assert capsys.readouterr().out == (
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
+                "called TreeItem.childCount\n"
+                "called TreeItem.child with arg 0\n"
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
+                "called TreeItem.childCount\n"
+                "called TreeItem.child with arg 1\n"
+                "called TreeItem.sortChildren with args"
+                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
+                "called TreeItem.childCount\n")
 
-    def test_populate_list(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.populate_list
+    def test_rebuild_root(self, monkeypatch, capsys):
+        """unittest for MainGui.rebuild_root
         """
+        def mock_setkey(*args):
+            print('called Tree.setitemkey with args', args)
+        def mock_settitle(*args):
+            print('called Tree.setitemtitle with args', args)
+        def mock_settext(*args):
+            print('called Tree.setitemtext with args', args)
         monkeypatch.setattr(testee.qtw, 'QTreeWidgetItem', mockqtw.MockTreeItem)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.master.search_results = [(1, 'title', 'xxx', 'yyy'),
-                                                (1, 'text', 'xxx', 'yyy'),
-                                                (2, 'text', 'aaa', 'bbb'),
-                                                (3, 'title', 'qqq', 'rrr')]
-        testobj.result_list = mockqtw.MockTreeWidget()
-        assert capsys.readouterr().out == "called Tree.__init__\n"
-        testobj.populate_list()
+        testobj.tree = mockqtw.MockTreeWidget()
+        testobj.tree.setitemkey = mock_setkey
+        testobj.tree.setitemtitle = mock_settitle
+        testobj.tree.setitemtext = mock_settext
+        testobj.master = MockMainWindow()
+        testobj.master.opts = {'RootTitle': 'title', 'RootData': 'data'}
+        # testobj.root = mockqtw.MockTreeItem()
+        # assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
+        assert testobj.rebuild_root() == testobj.root
         assert capsys.readouterr().out == (
+                "called Tree.__init__\n"
+                "called Tree.takeTopLevelItem with arg `0`\n"
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with args (0, 'xxx')\n"
-                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 1)\n"
-                "called TreeItem.setText with args (1, 'yyy')\n"
-                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 1)\n"
-                "called Tree.addTopLevelItem\n"
-                "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with args (0, 'aaa')\n"
-                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 2)\n"
-                "called TreeItem.setText with args (1, 'bbb')\n"
-                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 2)\n"
-                "called Tree.addTopLevelItem\n"
-                "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with args (0, 'qqq')\n"
-                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 3)\n"
-                "called TreeItem.setText with args (1, 'rrr')\n"
-                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 3)\n"
+                f"called Tree.setitemkey with args ({testobj.root}, '-1')\n"
+                f"called Tree.setitemtitle with args ({testobj.root}, 'title')\n"
+                f"called Tree.setitemtext with args ({testobj.root}, 'data')\n"
                 "called Tree.addTopLevelItem\n")
 
-    def test_goto_next(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.goto_next
+    def setup_viewmenu(self, capsys):
+        """define a menu with more than 8 options to be used in the next cuople of tests
         """
-        def mock_goto():
-            print('called ResultsDialog.goto_selected')
-        def mock_below(arg):
-            print(f'called Tree.itemBelow with arg {arg}')
-            return None
-        def mock_show(*args):
-            print('called show_message with args', args)
-        monkeypatch.setattr(testee, 'show_message', mock_show)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.goto_selected = mock_goto
-        testobj.next_button = mockqtw.MockPushButton()
-        testobj.result_list = mockqtw.MockTreeWidget()
-        assert capsys.readouterr().out == ("called PushButton.__init__ with args () {}\n"
-                                           "called Tree.__init__\n")
-        testobj.goto_next()
-        assert capsys.readouterr().out == ("called Tree.itemBelow with arg called Tree.currentItem\n"
-                                           "called Tree.setCurrentItem with arg `x`\n"
-                                           "called ResultsDialog.goto_selected\n")
-        testobj.result_list.itemBelow = mock_below
-        testobj.goto_next()
-        assert capsys.readouterr().out == ("called Tree.itemBelow with arg called Tree.currentItem\n"
-                                           "called PushButton.setEnabled with arg `False`\n"
-                                           f"called show_message with args ({testobj},"
-                                           " 'This is the last one')\n")
-
-    def test_goto_prev(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.goto_prev
-        """
-        def mock_goto():
-            print('called ResultsDialog.goto_selected')
-        def mock_above(arg):
-            print(f'called Tree.itemAbove with arg {arg}')
-            return None
-        def mock_show(*args):
-            print('called show_message with args', args)
-        monkeypatch.setattr(testee, 'show_message', mock_show)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.goto_selected = mock_goto
-        testobj.prev_button = mockqtw.MockPushButton()
-        testobj.result_list = mockqtw.MockTreeWidget()
-        assert capsys.readouterr().out == ("called PushButton.__init__ with args () {}\n"
-                                           "called Tree.__init__\n")
-        testobj.goto_prev()
-        assert capsys.readouterr().out == ("called Tree.itemAbove with arg called Tree.currentItem\n"
-                                           "called Tree.setCurrentItem with arg `x`\n"
-                                           "called ResultsDialog.goto_selected\n")
-        testobj.result_list.itemAbove = mock_above
-        testobj.goto_prev()
-        assert capsys.readouterr().out == ("called Tree.itemAbove with arg called Tree.currentItem\n"
-                                           "called PushButton.setEnabled with arg `False`\n"
-                                           f"called show_message with args ({testobj},"
-                                           " 'This is the first one')\n")
-
-    def test_goto_selected(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.goto_selected
-        """
-        def mock_goto():
-            print('called Editor.go_to_result')
-        def mock_current():
-            print('called Tree.currentItem')
-            return resultitem
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.master.go_to_result = mock_goto
-        testobj.next_button = mockqtw.MockPushButton()
-        testobj.prev_button = mockqtw.MockPushButton()
-        testobj.result_list = mockqtw.MockTreeWidget()
-        resultitem = mockqtw.MockTreeItem()
-        resultitem.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'xxx')
+        viewmenu = mockqtw.MockMenu()
+        viewmenu.addAction('xx1')
+        viewmenu.addAction('xx2')
+        viewmenu.addAction('xx3')
+        viewmenu.addAction('xx4')
+        viewmenu.addAction('xx5')
+        viewmenu.addAction('xx6')
+        viewmenu.addAction('xx7')
+        viewmenu.addAction('xx8')
+        action9 = viewmenu.addAction('&1 xx9')
+        action0 = viewmenu.addAction('&2 x10')
         assert capsys.readouterr().out == (
-                "called PushButton.__init__ with args () {}\n"
-                "called PushButton.__init__ with args () {}\n"
-                "called Tree.__init__\n"
-                "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 'xxx')\n")
-        testobj.result_list.currentItem = mock_current
-        testobj.goto_selected()
-        assert testobj.parent.master.srchno == "xxx"
-        assert capsys.readouterr().out == (
-                "called PushButton.setEnabled with arg `True`\n"
-                "called PushButton.setEnabled with arg `True`\n"
-                "called Tree.currentItem\n"
-                "called TreeItem.data with args (0, <ItemDataRole.UserRole: 256>)\n"
-                "called Editor.go_to_result\n")
-        testobj.goto_selected()
-        assert testobj.parent.master.srchno == "xxx"
-        assert capsys.readouterr().out == (
-                "called Tree.currentItem\n"
-                "called TreeItem.data with args (0, <ItemDataRole.UserRole: 256>)\n"
-                "called Editor.go_to_result\n")
+                "called Menu.__init__ with args ()\n"
+                "called Menu.addAction with args `xx1` None\n"
+                "called Action.__init__ with args ('xx1', None)\n"
+                "called Menu.addAction with args `xx2` None\n"
+                "called Action.__init__ with args ('xx2', None)\n"
+                "called Menu.addAction with args `xx3` None\n"
+                "called Action.__init__ with args ('xx3', None)\n"
+                "called Menu.addAction with args `xx4` None\n"
+                "called Action.__init__ with args ('xx4', None)\n"
+                "called Menu.addAction with args `xx5` None\n"
+                "called Action.__init__ with args ('xx5', None)\n"
+                "called Menu.addAction with args `xx6` None\n"
+                "called Action.__init__ with args ('xx6', None)\n"
+                "called Menu.addAction with args `xx7` None\n"
+                "called Action.__init__ with args ('xx7', None)\n"
+                "called Menu.addAction with args `xx8` None\n"
+                "called Action.__init__ with args ('xx8', None)\n"
+                "called Menu.addAction with args `&1 xx9` None\n"
+                "called Action.__init__ with args ('&1 xx9', None)\n"
+                "called Menu.addAction with args `&2 x10` None\n"
+                "called Action.__init__ with args ('&2 x10', None)\n")
+        return viewmenu, action9, action0
 
-    def test_goto_and_close(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.goto_and_close
+    # def _test_clear_viewmenu(self, monkeypatch, capsys):
+    #     """unittest for MainGui.clear_viewmenu
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     testobj.clear_viewmenu()
+    #     assert len(list(testobj.viewmenu.actions())) == 8
+
+    #     assert capsys.readouterr().out == ('called Menu.actions\n'
+    #                                        f"called Menu.removeaction with arg {action9}\n"
+    #                                        f"called Menu.removeaction with arg {action0}\n"
+    #                                        'called Menu.actions\n')
+
+    def test_add_viewmenu_option(self, monkeypatch, capsys):
+        """unittest for MainGui.add_viewmenu_option
         """
-        def mock_goto():
-            print('called ResultsDialog.goto_selected')
-        def mock_accept():
-            print('called ResultsDialog.accept')
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.goto_selected = mock_goto
-        testobj.accept = mock_accept
-        testobj.goto_and_close()
-        assert capsys.readouterr().out == ("called ResultsDialog.goto_selected\n"
-                                           "called ResultsDialog.accept\n")
-
-    def test_accept(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.accept
-        """
-        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.accept()
-        assert not testobj.parent.srchlist
-        assert capsys.readouterr().out == "called Dialog.accept\n"
-
-    def test_reject(self, monkeypatch, capsys):
-        """unittest for ResultsDialog.reject
-        """
-        monkeypatch.setattr(testee.qtw.QDialog, 'reject', mockqtw.MockDialog.reject)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.reject()
-        assert not testobj.parent.srchlist
-        assert capsys.readouterr().out == "called Dialog.reject\n"
-
-
-class TestUndoRedoStack:
-    """unittest for qtgui.UndoRedoStack
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.UndoRedoStack object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
-        """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called UndoRedoStack.__init__ with args', args)
-        monkeypatch.setattr(testee.UndoRedoStack, '__init__', mock_init)
-        testobj = testee.UndoRedoStack()
-        testobj._parent = MockMainGui()
-        testobj.parent = lambda *x: testobj._parent
-        assert capsys.readouterr().out == 'called UndoRedoStack.__init__ with args ()\n'
-        return testobj
-
-    def test_init(self, monkeypatch, capsys):
-        """unittest for UndoRedoStack.__init__
-        """
-        # monkeypatch.setattr(testee.qtw, 'QUndoStack', mockqtw.MockUndoStack)
-        monkeypatch.setattr(testee.gui.QUndoStack, '__init__', mockqtw.MockUndoStack.__init__)
-        monkeypatch.setattr(testee.gui.QUndoStack, 'parent', mockqtw.MockUndoStack.parent)
-        monkeypatch.setattr(testee.gui.QUndoStack, 'cleanChanged', mockqtw.MockUndoStack.cleanChanged)
-        monkeypatch.setattr(testee.gui.QUndoStack, 'indexChanged', mockqtw.MockUndoStack.indexChanged)
-        monkeypatch.setattr(testee.gui.QUndoStack, 'setUndoLimit', mockqtw.MockUndoStack.setUndoLimit)
-        parent = MockMainGui()
-        testobj = testee.UndoRedoStack(parent)
+        testobj.master = MockMainWindow()
+        testobj.master.select_view = lambda: 'dummy'
+        testobj.viewmenu = mockqtw.MockMenu()
+        result = testobj.add_viewmenu_option('optiontext', 'callback')
+        assert isinstance(result, testee.gui.QAction)
         assert capsys.readouterr().out == (
-                f"called UndoStack.__init__ with args ({parent},)\n"
-                f"called Signal.connect with args ({testobj.clean_changed},)\n"
-                f"called Signal.connect with args ({testobj.index_changed},)\n"
-                "called UndoRedoStack.setUndoLimit with arg 1\n"
-                "called Action.setText with arg `Nothing to undo`\n"
-                "called Action.setText with arg `Nothing to redo`\n"
-                "called Action.setDisabled with arg `True`\n"
-                "called Action.setDisabled with arg `True`\n")
+                "called Menu.__init__ with args ()\n"
+                f"called Action.__init__ with args ('optiontext', {testobj})\n"
+                "called Action.setStatusTip with arg 'switch to this view'\n"
+                "called Action.setCheckable with arg `True`\n"
+                "called Signal.connect with args ('callback',)\n"
+                "called Menu.addAction\n")
 
-    def test_clean_changed(self, monkeypatch, capsys):
-        """unittest for UndoRedoStack.clean_changed
+    # def _test_check_viewmenu_option(self, monkeypatch, capsys):
+    #     """unittest for MainGui.check_viewmenu_option
+    #     """
+    #     def mock_sender():
+    #         print('called MainWindow.sender')
+    #         return action0
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     action = mockqtw.MockAction()
+    #     assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
+    #     assert testobj.check_viewmenu_option(action) == ""
+    #     assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
+
+    #     action.setChecked(False)
+    #     testobj.viewmenu.addAction(action)
+    #     testobj.sender = mock_sender
+    #     action9.setChecked(True)
+    #     assert capsys.readouterr().out == ("called Action.setChecked with arg `False`\n"
+    #                                        "called Menu.addAction\n"
+    #                                        "called Action.setChecked with arg `True`\n")
+    #     assert testobj.check_viewmenu_option() == "&2 x10"
+    #     assert capsys.readouterr().out == ("called MainWindow.sender\n"
+    #                                        "called Menu.actions\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.setChecked with arg `False`\n"
+    #                                        "called Action.text\n"
+    #                                        "called Action.setChecked with arg `True`\n"
+    #                                        "called Action.isChecked\n")
+
+    def test_check_menuitem_option(self, monkeypatch, capsys):
+        """unittest for MainGui.check_menuitem_option
+        """
+        item = mockqtw.MockAction()
+        assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.check_menuitem_option(item, 'value')
+        assert capsys.readouterr().out == "called Action.setChecked with arg `value`\n"
+
+    def test_determine_viewmenuitem(self, monkeypatch, capsys):
+        """unittest for MainGui.determine_viewmenuitem
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.clean_changed(False)
-        assert capsys.readouterr().out == "called Action.setDisabled with arg `False`\n"
-        testobj.clean_changed(True)
-        assert capsys.readouterr().out == ("called Action.setText with arg `Nothing to undo`\n"
-                                           "called Action.setText with arg `Nothing to redo`\n"
-                                           "called Action.setDisabled with arg `True`\n")
+        assert testobj.determine_viewmenuitem('item', 'value')
+        assert capsys.readouterr().out == ("")
 
-    def test_index_changed(self, monkeypatch, capsys):
-        """unittest for UndoRedoStack.index_changed
+    # def _test_uncheck_viewmenu_option(self, monkeypatch, capsys):
+    #     """unittest for MainGui.uncheck_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     testobj.master = MockMainWindow()
+    #     testobj.master.opts = {'ActiveView': 1}
+    #     testobj.uncheck_viewmenu_option()
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.setChecked with arg `False`\n")
+    #     # alleen: welke wordt er nu precies unchecked?
+
+    # def _test_rename_viewmenu_option(self, monkeypatch, capsys):
+    #     """unittest for MainGui.rename_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     testobj.master = MockMainWindow()
+    #     testobj.master.opts = {'ActiveView': 1}
+    #     testobj.rename_viewmenu_option('newname')
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.text\n"
+    #                                        "called Action.setText with arg `&1 newname`\n")
+
+    # def _test_check_next_viewmenu_option(self, monkeypatch, capsys):
+    #     """unittest for MainGui.check_next_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     action9.setChecked(True)
+    #     assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
+    #     testobj.check_next_viewmenu_option()
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.setChecked with arg `False`\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.setChecked with arg `True`\n")
+    #     assert not action9.isChecked()
+    #     assert action0.isChecked()
+
+    # def _test_check_next_viewmenu_option_2(self, monkeypatch, capsys):
+    #     """unittest for MainGui.check_next_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     action0.setChecked(True)
+    #     assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
+    #     testobj.check_next_viewmenu_option()
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.setChecked with arg `False`\n"
+    #                                        "called Action.setChecked with arg `True`\n")
+    #     assert not action0.isChecked()
+    #     assert action9.isChecked()
+
+    # def _test_check_prev_viewmenu_option(self, monkeypatch, capsys):
+    #     """unittest for MainGui.check_next_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     action9.setChecked(True)
+    #     assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
+    #     testobj.check_next_viewmenu_option(prev=True)
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.setChecked with arg `False`\n"
+    #                                        "called Action.setChecked with arg `True`\n")
+    #     assert not action9.isChecked()
+    #     assert action0.isChecked()
+
+    # def _test_check_prev_viewmenu_option_2(self, monkeypatch, capsys):
+    #     """unittest for MainGui.check_next_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     action9.setChecked(True)
+    #     assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
+    #     testobj.check_next_viewmenu_option(prev=True)
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.isChecked\n"
+    #                                        "called Action.setChecked with arg `False`\n"
+    #                                        "called Action.setChecked with arg `True`\n")
+    #     assert not action9.isChecked()
+    #     assert action0.isChecked()
+
+    # def _test_remove_viewmenu_option(self, monkeypatch, capsys):
+    #     """unittest for MainGui.remove_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     testobj.master = MockMainWindow()
+    #     testobj.master.opts = {'ActiveView': 1}
+    #     assert testobj.remove_viewmenu_option('xx9') == action0
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.text\n"
+    #                                        f"called Menu.removeaction with arg {action9}\n"
+    #                                        "called Action.text\n"
+    #                                        "called Action.setText with arg `&1 x10`\n")
+
+    # def _test_remove_viewmenu_option_2(self, monkeypatch, capsys):
+    #     """unittest for MainGui.remove_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     testobj.master = MockMainWindow()
+    #     testobj.master.opts = {'ActiveView': 2}
+    #     assert testobj.remove_viewmenu_option('x10') == action9
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.text\n"
+    #                                        "called Action.text\n"
+    #                                        f"called Menu.removeaction with arg {action0}\n")
+
+    # def _test_remove_viewmenu_option_3(self, monkeypatch, capsys):
+    #     """unittest for MainGui.remove_viewmenu_option
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
+    #     testobj.viewmenu.addAction('&3 xxx')
+    #     assert capsys.readouterr().out == ("called Menu.addAction with args `&3 xxx` None\n"
+    #                                        "called Action.__init__ with args ('&3 xxx', None)\n")
+    #     testobj.master = MockMainWindow()
+    #     testobj.master.opts = {'ActiveView': 2}
+    #     assert testobj.remove_viewmenu_option('xx9') == action0
+    #     assert capsys.readouterr().out == ("called Menu.actions\n"
+    #                                        "called Action.text\n"
+    #                                        f"called Menu.removeaction with arg {action9}\n"
+    #                                        "called Action.text\n"
+    #                                        "called Action.setText with arg `&1 x10`\n"
+    #                                        "called Action.text\n"
+    #                                        "called Action.setText with arg `&2 xxx`\n")
+
+    def test_get_viewmenu_options(self, monkeypatch, capsys):
+        """unittest for MainGui.get_viewmenu_options
         """
-        def mock_undotext():
-            print('called UndoRedoStack.undotext')
-            return ''
-        def mock_undotext_2():
-            print('called UndoRedoStack.undotext')
-            return 'xxx'
-        def mock_redotext():
-            print('called UndoRedoStack.redotext')
-            return ''
-        def mock_redotext_2():
-            print('called UndoRedoStack.redotext')
-            return 'yyy'
+        def mock_actions():
+            print('called menu.actions')
+            return ('xxx', 'yyy')
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undoText = mock_undotext
-        testobj.redoText = mock_redotext
-        testobj.index_changed(1)
-        assert capsys.readouterr().out == ("called UndoRedoStack.undotext\n"
-                                           "called Action.setText with arg `Nothing to undo`\n"
-                                           "called Action.setDisabled with arg `True`\n"
-                                           "called UndoRedoStack.redotext\n"
-                                           "called Action.setText with arg `Nothing to redo`\n"
-                                           "called Action.setDisabled with arg `True`\n")
-        testobj.undoText = mock_undotext_2
-        testobj.redoText = mock_redotext_2
-        testobj.index_changed(1)
-        assert capsys.readouterr().out == ("called UndoRedoStack.undotext\n"
-                                           "called Action.setText with arg `&Undo xxx`\n"
-                                           "called Action.setEnabled with arg `True`\n"
-                                           "called UndoRedoStack.redotext\n"
-                                           "called Action.setText with arg `&Redo yyy`\n"
-                                           "called Action.setEnabled with arg `True`\n")
+        testobj.viewmenu = types.SimpleNamespace(actions=mock_actions)
+        assert testobj.get_viewmenu_options() == ['xxx', 'yyy']
+        assert capsys.readouterr().out == "called menu.actions\n"
 
-
-class TestAddCommand:
-    """unittest for qtgui.AddCommand
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.AddCommand object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
+    def test_get_viewmenuoption_state(self, monkeypatch, capsys):
+        """unittest for MainGui.get_viewmenuoption_state
         """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called AddCommand.__init__ with args', args)
-        monkeypatch.setattr(testee.AddCommand, '__init__', mock_init)
-        testobj = testee.AddCommand()
-        testobj.win = MockMainGui()
-        testobj.win.master = MockEditor()
-        testobj.win.tree = MockTree()
-        assert capsys.readouterr().out == ('called AddCommand.__init__ with args ()\n'
-                                           "called TreePanel.__init__ with args ()\n")
-        return testobj
-
-    def test_init(self, monkeypatch, capsys):
-        """unittest for AddCommand.__init__
-        """
-        def mock_init(self, *args):
-            print('called QUndoCommand with args', args)
-        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
-        win = MockMainGui()
-        win.master = MockEditor()
-        win.tree = MockTree()
-        win.root = mockqtw.MockTreeItem()
-        win.master.activeitem = mockqtw.MockTreeItem()
-        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n")
-        testobj = testee.AddCommand(win, None, False, 'new_title', ['extra', 'titles'])
-        assert testobj.win == win
-        assert testobj.root == win.master.activeitem  # win.root
-        assert not testobj.under
-        assert testobj.pos == 1
-        assert testobj.add_to_itemdict == ['new_title', '', ['extra', '', ['titles', '', []]]]
-        assert testobj.is_first_edit
-        assert capsys.readouterr().out == (
-                f"called TreePanel.getitemparentpos with arg '{testobj.root}'\n"
-                "called QUndoCommand with args ('Add',)\n")
-        testobj = testee.AddCommand(win, win.root, True, 'new_title', [], 'AddCommand')
-        assert testobj.win == win
-        assert testobj.root == win.root
-        assert testobj.under
-        assert testobj.pos == -1
-        assert testobj.add_to_itemdict == ['new_title', '', []]
-        assert testobj.is_first_edit
-        assert capsys.readouterr().out == (
-                "called QUndoCommand with args ('AddCommand top level item',)\n")
-
-    def test_redo(self, monkeypatch, capsys):
-        """unittest for AddCommand.redo
-        """
+        item = mockqtw.MockAction()
+        assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.root = 'root'
-        testobj.under = 'under'
-        testobj.pos = -1
-        testobj.add_to_itemdict = ['new_title', 'text', []]
-        testobj.redo()
-        assert testobj.data == "data"
-        assert capsys.readouterr().out == ("called Editor.do_addaction with args ('root', 'under',"
-                                           " -1, ['new_title', 'text', []])\n")
+        assert not testobj.get_viewmenuoption_state(item)
+        assert capsys.readouterr().out == "called Action.isChecked\n"
 
-    def test_undo(self, monkeypatch, capsys):
-        """unittest for AddCommand.undo
+    def test_get_menuitem_text(self, monkeypatch, capsys):
+        """unittest for MainGui.get_menuitem_text
         """
+        item = mockqtw.MockAction()
+        assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.data = ['1', ['2'], '3', '4', '5', '6']
-        testobj.is_first_edit = False
-        testobj.win.master.itemdict = {'1': 'x', '2': 'y'}
-        testobj.win.master.views = [['view1', 'q'], ['view2', 'q'], ['view3', 'q']]
-        testobj.win.master.opts = {'ActiveView': 1}
-        testobj.undo()
-        # assert testobj.win.master.views == [['view1'], ['view2', 'q'], ['view3']]
-        assert testobj.win.master.views == [['view1', 'q'], ['view2', 'q'], ['view3', 'q']]
-        assert capsys.readouterr().out == (
-                # "called TreePanel.removeitem with args ('3', [('1', 'x'), ('2', 'y')])\n")
-                "called TreePanel.removeitem with args (['1', ['2'], '3', '4', '5', '6'],)\n")
-        testobj.data = ['1', [], '3', '4', '6']
-        testobj.is_first_edit = True
-        testobj.win.master.views = [['view1', 'q']]
-        testobj.win.master.opts = {'ActiveView': 0}
-        testobj.undo()
-        assert testobj.win.master.views == [['view1', 'q']]
-        assert capsys.readouterr().out == (
-                # "called TreePanel.removeitem with args ('3', [('1', 'x')])\n"
-                "called TreePanel.removeitem with args (['1', [], '3', '4', '6'],)\n"
-                "called Editor.set_project_dirty with arg False\n")
+        assert testobj.get_menuitem_text(item) == ''
+        assert capsys.readouterr().out == "called Action.text\n"
 
-
-class TestPasteCommand:
-    """unittest for qtgui.PasteCommand
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.PasteCommand object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
+    def test_set_menuitem_text(self, monkeypatch, capsys):
+        """unittest for MainGui.set_menuitem_text
         """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called PasteCommand.__init__ with args', args)
-        monkeypatch.setattr(testee.PasteCommand, '__init__', mock_init)
-        testobj = testee.PasteCommand()
-        testobj.win = MockMainGui()
-        testobj.win.statusbar = mockqtw.MockStatusBar()
-        testobj.win.master = MockEditor()
-        testobj.win.tree = MockTree()
-        assert capsys.readouterr().out == ('called PasteCommand.__init__ with args ()\n'
-                                           'called StatusBar.__init__ with args ()\n'
-                                           'called TreePanel.__init__ with args ()\n')
-        return testobj
+        item = mockqtw.MockAction()
+        assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.set_menuitem_text(item, 'naam')
+        assert capsys.readouterr().out == "called Action.setText with arg `naam`\n"
 
-    def test_init(self, monkeypatch, capsys):
-        """unittest for PasteCommand.__init__
+    def test_remove_menuoption(self, monkeypatch, capsys):
+        """unittest for MainGui.remove_menuoption
         """
-        def mock_init(self, *args):
-            print('called QUndoCommand with args', args)
-        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
-        win = MockMainGui()
-        win.master = MockEditor()
-        win.tree = MockTree()
-        win.master.project_dirty = False
-        item = mockqtw.MockTreeItem('xxx', '111')
-        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ('xxx', '111')\n")
-        testobj = testee.PasteCommand(win, False, False, item, description="Paste")
-        assert not testobj.before
-        assert not testobj.below
-        assert testobj.item == item
-        assert testobj.first_edit
-        assert testobj.replaced is None
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste After',)\n"
-        win.master.project_dirty = True
-        testobj = testee.PasteCommand(win, False, True, item, description="Paste")
-        assert not testobj.before
-        assert testobj.below
-        assert testobj.item == item
-        assert not testobj.first_edit
-        assert testobj.replaced is None
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Under',)\n"
-        testobj = testee.PasteCommand(win, True, False, item, description="Paste")
-        assert testobj.before
-        assert not testobj.below
-        assert testobj.item == item
-        assert not testobj.first_edit
-        assert testobj.replaced is None
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Before',)\n"
-        testobj = testee.PasteCommand(win, True, True, item, description="Paste")
-        assert testobj.before
-        assert testobj.below
-        assert testobj.item == item
-        assert not testobj.first_edit
-        assert testobj.replaced is None
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Under',)\n"
+        menu = mockqtw.MockMenu()
+        item = mockqtw.MockAction()
+        assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
+                                           "called Action.__init__ with args ()\n")
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.remove_menuoption(menu, item)
+        assert capsys.readouterr().out == f"called Menu.removeaction with arg {item}\n"
 
-    def test_redo(self, monkeypatch, capsys):
-        """unittest for PasteCommand.redo
+    def test_tree_undo(self, monkeypatch, capsys):
+        """unittest for MainGui.tree_undo
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.win.master.views = ['views']
-        testobj.before = 'before'
-        testobj.below = 'below'
-        testobj.item = 'item'
-        testobj.redo()
-        assert testobj.views == testobj.win.master.views
-        assert testobj.used_keys == 'keys'
-        assert testobj.used_parent == 'parent'
-        assert capsys.readouterr().out == (
-                "called Editor.do_pasteaction with args ('before', 'below', 'item')\n")
+        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
+        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
+        testobj.tree_undo()
+        assert capsys.readouterr().out == "called UndoRedoStack.undo\n"
 
-    def test_undo(self, monkeypatch, capsys):
-        """unittest for PasteCommand.undo
-        """
-        def mock_text():
-            print('called PasteCommand.text')
-            return 'Paste action'
-        parent = mockqtw.MockTreeItem()
-        assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.used_keys = []
-        testobj.win.master.itemdict = {'xx': 'xxxx', 'yy': 'yyyy'}
-        testobj.used_parent = (parent, 2)
-        testobj.views = ['views']
-        testobj.first_edit = False
-        testobj.text = mock_text
-        testobj.undo()
-        assert testobj.win.master.itemdict == {'xx': 'xxxx', 'yy': 'yyyy'}
-        assert testobj.win.master.views == ['views']
-        assert capsys.readouterr().out == (
-                "called TreeItem.takeChild\n"
-                "called PasteCommand.text\n"
-                "called StatusBar.showMessage with arg `Paste action undone`\n")
-
-        testobj.win.master.views = []
-        testobj.used_keys = ['xx']
-        testobj.used_parent = (parent, -1)
-        testobj.first_edit = True
-        testobj.undo()
-        assert testobj.win.master.itemdict == {'yy': 'yyyy'}
-        assert testobj.win.master.views == ['views']
-        assert capsys.readouterr().out == (
-                "called TreeItem.childCount\n"
-                "called TreeItem.takeChild\n"
-                "called Editor.set_project_dirty with arg False\n"
-                "called PasteCommand.text\n"
-                "called StatusBar.showMessage with arg `Paste action undone`\n")
-
-
-class TestCopyCommand:
-    """unittest for qtgui.CopyCommand
-    """
-    def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.CopyCommand object
-
-        create the object skipping the normal initialization
-        intercept messages during creation
-        return the object so that other methods can be monkeypatched in the caller
-        """
-        def mock_init(self, *args):
-            """stub
-            """
-            print('called CopyCommand.__init__ with args', args)
-        monkeypatch.setattr(testee.CopyCommand, '__init__', mock_init)
-        testobj = testee.CopyCommand()
-        testobj.win = MockMainGui()
-        testobj.win.master = MockEditor()
-        testobj.win.statusbar = mockqtw.MockStatusBar()
-        testobj.win.tree = MockTree()
-        assert capsys.readouterr().out == ('called CopyCommand.__init__ with args ()\n'
-                                           'called StatusBar.__init__ with args ()\n'
-                                           'called TreePanel.__init__ with args ()\n')
-        return testobj
-
-    def test_init(self, monkeypatch, capsys):
-        """unittest for CopyCommand.__init__
-        """
-        def mock_init(self, *args):
-            print('called QUndoCommand with args', args)
-        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
-        win = MockMainGui()
-        win.master = MockEditor()
-        win.tree = MockTree()
-        win.master.project_dirty = False
-        item = mockqtw.MockTreeItem('xxx', '111')
-        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ('xxx', '111')\n")
-        testobj = testee.CopyCommand(win, False, False, item)
-        assert testobj.undodata is None
-        assert testobj.win == win
-        assert testobj.item == item
-        assert testobj.first_edit
-        assert not testobj.cut
-        assert not testobj.retain
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Copy',)\n"
-        win.master.project_dirty = True
-        testobj = testee.CopyCommand(win, False, True, item)
-        assert testobj.undodata is None
-        assert testobj.win == win
-        assert testobj.item == item
-        assert not testobj.first_edit
-        assert not testobj.cut
-        assert testobj.retain
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Copy',)\n"
-        testobj = testee.CopyCommand(win, True, False, item)
-        assert testobj.undodata is None
-        assert testobj.win == win
-        assert testobj.item == item
-        assert not testobj.first_edit
-        assert testobj.cut
-        assert not testobj.retain
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Delete',)\n"
-        testobj = testee.CopyCommand(win, True, True, item)
-        assert testobj.undodata is None
-        assert testobj.win == win
-        assert testobj.item == item
-        assert not testobj.first_edit
-        assert testobj.cut
-        assert testobj.retain
-        assert capsys.readouterr().out == "called QUndoCommand with args ('Cut',)\n"
-
-    def test_redo(self, monkeypatch, capsys):
-        """unittest for CopyCommand.redo
+    def test_tree_redo(self, monkeypatch, capsys):
+        """unittest for MainGui.tree_redo
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        # testobj.key = 'xx'
-        testobj.cut = 'cut'
-        testobj.retain = 'retain'
-        testobj.item = 'item'
-        # testobj.win.master.itemdict = {'xx': 'xxxx'}
-        testobj.win.master.views = ['yyy']
-        testobj.win.master.opts = {'ActiveItem': 'q'}
-        testobj.redo()
-        assert testobj.oldstate == ('q', ['yyy'])
-        assert testobj.newstate == ('opts', 'views')
-        assert capsys.readouterr().out == (
-                "called Editor.do_addaction with args ('cut', 'retain', 'item')\n")
+        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
+        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
+        testobj.tree_redo()
+        assert capsys.readouterr().out == "called UndoRedoStack.redo\n"
 
-    def test_undo(self, monkeypatch, capsys):
-        """unittest for CopyCommand.undo
+    def test_find_needle(self, monkeypatch, capsys):
+        """unittest for MainGui.find_needle
         """
-        def mock_text():
-            print('called CopyCommand.text')
-            return 'Copy action'
-        def mock_put(*args, **kwargs):
-            print('called Tree.putsubtree with args', args, kwargs)
-            return 'yy'
+        def mock_find(self, text, options):
+            print(f"called TextDocument.find with args '{text}' '{options}'")
+            return types.SimpleNamespace(isNull=lambda: True)
+        def mock_find2(self, text, options):
+            print(f"called TextDocument.find with args '{text}' '{options}'")
+            return types.SimpleNamespace(isNull=lambda: False)
+        def mock_set_flags():
+            print('called MainGui.set_searchflags')
+            return 'searchflags'
+        monkeypatch.setattr(mockqtw.MockTextDocument, 'find', mock_find)
+        monkeypatch.setattr(testee.gui, 'QTextDocument', mockqtw.MockTextDocument)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.newstate = (['copied', 'items'], ('oldloc', 2), [('cut', 'from'), ('item', 'dict')])
-        testobj.oldstate = ('xx', ['views'])
-        testobj.cut = False
-        testobj.win.master.itemdict = {}
-        testobj.item = ''
-        testobj.win.master.activeitem = ''
-        testobj.win.master.opts = {}
-        testobj.win.master.putsubtree = mock_put
-        testobj.first_edit = False
-        testobj.text = mock_text
-        testobj.undo()
-        assert testobj.win.master.itemdict == {}
-        assert testobj.win.master.activeitem == ''
-        assert testobj.item == ''
-        assert testobj.win.master.opts["ActiveItem"] == 'xx'
-        assert testobj.win.master.views == ['views']
+        testobj.master = types.SimpleNamespace(srchtext='needle')  # , srchflags='searchflags')
+        testobj.set_searchflags = mock_set_flags
+        assert not testobj.find_needle('haystack')
         assert capsys.readouterr().out == (
-                "called CopyCommand.text\n"
-                "called StatusBar.showMessage with arg `Copy action undone`\n")
-        testobj.cut = True
-        testobj.first_edit = True
-        testobj.undo()
-        assert testobj.win.master.itemdict == {'cut': 'from', 'item': 'dict'}
-        assert testobj.win.master.activeitem == 'yy'
-        assert testobj.item == 'yy'
-        assert testobj.win.master.opts["ActiveItem"] == 'xx'
-        assert testobj.win.master.views == ['views']
+                "called TextDocument.__init__ with args ()\n"
+                "called TextDocument.setPlainText with arg 'haystack'\n"
+                "called MainGui.set_searchflags\n"
+                "called TextDocument.find with args 'needle' 'searchflags'\n")
+        monkeypatch.setattr(mockqtw.MockTextDocument, 'find', mock_find2)
+        assert testobj.find_needle('haystack')
         assert capsys.readouterr().out == (
-                "called Tree.putsubtree with args"
-                f" ({testobj.win.tree}, 'oldloc', 'copied', 'items') {{'pos': 2}}\n"
-                "called Editor.set_project_dirty with arg False\n"
-                "called CopyCommand.text\n"
-                "called StatusBar.showMessage with arg `Copy action undone`\n")
+                "called TextDocument.__init__ with args ()\n"
+                "called TextDocument.setPlainText with arg 'haystack'\n"
+                "called MainGui.set_searchflags\n"
+                "called TextDocument.find with args 'needle' 'searchflags'\n")
+
+    def test_set_searchflags(self, monkeypatch, capsys):
+        """unittest for MainGui.set_searchflags
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = types.SimpleNamespace(srchflags={})
+        assert testobj.set_searchflags() == (testee.gui.QTextDocument.FindFlag.FindBackward
+                                             & ~testee.gui.QTextDocument.FindFlag.FindBackward)
+        testobj.master.srchflags['case'] = True
+        assert testobj.set_searchflags() == testee.gui.QTextDocument.FindFlag.FindCaseSensitively
+        testobj.master.srchflags['words'] = True
+        assert testobj.set_searchflags() == (testee.gui.QTextDocument.FindFlag.FindCaseSensitively
+                                             | testee.gui.QTextDocument.FindFlag.FindWholeWords)
+        testobj.master.srchflags['case'] = False
+        assert testobj.set_searchflags() == testee.gui.QTextDocument.FindFlag.FindWholeWords
+        testobj.master.srchflags['words'] = False
+        assert testobj.set_searchflags(backwards=True) == testee.gui.QTextDocument.FindFlag.FindBackward
+
+    def test_goto_searchresult(self, monkeypatch, capsys):
+        """unittest for MainGui.goto_searchresult
+        """
+        # def mock_find(text, options):
+        #     print(f"called Editor.find with args '{text}' '{options}'")
+        #     return False
+        # def mock_find2(text, options):
+        #     print(f"called Editor.find with args '{text}' '{options}'")
+        #     return True
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.tree = mockqtw.MockTreeWidget()
+        testobj.root = mockqtw.MockTreeItem('root')
+        item = mockqtw.MockTreeItem('level1')
+        testobj.root.addChild(item)
+        item2 = mockqtw.MockTreeItem('level2')
+        item.addChild(item2)
+        assert capsys.readouterr().out == ("called Tree.__init__\n"
+                                           "called TreeItem.__init__ with args ('root',)\n"
+                                           "called TreeItem.__init__ with args ('level1',)\n"
+                                           "called TreeItem.addChild\n"
+                                           "called TreeItem.__init__ with args ('level2',)\n"
+                                           "called TreeItem.addChild\n")
+        testobj.editor = MockEditorPanel()
+        assert capsys.readouterr().out == "called EditorPanel.__init__ with args ()\n"
+        # testobj.editor.find = mock_find
+        testobj.master = types.SimpleNamespace(srchtext='needle', srchflags='searchflags',
+                                               srchtype=1)
+        testobj.goto_searchresult([0, 0])
+        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{item2}`\n")
+        testobj.master.srchtype = 1
+        testobj.goto_searchresult([0, 0])
+        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{item2}`\n")
+        testobj.master.srchtype = 2
+        testobj.goto_searchresult([0, 0])
+        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
+                                           "called TreeItem.child with arg 0\n"
+                                           f"called Tree.setCurrentItem with arg `{item2}`\n"
+                                           # "called Editor.find with args 'needle' 'searchflags'\n")
+                                           "called Editor.search_from_start\n")
+        # testobj.editor.find = mock_find2
+        # testobj.goto_searchresult([0, 0])
+        # assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
+        #                                    "called TreeItem.child with arg 0\n"
+        #                                    f"called Tree.setCurrentItem with arg `{item2}`\n"
+        #                                    "called Editor.find with args 'needle' 'searchflags'\n"
+        #                                    "called Editor.ensureCursorVisible\n")
+
+    def test_add_escape_action(self, monkeypatch, capsys):
+        """unittest for MainGui.add_escape_action
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.quit_shortcuts = ['Ctrl-Q', 'Esc']
+        testobj.quit_action = mockqtw.MockAction()
+        testobj.quit_action.setShortcuts(['x', 'y'])
+        assert capsys.readouterr().out == ("called Action.__init__ with args ()\n"
+                                           "called Action.setShortcuts with arg `['x', 'y']`\n")
+        testobj.add_escape_action()
+        assert capsys.readouterr().out == ("called Action.shortcuts\n")
+        testobj.quit_action.setShortcut('x')
+        assert capsys.readouterr().out == ("called Action.setShortcut with arg `x`\n")
+        testobj.add_escape_action()
+        assert capsys.readouterr().out == (
+                "called Action.shortcuts\n"
+                "called Action.setShortcuts with arg `['Ctrl-Q', 'Esc']`\n")
+
+    def test_remove_escape_action(self, monkeypatch, capsys):
+        """unittest for MainGui.remove_escape_action
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.quit_shortcuts = ['Ctrl-Q', 'Esc']
+        testobj.quit_action = mockqtw.MockAction()
+        testobj.quit_action.setShortcut('x')
+        assert capsys.readouterr().out == ('called Action.__init__ with args ()\n'
+                                           'called Action.setShortcut with arg `x`\n')
+        testobj.remove_escape_action()
+        assert capsys.readouterr().out == "called Action.shortcuts\n"
+
+        testobj.quit_action.setShortcuts(['x', 'y'])
+        assert capsys.readouterr().out == "called Action.setShortcuts with arg `['x', 'y']`\n"
+        testobj.remove_escape_action()
+        assert capsys.readouterr().out == ("called Action.shortcuts\n"
+                                           "called Action.setShortcuts with arg `['Ctrl-Q']`\n")
+
+    def test_cleanup_after_writing(self, monkeypatch, capsys):
+        """unittest for MainGui.cleanup_after_writing
+        """
+        def mock_set():
+            print('called UndoStack.setClean')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.undo_stack = types.SimpleNamespace(setClean=mock_set)
+        testobj.cleanup_after_writing()
+        assert capsys.readouterr().out == 'called UndoStack.setClean\n'
 
 
 class TestTreePanel:
@@ -1364,7 +1619,7 @@ class TestTreePanel:
         monkeypatch.setattr(testee.TreePanel, '__init__', mock_init)
         testobj = testee.TreePanel()
         testobj.parent = MockMainGui()
-        testobj.parent.master = MockEditor()
+        testobj.parent.master = MockMainWindow()
         assert capsys.readouterr().out == 'called TreePanel.__init__ with args ()\n'
         return testobj
 
@@ -1392,7 +1647,7 @@ class TestTreePanel:
         #                     mockqtw.MockTreeWidget.SingleSelection)
         # monkeypatch.setattr(testee.qtw.QTreeWidget, 'InternalMove',
         #                     mockqtw.MockTreeWidget.InternalMove)
-        parent = MockEditor()
+        parent = MockMainGui()
         testobj = testee.TreePanel(parent)
         assert capsys.readouterr().out == (
                 "called Tree.__init__\n"
@@ -2047,7 +2302,7 @@ class TestEditorPanel:
         monkeypatch.setattr(testee.EditorPanel, '__init__', mock_init)
         testobj = testee.EditorPanel()
         testobj.parent = MockMainGui()
-        testobj.parent.master = MockEditor()
+        testobj.parent.master = MockMainWindow()
         assert capsys.readouterr().out == 'called EditorPanel.__init__ with args ()\n'
         return testobj
 
@@ -3322,23 +3577,28 @@ class TestEditorPanel:
         def mock_find(*args):
             print('called Editor.find with args', args)
             return True
+        def mock_set():
+            print('called MainGui.set_searchflags')
+            return 'flags'
         monkeypatch.setattr(testee.EditorPanel, 'moveCursor', mockqtw.MockEditorWidget.moveCursor)
         monkeypatch.setattr(testee.EditorPanel, 'find', mockqtw.MockEditorWidget.find)
         monkeypatch.setattr(testee.EditorPanel, 'ensureCursorVisible',
                             mockqtw.MockEditorWidget.ensureCursorVisible)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.srchtext = 'search'
-        testobj.parent.srchflags = 'flags'
+        testobj.parent.master.srchtext = 'search'
+        testobj.parent.set_searchflags = mock_set
         assert not testobj.search_from_start()
         assert capsys.readouterr().out == (
                 "called Editor.moveCursor with args"
                 f" ({testee.gui.QTextCursor.MoveOperation.Start!r},)\n"
+                'called MainGui.set_searchflags\n'
                 "called Editor.find with args ('search', 'flags')\n")
         testobj.find = mock_find
         assert testobj.search_from_start()
         assert capsys.readouterr().out == (
                 f"called Editor.moveCursor with args"
                 f" ({testee.gui.QTextCursor.MoveOperation.Start!r},)\n"
+                'called MainGui.set_searchflags\n'
                 "called Editor.find with args ('search', 'flags')\n"
                 "called Editor.ensureCursorVisible\n")
 
@@ -3351,20 +3611,25 @@ class TestEditorPanel:
         def mock_find_2(what, how):
             print(f"called Editor.find with args '{what}', {how}")
             return True
+        def mock_set():
+            print('called MainGui.set_searchflags')
+            return 'flags'
         monkeypatch.setattr(testee.EditorPanel, 'ensureCursorVisible',
                             mockqtw.MockEditorWidget.ensureCursorVisible)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.srchtext = 'search'
-        testobj.parent.srchflags = (testee.gui.QTextDocument.FindFlag.FindCaseSensitively
-                                    | testee.gui.QTextDocument.FindFlag.FindWholeWords)
+        testobj.parent.master.srchtext = 'search'
+        testobj.parent.set_searchflags = mock_set
+        # testobj.parent.master.srchflags = {'case': True, 'words': True}
+        #                             # (testee.gui.QTextDocument.FindFlag.FindCaseSensitively
+        #                             # | testee.gui.QTextDocument.FindFlag.FindWholeWords)
         testobj.find = mock_find
         testobj.find_next()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
-                                           " FindFlag.FindCaseSensitively|FindWholeWords\n")
+        assert capsys.readouterr().out == ("called MainGui.set_searchflags\n"
+                                           "called Editor.find with args 'search', flags\n")
         testobj.find = mock_find_2
         testobj.find_next()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
-                                           " FindFlag.FindCaseSensitively|FindWholeWords\n"
+        assert capsys.readouterr().out == ("called MainGui.set_searchflags\n"
+                                           "called Editor.find with args 'search', flags\n"
                                            "called Editor.ensureCursorVisible\n")
 
     def test_find_prev(self, monkeypatch, capsys):
@@ -3376,32 +3641,39 @@ class TestEditorPanel:
         def mock_find_2(what, how):
             print(f"called Editor.find with args '{what}', {how}")
             return True
+        def mock_set(**kwargs):
+            print('called MainGui.set_searchflags with args', kwargs)
+            return 'flags'
         monkeypatch.setattr(testee.EditorPanel, 'ensureCursorVisible',
                             mockqtw.MockEditorWidget.ensureCursorVisible)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.parent.srchtext = 'search'
-        testobj.parent.srchflags = testee.gui.QTextDocument.FindFlag
+        testobj.parent.master.srchtext = 'search'
+        testobj.parent.set_searchflags = mock_set
+        # testobj.parent.master.srchflags = {}  # testee.gui.QTextDocument.FindFlag
         testobj.find = mock_find
         testobj.find_prev()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
-                                           " FindFlag.FindBackward\n")
+        assert capsys.readouterr().out == (
+                "called MainGui.set_searchflags with args {'backward': True}\n"
+                "called Editor.find with args 'search', flags\n")
         testobj.find = mock_find_2
         testobj.find_prev()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
-                                           " FindFlag.FindBackward\n"
-                                           "called Editor.ensureCursorVisible\n")
+        assert capsys.readouterr().out == (
+                "called MainGui.set_searchflags with args {'backward': True}\n"
+                "called Editor.find with args 'search', flags\n"
+                "called Editor.ensureCursorVisible\n")
         testobj.parent.srchflags = testee.gui.QTextDocument.FindFlag.FindWholeWords
         testobj.find_prev()
-        assert capsys.readouterr().out == ("called Editor.find with args 'search',"
-                                           " FindFlag.FindBackward|FindWholeWords\n"
-                                           "called Editor.ensureCursorVisible\n")
+        assert capsys.readouterr().out == (
+                "called MainGui.set_searchflags with args {'backward': True}\n"
+                "called Editor.find with args 'search', flags\n"
+                "called Editor.ensureCursorVisible\n")
 
 
-class TestMainGui:
-    """unittest for qtgui.MainGui
+class TestUndoRedoStack:
+    """unittest for qtgui.UndoRedoStack
     """
     def setup_testobj(self, monkeypatch, capsys):
-        """stub for qtgui.MainGui object
+        """stub for qtgui.UndoRedoStack object
 
         create the object skipping the normal initialization
         intercept messages during creation
@@ -3410,1219 +3682,1252 @@ class TestMainGui:
         def mock_init(self, *args):
             """stub
             """
-            print('called MainGui.__init__ with args', args)
-        monkeypatch.setattr(testee.MainGui, '__init__', mock_init)
-        testobj = testee.MainGui()
-        assert capsys.readouterr().out == 'called MainGui.__init__ with args ()\n'
+            print('called UndoRedoStack.__init__ with args', args)
+        monkeypatch.setattr(testee.UndoRedoStack, '__init__', mock_init)
+        testobj = testee.UndoRedoStack()
+        testobj._parent = MockMainGui()
+        testobj.parent = lambda *x: testobj._parent
+        assert capsys.readouterr().out == 'called UndoRedoStack.__init__ with args ()\n'
         return testobj
 
     def test_init(self, monkeypatch, capsys):
-        """unittest for MainGui.__init__
+        """unittest for UndoRedoStack.__init__
         """
-        def mock_init(self, *args, **kwargs):
-            print('called MainWindow.__init__')
-        monkeypatch.setattr(testee.qtw.QApplication, '__init__',
-                            mockqtw.MockApplication.__init__)
-        monkeypatch.setattr(testee.qtw.QMainWindow, '__init__', mock_init)
-        testobj = testee.MainGui('master', 'title')
-        assert testobj.master == 'master'
-        assert testobj.title == 'title'
-        assert capsys.readouterr().out == ("called Application.__init__\n"
-                                           "called MainWindow.__init__\n")
+        # monkeypatch.setattr(testee.qtw, 'QUndoStack', mockqtw.MockUndoStack)
+        monkeypatch.setattr(testee.gui.QUndoStack, '__init__', mockqtw.MockUndoStack.__init__)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'parent', mockqtw.MockUndoStack.parent)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'cleanChanged', mockqtw.MockUndoStack.cleanChanged)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'indexChanged', mockqtw.MockUndoStack.indexChanged)
+        monkeypatch.setattr(testee.gui.QUndoStack, 'setUndoLimit', mockqtw.MockUndoStack.setUndoLimit)
+        parent = MockMainGui()
+        testobj = testee.UndoRedoStack(parent)
+        assert capsys.readouterr().out == (
+                f"called UndoStack.__init__ with args ({parent},)\n"
+                f"called Signal.connect with args ({testobj.clean_changed},)\n"
+                f"called Signal.connect with args ({testobj.index_changed},)\n"
+                "called UndoRedoStack.setUndoLimit with arg 1\n"
+                "called Action.setText with arg `Nothing to undo`\n"
+                "called Action.setText with arg `Nothing to redo`\n"
+                "called Action.setDisabled with arg `True`\n"
+                "called Action.setDisabled with arg `True`\n")
 
-    def test_setup_screen(self, monkeypatch, capsys, expected_output):
-        """unittest for MainGui.setup_screen
-        """
-        def mock_menubar():
-            print('called MainWindow.menuBar')
-            return menubar
-        def mock_menu(*args):
-            print('called MainGui.create_menu with args', args)
-        def mock_toolbar():
-            print('called MainGui.create_styletoolbar')
-        def mock_getmenu():
-            print('called MainGui.get_menu_data')
-            return 'menudata'
-        def mock_icon(self, arg):
-            print(f'called Icon.__init__ with arg {type(arg).__name__}')
-        def mock_seticon(self, data):
-            print('called Action.setIcon')
-        # monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
-        monkeypatch.setattr(testee.gui.QIcon, '__init__', mock_icon)
-        monkeypatch.setattr(testee.qtw, 'QSystemTrayIcon', mockqtw.MockSysTrayIcon)
-        monkeypatch.setattr(testee.qtw, 'QSplitter', mockqtw.MockSplitter)
-        monkeypatch.setattr(testee.gui, 'QPixmap', mockqtw.MockPixmap)
-        monkeypatch.setattr(testee, 'UndoRedoStack', MockStack)
-        monkeypatch.setattr(testee, 'TreePanel', MockTree)
-        monkeypatch.setattr(testee, 'EditorPanel', MockEditor)
-        monkeypatch.setattr(testee.gui.QTextDocument, 'FindFlag', 'searchflags')
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.app = mockqtw.MockApplication()
-        testobj.title = 'title'
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'move', mockqtw.MockMainWindow.move)
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'statusBar', mockqtw.MockMainWindow.statusBar)
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'resize', mockqtw.MockMainWindow.resize)
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'setWindowTitle',
-                            mockqtw.MockMainWindow.setWindowTitle)
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'setCentralWidget',
-                            mockqtw.MockMainWindow.setCentralWidget)
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'move', mockqtw.MockMainWindow.move)
-        testobj.create_menu = mock_menu
-        testobj.create_stylestoolbar = mock_toolbar
-        testobj.setcoloraction_color = mockqtw.MockColor(1)
-        monkeypatch.setattr(mockqtw.MockAction, 'setIcon', mock_seticon)
-        testobj.setcolor_action = mockqtw.MockAction()
-        testobj.setbackgroundcoloraction_color = mockqtw.MockColor(2)
-        testobj.setbackgroundcolor_action = mockqtw.MockAction()
-        testobj.revive = lambda *x: 'dummy callback'
-        menubar = mockqtw.MockMenuBar()
-        testobj.menuBar = mock_menubar
-        testobj.master = MockMainWindow()
-        testobj.master.HERE = pathlib.Path(__file__).parent.resolve()
-        testobj.master.opts = {'ScreenSize': (1, 2)}
-        testobj.master.get_menu_data = mock_getmenu
-
-        # breakpoint()
-        testobj.setup_screen()
-        assert isinstance(testobj.nt_icon, testee.gui.QIcon)
-        assert isinstance(testobj.tray_icon, testee.qtw.QSystemTrayIcon)
-        assert isinstance(testobj.statusbar, mockqtw.MockStatusBar)
-        assert isinstance(testobj.splitter, testee.qtw.QSplitter)
-        assert isinstance(testobj.tree, testee.TreePanel)
-        assert isinstance(testobj.editor, testee.EditorPanel)
-        assert testobj.undo_stack
-        assert testobj.menulist == []
-        assert testobj.mainactiondict == {}
-        assert testobj.styleactiondict == {}
-        assert testobj.editor.new_content
-        assert not testobj.menu_disabled
-        assert testobj.srchtext == ''
-        assert testobj.srchtype == 0
-        assert testobj.srchflags == 'searchflags'
-        assert not testobj.srchlist
-        assert not testobj.srchwrap
-        assert capsys.readouterr().out == expected_output['maingui'].format(testobj=testobj,
-                                                                            here=testee.os.getcwd(),
-                                                                            menubar=menubar)
-
-    def test_create_menu(self, monkeypatch, capsys, expected_output):
-        """unittest for MainGui.create_menu
-        """
-        def mock_add(arg):
-            print(f'called MainGui.addToolBar with arg {arg}')
-            return toolbar
-        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
-        monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
-        monkeypatch.setattr(testee.core, 'QSize', mockqtw.MockSize)
-        monkeypatch.setattr(testee.gui, 'QFont', mockqtw.MockFont)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockMainWindow()
-        testobj.master.HERE = pathlib.Path(__file__).parent.resolve()
-        testobj.menulist = []
-        testobj.mainactiondict = {}
-        testobj.styleactiondict = {}
-        toolbar = mockqtw.MockToolBar()
-        assert capsys.readouterr().out == "called ToolBar.__init__\n"
-        testobj.addToolBar = mock_add
-        menubar = mockqtw.MockMenuBar()
-        assert capsys.readouterr().out == "called MenuBar.__init__\n"
-        testobj.create_menu(menubar, [])
-        assert capsys.readouterr().out == ("")
-        callbacks = [lambda: x for x in range(12)]
-        menudata = [('aaa', [('aaaa', callbacks[0], '', 'aaa.ico', ''),
-                             ('exit', callbacks[1], 'Ctrl+X,Esc', 'exit.ico', '')]),
-                    ('xxx', [('LinE sPacINg', '', '', '', ''),
-                             ('pARAgraph sPAcinG', '', '', '', '')]),
-                    ('yyy', [('B', callbacks[2], '', '', 'CheckB'),
-                             ('I', callbacks[3], '', '', 'CheckI'),
-                             ('U', callbacks[4], '', '', 'CheckU'),
-                             ('S', callbacks[5], '', '', 'CheckS'),
-                             ('M', callbacks[11], '', '', 'CheckM'),
-                             (),
-                             (),
-                             ('X', callbacks[6], '', '', 'Check'),
-                             ()]),
-                    ('zzz', [('&Undo', callbacks[7], 'Ctrl+Z', '', 'undo'),
-                             ('&Redo', callbacks[8], 'Ctrl+Y', '', 'redo'),
-                             ('', callbacks[0], '', '', 'xxx')]),
-                    ('bbb', [('bbbb', callbacks[9], '', '', '')]),
-                    ('ccc', [('cccc', callbacks[10], '', '', '')])]
-        testobj.create_menu(menubar, menudata)
-        assert capsys.readouterr().out == expected_output['menu'].format(testobj=testobj,
-                                                                         testee=testee,
-                                                                         callbacks=callbacks)
-        assert len(testobj.menulist) == 6
-        assert isinstance(testobj.viewmenu, mockqtw.MockMenu)
-        assert isinstance(testobj.notemenu, mockqtw.MockMenu)
-        assert isinstance(testobj.treemenu, mockqtw.MockMenu)
-        assert testobj.menulist[1] == testobj.notemenu
-        assert testobj.menulist[2] == testobj.viewmenu
-        assert testobj.menulist[3] == testobj.treemenu
-        assert len(testobj.menulist[0].actions()) == 2
-        assert len(testobj.menulist[1].actions()) == 0
-        assert len(testobj.menulist[2].actions()) == 8
-        assert len(testobj.menulist[3].actions()) == 2
-        assert len(testobj.menulist[4].actions()) == 1
-        assert len(testobj.menulist[5].actions()) == 1
-        assert isinstance(testobj.undo_item, testee.gui.QAction)
-        assert testobj.undo_item.text() == '&Undo'
-        assert capsys.readouterr().out == ('called Menu.actions\n'
-                                           'called Menu.actions\n'
-                                           'called Menu.actions\n'
-                                           'called Menu.actions\n'
-                                           'called Menu.actions\n'
-                                           'called Menu.actions\n'
-                                           'called Action.text\n')
-        assert testobj.undo_item.shortcuts() == ['Ctrl+Z']
-        assert capsys.readouterr().out == 'called Action.shortcuts\n'
-        assert isinstance(testobj.redo_item, testee.gui.QAction)
-        assert testobj.redo_item.text() == '&Redo'
-        assert capsys.readouterr().out == 'called Action.text\n'
-        assert testobj.redo_item.shortcuts() == ['Ctrl+Y']
-        assert capsys.readouterr().out == 'called Action.shortcuts\n'
-        assert isinstance(testobj.quit_action, testee.gui.QAction)
-        assert testobj.quit_action.text() == 'exit'
-        assert capsys.readouterr().out == 'called Action.text\n'
-        assert testobj.quit_action.shortcuts() == ['Ctrl+X', 'Esc']
-        assert capsys.readouterr().out == 'called Action.shortcuts\n'
-        # assert testobj.mainactiondict == {'aaa': callback0, 'exit': callback99}
-        assert len(testobj.mainactiondict) == 2
-        # assert testobj.styleactiondict == {'ccc': callback7}
-        assert len(testobj.styleactiondict) == 1
-
-    def test_disable_menu(self, monkeypatch, capsys):
-        """unittest for MainGui.disable_menu
+    def test_clean_changed(self, monkeypatch, capsys):
+        """unittest for UndoRedoStack.clean_changed
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.menulist = [mockqtw.MockMenu(), mockqtw.MockMenu(), mockqtw.MockMenu()]
-        testobj.mainactiondict = {'&Open': mockqtw.MockAction(), '&Init': mockqtw.MockAction,
-                                  'Anything': mockqtw.MockAction(), 'e&Xit': mockqtw.MockAction()}
-        assert capsys.readouterr().out == ("called Menu.__init__ with args ()\n"
-                                           "called Menu.__init__ with args ()\n"
-                                           "called Menu.__init__ with args ()\n"
-                                           "called Action.__init__ with args ()\n"
-                                           "called Action.__init__ with args ()\n"
-                                           "called Action.__init__ with args ()\n")
-        testobj.disable_menu()
-        assert testobj.menu_disabled
-        assert capsys.readouterr().out == ("called Menu.setDisabled with arg 'True'\n"
-                                           "called Menu.setDisabled with arg 'True'\n"
+        testobj.clean_changed(False)
+        assert capsys.readouterr().out == "called Action.setDisabled with arg `False`\n"
+        testobj.clean_changed(True)
+        assert capsys.readouterr().out == ("called Action.setText with arg `Nothing to undo`\n"
+                                           "called Action.setText with arg `Nothing to redo`\n"
                                            "called Action.setDisabled with arg `True`\n")
-        testobj.disable_menu(False)
-        assert not testobj.menu_disabled
-        assert capsys.readouterr().out == ("called Menu.setDisabled with arg 'False'\n"
-                                           "called Menu.setDisabled with arg 'False'\n"
-                                           "called Action.setDisabled with arg `False`\n")
 
-    def test_create_stylestoolbar(self, monkeypatch, capsys, expected_output):
-        """unittest for MainGui.create_stylestoolbar
+    def test_index_changed(self, monkeypatch, capsys):
+        """unittest for UndoRedoStack.index_changed
         """
-        def mock_add(arg):
-            print(f'called MainGui.addToolBar with arg {arg}')
-            return toolbar
-        def mock_icon(self, arg):
-            print(f'called Icon.__init__ with arg {type(arg).__name__}')
-        monkeypatch.setattr(testee.gui, 'QFontDatabase',
-                            types.SimpleNamespace(standardSizes=lambda: [10, 12, 20]))
-        monkeypatch.setattr(mockqtw.MockFontComboBox, 'currentTextChanged',
-                            {str: mockqtw.MockSignal()})
-        monkeypatch.setattr(testee.qtw, 'QFontComboBox', mockqtw.MockFontComboBox)
-        monkeypatch.setattr(testee.qtw, 'QComboBox', mockqtw.MockComboBox)
-        monkeypatch.setattr(testee.gui, 'QPixmap', mockqtw.MockPixmap)
-        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
-        monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
-        monkeypatch.setattr(mockqtw.MockIcon, '__init__', mock_icon)
-        toolbar = mockqtw.MockToolBar()
-        assert capsys.readouterr().out == ("called Signal.__init__\n"
-                                           "called ToolBar.__init__\n")
+        def mock_undotext():
+            print('called UndoRedoStack.undotext')
+            return ''
+        def mock_undotext_2():
+            print('called UndoRedoStack.undotext')
+            return 'xxx'
+        def mock_redotext():
+            print('called UndoRedoStack.redotext')
+            return ''
+        def mock_redotext_2():
+            print('called UndoRedoStack.redotext')
+            return 'yyy'
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.styleactiondict = {}
-        testobj.addToolBar = mock_add
-        testobj.editor = MockEditor()
-        testobj.editor.text_family = lambda: 'family'
-        testobj.editor.text_size = lambda: 'size'
-        testobj.editor.font = lambda: mockqtw.MockFont()
-        testobj.editor.select_text_color = lambda: 'text color'
-        testobj.editor.set_text_color = lambda: 'text color'
-        testobj.editor.select_background_color = lambda: 'bg color'
-        testobj.editor.set_background_color = lambda: 'bg color'
-        testobj.create_stylestoolbar()
-        # assert isinstance(testobj.combo_font, testee.qtw.QFontComboBox)
-        # assert isinstance(testobj.combo_size, testee.qtw.QComboBox)
-        assert testobj.setcoloraction_color == testee.core.Qt.GlobalColor.black
-        assert isinstance(testobj.setcolor_action, testee.gui.QAction)
-        assert testobj.setbackgroundcoloraction_color == testee.core.Qt.GlobalColor.white
-        assert isinstance(testobj.setbackgroundcolor_action, testee.gui.QAction)
-        assert list(testobj.styleactiondict) == ['&Color...', '&Background...']
-        for item in testobj.styleactiondict.values():
-            assert isinstance(item, testee.gui.QAction)
-        assert capsys.readouterr().out == expected_output['toolbar'].format(testobj=testobj)
+        testobj.undoText = mock_undotext
+        testobj.redoText = mock_redotext
+        testobj.index_changed(1)
+        assert capsys.readouterr().out == ("called UndoRedoStack.undotext\n"
+                                           "called Action.setText with arg `Nothing to undo`\n"
+                                           "called Action.setDisabled with arg `True`\n"
+                                           "called UndoRedoStack.redotext\n"
+                                           "called Action.setText with arg `Nothing to redo`\n"
+                                           "called Action.setDisabled with arg `True`\n")
+        testobj.undoText = mock_undotext_2
+        testobj.redoText = mock_redotext_2
+        testobj.index_changed(1)
+        assert capsys.readouterr().out == ("called UndoRedoStack.undotext\n"
+                                           "called Action.setText with arg `&Undo xxx`\n"
+                                           "called Action.setEnabled with arg `True`\n"
+                                           "called UndoRedoStack.redotext\n"
+                                           "called Action.setText with arg `&Redo yyy`\n"
+                                           "called Action.setEnabled with arg `True`\n")
 
-    def test_show_statusmessage(self, monkeypatch, capsys):
-        """unittest for MainGui.show_statusmessage
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.statusbar = mockqtw.MockStatusBar()
-        assert capsys.readouterr().out == "called StatusBar.__init__ with args ()\n"
-        testobj.show_statusmessage('text')
-        assert capsys.readouterr().out == ("called StatusBar.showMessage with arg `text`\n")
 
-    def test_set_version(self, monkeypatch, capsys):
-        """unittest for MainGui.set_version
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockMainWindow()
-        testobj.master.opts = {}
-        testobj.set_version()
-        assert testobj.master.opts["Version"] == "Qt"
+class TestAddCommand:
+    """unittest for qtgui.AddCommand
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.AddCommand object
 
-    def test_set_window_dimensions(self, monkeypatch, capsys):
-        """unittest for MainGui.set_window_dimensions
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
         """
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'resize', mockqtw.MockMainWindow.resize)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.set_window_dimensions('x', 'y')
-        assert capsys.readouterr().out == ("called MainWindow.resize with args ('x', 'y')\n")
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called AddCommand.__init__ with args', args)
+        monkeypatch.setattr(testee.AddCommand, '__init__', mock_init)
+        testobj = testee.AddCommand()
+        testobj.win = MockMainGui()
+        testobj.win.master = MockMainWindow()
+        testobj.win.tree = MockTree()
+        assert capsys.readouterr().out == ('called AddCommand.__init__ with args ()\n'
+                                           "called TreePanel.__init__ with args ()\n")
+        return testobj
 
-    def test_get_screensize(self, monkeypatch, capsys):
-        """unittest for MainGui.get_screensize
+    def test_init(self, monkeypatch, capsys):
+        """unittest for AddCommand.__init__
         """
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'width', mockqtw.MockMainWindow.width)
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'height', mockqtw.MockMainWindow.height)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.get_screensize() == ('width', 'height')
-        assert capsys.readouterr().out == ("called MainWindow.width with args ()\n"
-                                           "called MainWindow.height with args ()\n")
-
-    def test_set_windowtitle(self, monkeypatch, capsys):
-        """unittest for MainGui.set_windowtitle
-        """
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'setWindowTitle',
-                            mockqtw.MockMainWindow.setWindowTitle)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.set_windowtitle('title')
-        assert capsys.readouterr().out == ("called MainWindow.setWindowTitle with arg `title`\n")
-
-    def test_set_window_split(self, monkeypatch, capsys):
-        """unittest for MainGui.set_window_split
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.splitter = mockqtw.MockSplitter()
-        assert capsys.readouterr().out == "called Splitter.__init__\n"
-        testobj.set_window_split('pos')
-        assert capsys.readouterr().out == "called Splitter.setSizes with args ('pos',)\n"
-
-    def test_get_splitterpos(self, monkeypatch, capsys):
-        """unittest for MainGui.get_splitterpos
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.splitter = mockqtw.MockSplitter()
-        assert capsys.readouterr().out == "called Splitter.__init__\n"
-        assert testobj.get_splitterpos() == ('left this wide', 'right that wide')
-
-    def test_init_app(self, monkeypatch, capsys):
-        """unittest for MainGui.init_app
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
-        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
-        testobj.init_app()
-        assert capsys.readouterr().out == "called UndoRedoStack.clear\n"
-
-    def test_set_focus_to_tree(self, monkeypatch, capsys):
-        """unittest for MainGui.set_focus_to_tree
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.tree = mockqtw.MockTreeWidget()
-        assert capsys.readouterr().out == "called Tree.__init__\n"
-        testobj.set_focus_to_tree()
-        assert not testobj.in_editor
-        assert capsys.readouterr().out == "called Tree.setFocus\n"
-
-    def test_set_focus_to_editor(self, monkeypatch, capsys):
-        """unittest for MainGui.set_focus_to_editor
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockMainWindow()
-        testobj.master.activeitem = 'active item'
-        testobj.master.text_positions = {'itemkey': 99}
-        testobj.tree = MockTree()
-        testobj.editor = MockEditor()
-        assert capsys.readouterr().out == "called TreePanel.__init__ with args ()\n"
-        testobj.set_focus_to_editor()
-        assert testobj.in_editor
-        assert capsys.readouterr().out == ("called Editor.setFocus\n"
-                                           "called TreePanel.getitemkey with arg 'active item'\n"
-                                           "called Editor.set_text_position with arg 99\n")
-
-    def test_go(self, monkeypatch, capsys):
-        """unittest for MainGui.go
-        """
-        def mock_set():
-            print('called MainGui.set_focus_to_editor')
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.app = mockqtw.MockApplication()
-        assert capsys.readouterr().out == "called Application.__init__\n"
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
-        testobj.set_focus_to_editor = mock_set
-        with pytest.raises(SystemExit):
-            testobj.go()
-        assert capsys.readouterr().out == ("called MainWindow.show\n"
-                                           "called MainGui.set_focus_to_editor\n"
-                                           "called Application.exec\n")
-
-    def test_close(self, monkeypatch, capsys):
-        """unittest for MainGui.close
-        """
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'close', mockqtw.MockMainWindow.close)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.close()
-        assert capsys.readouterr().out == ("called MainWindow.close\n")
-
-    def test_closeEvent(self, monkeypatch, capsys):
-        """unittest for MainGui.closeEvent
-        """
-        def mock_cleanup():
-            print('called MainWindow.cleanup_files')
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockMainWindow()
-        testobj.master.cleanup_files = mock_cleanup
-        event = mockqtw.MockEvent()
-        testobj.master.handle_save_needed = lambda: False
-        testobj.closeEvent(event)
-        assert capsys.readouterr().out == ("called event.ignore\n")
-        testobj.master.handle_save_needed = lambda: True
-        testobj.closeEvent(event)
-        assert capsys.readouterr().out == ("called MainWindow.cleanup_files\n"
-                                           "called event.accept\n")
-
-    def test_hide_me(self, monkeypatch, capsys):
-        """unittest for MainGui.hide_me
-        """
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'hide', mockqtw.MockMainWindow.hide)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.tray_icon = mockqtw.MockSysTrayIcon()
-        assert capsys.readouterr().out == "called TrayIcon.__init__\n"
-        testobj.hide_me()
-        assert capsys.readouterr().out == ("called TrayIcon.show\n"
-                                           "called MainWindow.hide\n")
-
-    def test_revive(self, monkeypatch, capsys):
-        """unittest for MainGui.revive
-        """
-        monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.tray_icon = mockqtw.MockSysTrayIcon()
-        assert capsys.readouterr().out == "called TrayIcon.__init__\n"
-        testobj.revive()
-        assert capsys.readouterr().out == ("called MainWindow.show\n"
-                                           "called TrayIcon.hide\n")
-        testobj.revive(testee.qtw.QSystemTrayIcon.ActivationReason.Unknown)
+        def mock_init(self, *args):
+            print('called QUndoCommand with args', args)
+        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
+        win = MockMainGui()
+        win.master = MockMainWindow()
+        win.tree = MockTree()
+        win.root = mockqtw.MockTreeItem()
+        win.master.activeitem = mockqtw.MockTreeItem()
+        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ()\n")
+        testobj = testee.AddCommand(win, None, False, 'new_title', ['extra', 'titles'])
+        assert testobj.win == win
+        assert testobj.root == win.master.activeitem  # win.root
+        assert not testobj.under
+        assert testobj.pos == 1
+        assert testobj.add_to_itemdict == ['new_title', '', ['extra', '', ['titles', '', []]]]
+        assert testobj.is_first_edit
         assert capsys.readouterr().out == (
-                "called TrayIcon.showMessage with args ('DocTree', 'Click to revive DocTree')\n")
-        testobj.revive(testee.qtw.QSystemTrayIcon.ActivationReason.Context)
-        assert capsys.readouterr().out == ""
+                f"called TreePanel.getitemparentpos with arg '{testobj.root}'\n"
+                "called QUndoCommand with args ('Add',)\n")
+        testobj = testee.AddCommand(win, win.root, True, 'new_title', [], 'AddCommand')
+        assert testobj.win == win
+        assert testobj.root == win.root
+        assert testobj.under
+        assert testobj.pos == -1
+        assert testobj.add_to_itemdict == ['new_title', '', []]
+        assert testobj.is_first_edit
+        assert capsys.readouterr().out == (
+                "called QUndoCommand with args ('AddCommand top level item',)\n")
 
-    def test_expand_root(self, monkeypatch, capsys):
-        """unittest for MainGui.expand_root
+    def test_redo(self, monkeypatch, capsys):
+        """unittest for AddCommand.redo
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.root = mockqtw.MockTreeItem()
+        testobj.root = 'root'
+        testobj.under = 'under'
+        testobj.pos = -1
+        testobj.add_to_itemdict = ['new_title', 'text', []]
+        testobj.redo()
+        assert testobj.data == "data"
+        assert capsys.readouterr().out == ("called Editor.do_addaction with args ('root', 'under',"
+                                           " -1, ['new_title', 'text', []])\n")
+
+    def test_undo(self, monkeypatch, capsys):
+        """unittest for AddCommand.undo
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.data = ['1', ['2'], '3', '4', '5', '6']
+        testobj.is_first_edit = False
+        testobj.win.master.itemdict = {'1': 'x', '2': 'y'}
+        testobj.win.master.views = [['view1', 'q'], ['view2', 'q'], ['view3', 'q']]
+        testobj.win.master.opts = {'ActiveView': 1}
+        testobj.undo()
+        # assert testobj.win.master.views == [['view1'], ['view2', 'q'], ['view3']]
+        assert testobj.win.master.views == [['view1', 'q'], ['view2', 'q'], ['view3', 'q']]
+        assert capsys.readouterr().out == (
+                # "called TreePanel.removeitem with args ('3', [('1', 'x'), ('2', 'y')])\n")
+                "called TreePanel.removeitem with args (['1', ['2'], '3', '4', '5', '6'],)\n")
+        testobj.data = ['1', [], '3', '4', '6']
+        testobj.is_first_edit = True
+        testobj.win.master.views = [['view1', 'q']]
+        testobj.win.master.opts = {'ActiveView': 0}
+        testobj.undo()
+        assert testobj.win.master.views == [['view1', 'q']]
+        assert capsys.readouterr().out == (
+                # "called TreePanel.removeitem with args ('3', [('1', 'x')])\n"
+                "called TreePanel.removeitem with args (['1', [], '3', '4', '6'],)\n"
+                "called Editor.set_project_dirty with arg False\n")
+
+
+class TestPasteCommand:
+    """unittest for qtgui.PasteCommand
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.PasteCommand object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
+        """
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called PasteCommand.__init__ with args', args)
+        monkeypatch.setattr(testee.PasteCommand, '__init__', mock_init)
+        testobj = testee.PasteCommand()
+        testobj.win = MockMainGui()
+        testobj.win.statusbar = mockqtw.MockStatusBar()
+        testobj.win.master = MockMainWindow()
+        testobj.win.tree = MockTree()
+        assert capsys.readouterr().out == ('called PasteCommand.__init__ with args ()\n'
+                                           'called StatusBar.__init__ with args ()\n'
+                                           'called TreePanel.__init__ with args ()\n')
+        return testobj
+
+    def test_init(self, monkeypatch, capsys):
+        """unittest for PasteCommand.__init__
+        """
+        def mock_init(self, *args):
+            print('called QUndoCommand with args', args)
+        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
+        win = MockMainGui()
+        win.master = MockMainWindow()
+        win.tree = MockTree()
+        win.master.project_dirty = False
+        item = mockqtw.MockTreeItem('xxx', '111')
+        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ('xxx', '111')\n")
+        testobj = testee.PasteCommand(win, False, False, item, description="Paste")
+        assert not testobj.before
+        assert not testobj.below
+        assert testobj.item == item
+        assert testobj.first_edit
+        assert testobj.replaced is None
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste After',)\n"
+        win.master.project_dirty = True
+        testobj = testee.PasteCommand(win, False, True, item, description="Paste")
+        assert not testobj.before
+        assert testobj.below
+        assert testobj.item == item
+        assert not testobj.first_edit
+        assert testobj.replaced is None
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Under',)\n"
+        testobj = testee.PasteCommand(win, True, False, item, description="Paste")
+        assert testobj.before
+        assert not testobj.below
+        assert testobj.item == item
+        assert not testobj.first_edit
+        assert testobj.replaced is None
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Before',)\n"
+        testobj = testee.PasteCommand(win, True, True, item, description="Paste")
+        assert testobj.before
+        assert testobj.below
+        assert testobj.item == item
+        assert not testobj.first_edit
+        assert testobj.replaced is None
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Paste Under',)\n"
+
+    def test_redo(self, monkeypatch, capsys):
+        """unittest for PasteCommand.redo
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.win.master.views = ['views']
+        testobj.before = 'before'
+        testobj.below = 'below'
+        testobj.item = 'item'
+        testobj.redo()
+        assert testobj.views == testobj.win.master.views
+        assert testobj.used_keys == 'keys'
+        assert testobj.used_parent == 'parent'
+        assert capsys.readouterr().out == (
+                "called Editor.do_pasteaction with args ('before', 'below', 'item')\n")
+
+    def test_undo(self, monkeypatch, capsys):
+        """unittest for PasteCommand.undo
+        """
+        def mock_text():
+            print('called PasteCommand.text')
+            return 'Paste action'
+        parent = mockqtw.MockTreeItem()
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
-        testobj.expand_root()
-        assert capsys.readouterr().out == "called TreeItem.setExpanded with arg `True`\n"
-
-    def test_start_add(self, monkeypatch, capsys):
-        """unittest for MainGui.start_add
-        """
-        class MockAdd:
-            "stub"
-            def __init__(self, *args, **kwargs):
-                print('called AddCommand.__init__ with args', args, kwargs)
-        monkeypatch.setattr(testee, 'AddCommand', MockAdd)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
-        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
-        testobj.start_add()
+        testobj.used_keys = []
+        testobj.win.master.itemdict = {'xx': 'xxxx', 'yy': 'yyyy'}
+        testobj.used_parent = (parent, 2)
+        testobj.views = ['views']
+        testobj.first_edit = False
+        testobj.text = mock_text
+        testobj.undo()
+        assert testobj.win.master.itemdict == {'xx': 'xxxx', 'yy': 'yyyy'}
+        assert testobj.win.master.views == ['views']
         assert capsys.readouterr().out == (
-                f"called AddCommand.__init__ with args ({testobj}, None, True, '', None) {{}}\n"
-                "called UndoRedoStack.push\n")
-        testobj.start_add(root='root', under=False, new_title='xxx', extra_titles=[])
+                "called TreeItem.takeChild\n"
+                "called PasteCommand.text\n"
+                "called StatusBar.showMessage with arg `Paste action undone`\n")
+
+        testobj.win.master.views = []
+        testobj.used_keys = ['xx']
+        testobj.used_parent = (parent, -1)
+        testobj.first_edit = True
+        testobj.undo()
+        assert testobj.win.master.itemdict == {'yy': 'yyyy'}
+        assert testobj.win.master.views == ['views']
         assert capsys.readouterr().out == (
-                f"called AddCommand.__init__ with args ({testobj}, 'root', False, 'xxx', []) {{}}\n"
-                "called UndoRedoStack.push\n")
-
-    def test_set_next_item(self, monkeypatch, capsys):
-        """unittest for MainGui.set_next_item
-        # activeitem zonder children en zonder parent
-        #  1. geen any_level: stopt (result is False)
-        #  2. wel any_level: stopt (result is False)
-        # activeitem met 1 child eronder en geen parent
-        #  3. any_level: gaat naar child (eerste 4 regels)
-        #  4: geen any_level: stopt (result is False) (5e regel, rest overslaan; )
-        # activeitem met 1 child eronder en wel een parent (en een sibling volgend)
-        #  5: zonder any_level: stopt (esult is False)
-        #  6: met any_level: gaat naar child (weer eerste 4 regels)
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.master.activeitem._parent = None
-        testobj.tree = mockqtw.MockTreeWidget()
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n")
-        assert not testobj.set_next_item()
-        assert capsys.readouterr().out == "called TreeItem.parent\n"
-        assert not testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n")
-
-        child = mockqtw.MockTreeItem()
-        testobj.master.activeitem.addChild(child)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n")
-        assert testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{child}`\n")
-
-        assert not testobj.set_next_item()
-        assert capsys.readouterr().out == "called TreeItem.parent\n"
-
-        parent = mockqtw.MockTreeItem()
-        next_one = mockqtw.MockTreeItem()
-        parent.addChild(testobj.master.activeitem)
-        parent.addChild(next_one)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n")
-        assert testobj.set_next_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 1\n"
-                                           f"called Tree.setCurrentItem with arg `{next_one}`\n")
-        assert testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{child}`\n")
-
-    def test_set_next_item_2(self, monkeypatch, capsys):
-        """unittest for MainGui.set_next_item
-        geen children, wel een parent met een sibling volgend op parent niveau
-        geen any_level: stopt (result is False)
-        wel any_level: gaat naar parent's sibling
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.tree = mockqtw.MockTreeWidget()
-        parent = mockqtw.MockTreeItem()
-        parent.addChild(testobj.master.activeitem)
-        parent._parent = None
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n")
-        assert not testobj.set_next_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n")
-        assert not testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n")
-        gp = mockqtw.MockTreeItem()
-        gp.addChild(parent)
-        next_p = mockqtw.MockTreeItem()
-        gp.addChild(next_p)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n")
-        # breakpoint()
-        assert not testobj.set_next_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n")
-        assert testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 1\n"
-                                           f"called Tree.setCurrentItem with arg `{next_p}`\n")
-
-    def test_set_next_item_3(self, monkeypatch, capsys):
-        """unittest for MainGui.set_next_item
-        geen children, wel een parent met een parent en een sibling volgend op grandparent niveau
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.tree = mockqtw.MockTreeWidget()
-        parent = mockqtw.MockTreeItem()
-        parent.addChild(testobj.master.activeitem)
-        gp = mockqtw.MockTreeItem()
-        gp.addChild(parent)
-        ggp = mockqtw.MockTreeItem()
-        ggp.addChild(gp)
-        next_p = mockqtw.MockTreeItem()
-        ggp.addChild(next_p)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n")
-        assert not testobj.set_next_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n")
-        assert testobj.set_next_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 1\n"
-                                           f"called Tree.setCurrentItem with arg `{next_p}`\n")
-
-    def test_set_prev_item(self, monkeypatch, capsys):
-        """unittest for MainGui.set_prev_item
-        + (no parent)
-        |--  active item
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.master.activeitem._parent = None
-        testobj.tree = mockqtw.MockTreeWidget()
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n")
-        assert not testobj.set_prev_item()
-        assert capsys.readouterr().out == "called TreeItem.parent\n"
-        assert not testobj.set_prev_item(any_level=True)
-        assert capsys.readouterr().out == "called TreeItem.parent\n"
-
-    def test_set_prev_item_2(self, monkeypatch, capsys):
-        """unittest for MainGui.set_prev_item
-        + parent
-        |- active item
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.tree = mockqtw.MockTreeWidget()
-        parent = mockqtw.MockTreeItem()
-        parent.addChild(testobj.master.activeitem)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n")
-        assert not testobj.set_prev_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n")
-        assert testobj.set_prev_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           f"called Tree.setCurrentItem with arg `{parent}`\n")
-
-    def test_set_prev_item_3(self, monkeypatch, capsys):
-        """unittest for MainGui.set_prev_item
-        + parent
-        |-- prev_one
-        |-- active item
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.tree = mockqtw.MockTreeWidget()
-        parent = mockqtw.MockTreeItem()
-        prev_one = mockqtw.MockTreeItem()
-        parent.addChild(prev_one)
-        parent.addChild(testobj.master.activeitem)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n")
-        assert testobj.set_prev_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
-        assert testobj.set_prev_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.childCount\n"
-                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
-
-    def test_set_prev_item_4(self, monkeypatch, capsys):
-        """unittest for MainGui.set_prev_item
-        + parent
-        |-+ prev_parent
-          |-- prev_one
-        |-- active item
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.tree = mockqtw.MockTreeWidget()
-        parent = mockqtw.MockTreeItem()
-        prev_one = mockqtw.MockTreeItem()
-        prev_parent = mockqtw.MockTreeItem()
-        prev_parent.addChild(prev_one)
-        parent.addChild(prev_parent)
-        parent.addChild(testobj.master.activeitem)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n")
-        assert testobj.set_prev_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{prev_parent}`\n")
-        assert testobj.set_prev_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.childCount\n"
-                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
-
-    def test_set_prev_item_5(self, monkeypatch, capsys):
-        """unittest for MainGui.set_prev_item
-        + parent
-        |-+ prev_parent
-          |-+ prev_child
-            |-- prev_one
-        |-- active item
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockEditor()
-        testobj.master.activeitem = mockqtw.MockTreeItem()
-        testobj.tree = mockqtw.MockTreeWidget()
-        parent = mockqtw.MockTreeItem()
-        prev_parent = mockqtw.MockTreeItem()
-        prev_child = mockqtw.MockTreeItem()
-        prev_one = mockqtw.MockTreeItem()
-        prev_child.addChild(prev_one)
-        prev_parent.addChild(prev_child)
-        parent.addChild(prev_parent)
-        parent.addChild(testobj.master.activeitem)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.addChild\n")
-        assert testobj.set_prev_item()
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{prev_parent}`\n")
-        assert testobj.set_prev_item(any_level=True)
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.childCount\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.childCount\n"
-                                           f"called Tree.setCurrentItem with arg `{prev_one}`\n")
-
-    def test_start_copy(self, monkeypatch, capsys):
-        """unittest for MainGui.start_copy
-        """
-        class MockCopy:
-            "stub"
-            def __init__(self, *args, **kwargs):
-                print('called CopyCommand.__init__ with args', args, kwargs)
-        monkeypatch.setattr(testee, 'CopyCommand', MockCopy)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
-        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
-        testobj.start_copy()
-        assert capsys.readouterr().out == (
-                f"called CopyCommand.__init__ with args ({testobj}, False, True, None) {{}}\n"
-                "called UndoRedoStack.push\n")
-        testobj.start_copy(True, False, 'current')
-        assert capsys.readouterr().out == (
-                f"called CopyCommand.__init__ with args ({testobj}, True, False, 'current') {{}}\n"
-                "called UndoRedoStack.push\n")
-
-    def test_start_paste(self, monkeypatch, capsys):
-        """unittest for MainGui.start_paste
-        """
-        class MockPaste:
-            "stub"
-            def __init__(self, *args, **kwargs):
-                print('called PasteCommand.__init__ with args', args, kwargs)
-        monkeypatch.setattr(testee, 'PasteCommand', MockPaste)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
-        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
-        testobj.start_paste()
-        assert capsys.readouterr().out == (
-                f"called PasteCommand.__init__ with args ({testobj}, True, False, None) {{}}\n"
-                "called UndoRedoStack.push\n")
-        testobj.start_paste(False, True, 'dest')
-        assert capsys.readouterr().out == (
-                f"called PasteCommand.__init__ with args ({testobj}, False, True, 'dest') {{}}\n"
-                "called UndoRedoStack.push\n")
-
-    def test_reorder_items(self, monkeypatch, capsys):
-        """unittest for MainGui.reorder_items
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        root = mockqtw.MockTreeItem()
-        root.addChild(mockqtw.MockTreeItem('xxx'))
-        root.addChild(mockqtw.MockTreeItem('yyy'))
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ('xxx',)\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.__init__ with args ('yyy',)\n"
-                                           "called TreeItem.addChild\n")
-        testobj.reorder_items(root)
-        assert capsys.readouterr().out == (
-                "called TreeItem.sortChildren with args"
-                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n")
-        testobj.reorder_items(root, recursive=True)
-        assert capsys.readouterr().out == (
-                "called TreeItem.sortChildren with args"
-                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
                 "called TreeItem.childCount\n"
-                "called TreeItem.child with arg 0\n"
-                "called TreeItem.sortChildren with args"
-                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
-                "called TreeItem.childCount\n"
-                "called TreeItem.child with arg 1\n"
-                "called TreeItem.sortChildren with args"
-                f" (0, {testee.core.Qt.SortOrder.AscendingOrder!r})\n"
-                "called TreeItem.childCount\n")
+                "called TreeItem.takeChild\n"
+                "called Editor.set_project_dirty with arg False\n"
+                "called PasteCommand.text\n"
+                "called StatusBar.showMessage with arg `Paste action undone`\n")
 
-    def test_rebuild_root(self, monkeypatch, capsys):
-        """unittest for MainGui.rebuild_root
+
+class TestCopyCommand:
+    """unittest for qtgui.CopyCommand
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.CopyCommand object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
         """
-        def mock_setkey(*args):
-            print('called Tree.setitemkey with args', args)
-        def mock_settitle(*args):
-            print('called Tree.setitemtitle with args', args)
-        def mock_settext(*args):
-            print('called Tree.setitemtext with args', args)
-        monkeypatch.setattr(testee.qtw, 'QTreeWidgetItem', mockqtw.MockTreeItem)
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called CopyCommand.__init__ with args', args)
+        monkeypatch.setattr(testee.CopyCommand, '__init__', mock_init)
+        testobj = testee.CopyCommand()
+        testobj.win = MockMainGui()
+        testobj.win.master = MockMainWindow()
+        testobj.win.statusbar = mockqtw.MockStatusBar()
+        testobj.win.tree = MockTree()
+        assert capsys.readouterr().out == ('called CopyCommand.__init__ with args ()\n'
+                                           'called StatusBar.__init__ with args ()\n'
+                                           'called TreePanel.__init__ with args ()\n')
+        return testobj
+
+    def test_init(self, monkeypatch, capsys):
+        """unittest for CopyCommand.__init__
+        """
+        def mock_init(self, *args):
+            print('called QUndoCommand with args', args)
+        monkeypatch.setattr(testee.gui.QUndoCommand, '__init__', mock_init)
+        win = MockMainGui()
+        win.master = MockMainWindow()
+        win.tree = MockTree()
+        win.master.project_dirty = False
+        item = mockqtw.MockTreeItem('xxx', '111')
+        assert capsys.readouterr().out == ("called TreePanel.__init__ with args ()\n"
+                                           "called TreeItem.__init__ with args ('xxx', '111')\n")
+        testobj = testee.CopyCommand(win, False, False, item)
+        assert testobj.undodata is None
+        assert testobj.win == win
+        assert testobj.item == item
+        assert testobj.first_edit
+        assert not testobj.cut
+        assert not testobj.retain
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Copy',)\n"
+        win.master.project_dirty = True
+        testobj = testee.CopyCommand(win, False, True, item)
+        assert testobj.undodata is None
+        assert testobj.win == win
+        assert testobj.item == item
+        assert not testobj.first_edit
+        assert not testobj.cut
+        assert testobj.retain
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Copy',)\n"
+        testobj = testee.CopyCommand(win, True, False, item)
+        assert testobj.undodata is None
+        assert testobj.win == win
+        assert testobj.item == item
+        assert not testobj.first_edit
+        assert testobj.cut
+        assert not testobj.retain
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Delete',)\n"
+        testobj = testee.CopyCommand(win, True, True, item)
+        assert testobj.undodata is None
+        assert testobj.win == win
+        assert testobj.item == item
+        assert not testobj.first_edit
+        assert testobj.cut
+        assert testobj.retain
+        assert capsys.readouterr().out == "called QUndoCommand with args ('Cut',)\n"
+
+    def test_redo(self, monkeypatch, capsys):
+        """unittest for CopyCommand.redo
+        """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.tree = mockqtw.MockTreeWidget()
-        testobj.tree.setitemkey = mock_setkey
-        testobj.tree.setitemtitle = mock_settitle
-        testobj.tree.setitemtext = mock_settext
-        testobj.master = MockEditor()
-        testobj.master.opts = {'RootTitle': 'title', 'RootData': 'data'}
-        # testobj.root = mockqtw.MockTreeItem()
-        # assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
-        assert testobj.rebuild_root() == testobj.root
+        # testobj.key = 'xx'
+        testobj.cut = 'cut'
+        testobj.retain = 'retain'
+        testobj.item = 'item'
+        # testobj.win.master.itemdict = {'xx': 'xxxx'}
+        testobj.win.master.views = ['yyy']
+        testobj.win.master.opts = {'ActiveItem': 'q'}
+        testobj.redo()
+        assert testobj.oldstate == ('q', ['yyy'])
+        assert testobj.newstate == ('opts', 'views')
         assert capsys.readouterr().out == (
-                "called Tree.__init__\n"
-                "called Tree.takeTopLevelItem with arg `0`\n"
-                "called TreeItem.__init__ with args ()\n"
-                f"called Tree.setitemkey with args ({testobj.root}, '-1')\n"
-                f"called Tree.setitemtitle with args ({testobj.root}, 'title')\n"
-                f"called Tree.setitemtext with args ({testobj.root}, 'data')\n"
-                "called Tree.addTopLevelItem\n")
+                "called Editor.do_addaction with args ('cut', 'retain', 'item')\n")
 
-    def setup_viewmenu(self, capsys):
-        """define a menu with more than 8 options to be used in the next cuople of tests
+    def test_undo(self, monkeypatch, capsys):
+        """unittest for CopyCommand.undo
         """
-        viewmenu = mockqtw.MockMenu()
-        viewmenu.addAction('xx1')
-        viewmenu.addAction('xx2')
-        viewmenu.addAction('xx3')
-        viewmenu.addAction('xx4')
-        viewmenu.addAction('xx5')
-        viewmenu.addAction('xx6')
-        viewmenu.addAction('xx7')
-        viewmenu.addAction('xx8')
-        action9 = viewmenu.addAction('&1 xx9')
-        action0 = viewmenu.addAction('&2 x10')
+        def mock_text():
+            print('called CopyCommand.text')
+            return 'Copy action'
+        def mock_put(*args, **kwargs):
+            print('called Tree.putsubtree with args', args, kwargs)
+            return 'yy'
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.newstate = (['copied', 'items'], ('oldloc', 2), [('cut', 'from'), ('item', 'dict')])
+        testobj.oldstate = ('xx', ['views'])
+        testobj.cut = False
+        testobj.win.master.itemdict = {}
+        testobj.item = ''
+        testobj.win.master.activeitem = ''
+        testobj.win.master.opts = {}
+        testobj.win.master.putsubtree = mock_put
+        testobj.first_edit = False
+        testobj.text = mock_text
+        testobj.undo()
+        assert testobj.win.master.itemdict == {}
+        assert testobj.win.master.activeitem == ''
+        assert testobj.item == ''
+        assert testobj.win.master.opts["ActiveItem"] == 'xx'
+        assert testobj.win.master.views == ['views']
         assert capsys.readouterr().out == (
-                "called Menu.__init__ with args ()\n"
-                "called Menu.addAction with args `xx1` None\n"
-                "called Action.__init__ with args ('xx1', None)\n"
-                "called Menu.addAction with args `xx2` None\n"
-                "called Action.__init__ with args ('xx2', None)\n"
-                "called Menu.addAction with args `xx3` None\n"
-                "called Action.__init__ with args ('xx3', None)\n"
-                "called Menu.addAction with args `xx4` None\n"
-                "called Action.__init__ with args ('xx4', None)\n"
-                "called Menu.addAction with args `xx5` None\n"
-                "called Action.__init__ with args ('xx5', None)\n"
-                "called Menu.addAction with args `xx6` None\n"
-                "called Action.__init__ with args ('xx6', None)\n"
-                "called Menu.addAction with args `xx7` None\n"
-                "called Action.__init__ with args ('xx7', None)\n"
-                "called Menu.addAction with args `xx8` None\n"
-                "called Action.__init__ with args ('xx8', None)\n"
-                "called Menu.addAction with args `&1 xx9` None\n"
-                "called Action.__init__ with args ('&1 xx9', None)\n"
-                "called Menu.addAction with args `&2 x10` None\n"
-                "called Action.__init__ with args ('&2 x10', None)\n")
-        return viewmenu, action9, action0
+                "called CopyCommand.text\n"
+                "called StatusBar.showMessage with arg `Copy action undone`\n")
+        testobj.cut = True
+        testobj.first_edit = True
+        testobj.undo()
+        assert testobj.win.master.itemdict == {'cut': 'from', 'item': 'dict'}
+        assert testobj.win.master.activeitem == 'yy'
+        assert testobj.item == 'yy'
+        assert testobj.win.master.opts["ActiveItem"] == 'xx'
+        assert testobj.win.master.views == ['views']
+        assert capsys.readouterr().out == (
+                "called Tree.putsubtree with args"
+                f" ({testobj.win.tree}, 'oldloc', 'copied', 'items') {{'pos': 2}}\n"
+                "called Editor.set_project_dirty with arg False\n"
+                "called CopyCommand.text\n"
+                "called StatusBar.showMessage with arg `Copy action undone`\n")
 
-    def test_clear_viewmenu(self, monkeypatch, capsys):
-        """unittest for MainGui.clear_viewmenu
+
+class TestCheckDialog:
+    """unittest for qtgui.CheckDialog
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.CheckDialog object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
+        """
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called CheckDialog.__init__ with args', args)
+        monkeypatch.setattr(testee.CheckDialog, '__init__', mock_init)
+        testobj = testee.CheckDialog()
+        testobj.parent = MockMainGui()
+        testobj.parent.dialog_data={}
+        testobj.parent.master = MockMainWindow()
+        assert capsys.readouterr().out == 'called CheckDialog.__init__ with args ()\n'
+        return testobj
+
+    def test_init(self, monkeypatch, capsys, expected_output):
+        """unittest for CheckDialog.__init__
+        """
+        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
+        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
+        parent = MockMainGui()
+        parent.nt_icon = 'Icon'
+        testobj = testee.CheckDialog('master', parent, 'title')
+        assert testobj.parent == parent
+        assert isinstance(testobj.vbox, testee.qtw.QVBoxLayout)
+        assert capsys.readouterr().out == (
+                f"called Dialog.__init__ with args {testobj.parent} () {{}}\n"
+                "called Dialog.setWindowTitle with args ('title',)\n"
+                "called Dialog.setWindowIcon with args ('Icon',)\n"
+                "called VBox.__init__\n"
+                "called Dialog.setLayout with arg MockVBoxLayout\n")
+
+    def test_add_label(self, monkeypatch, capsys):
+        """unittest for CheckDialog.add_label
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        testobj.clear_viewmenu()
-        assert len(list(testobj.viewmenu.actions())) == 8
-
-        assert capsys.readouterr().out == ('called Menu.actions\n'
-                                           f"called Menu.removeaction with arg {action9}\n"
-                                           f"called Menu.removeaction with arg {action0}\n"
-                                           'called Menu.actions\n')
-
-    def test_add_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.add_viewmenu_option
-        """
-        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = MockMainWindow()
-        testobj.master.select_view = lambda: 'dummy'
-        testobj.viewmenu = mockqtw.MockMenu()
-        result = testobj.add_viewmenu_option('optiontext')
-        assert isinstance(result, testee.gui.QAction)
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        testobj.add_label('xxx')
         assert capsys.readouterr().out == (
-                "called Menu.__init__ with args ()\n"
-                f"called Action.__init__ with args ('optiontext', {testobj})\n"
-                "called Action.setStatusTip with arg 'switch to this view'\n"
-                "called Action.setCheckable with arg `True`\n"
-                f"called Signal.connect with args ({testobj.master.select_view},)\n"
-                "called Menu.addAction\n")
+            'called HBox.__init__\n'
+            f"called Label.__init__ with args ('xxx', {testobj})\n"
+            "called HBox.addWidget with arg MockLabel\n"
+            "called VBox.addLayout with arg MockHBoxLayout\n")
 
-    def test_check_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.check_viewmenu_option
+    def test_add_checkbox(self, monkeypatch, capsys):
+        """unittest for CheckDialog.add_checkbox
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        result = testobj.add_checkbox('xxx')
+        assert isinstance(result, testee.qtw.QCheckBox)
+        assert capsys.readouterr().out == (
+            'called HBox.__init__\n'
+            f"called CheckBox.__init__ with args ('xxx', {testobj})\n"
+            "called HBox.addWidget with arg MockCheckBox\n"
+            "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_add_ok_buttonbox(self, monkeypatch, capsys):
+        """unittest for CheckDialog.add_ok_buttonbox
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        testobj.add_ok_buttonbox()
+        assert capsys.readouterr().out == (
+            'called HBox.__init__\n'
+            'called HBox.addStretch\n'
+            f"called PushButton.__init__ with args ('&Ok', {testobj}) {{}}\n"
+            f"called Signal.connect with args ({testobj.klaar},)\n"
+            "called HBox.addWidget with arg MockPushButton\n"
+            'called HBox.addStretch\n'
+            "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_get_checkbox_value(self, monkeypatch, capsys):
+        """unittest for CheckDialog.get_checkbox_value
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        check = mockqtw.MockCheckBox()
+        check.setChecked(True)
+        assert capsys.readouterr().out == ("called CheckBox.__init__\n"
+                                           "called CheckBox.setChecked with arg True\n")
+        assert testobj.get_checkbox_value(check)
+        assert capsys.readouterr().out == "called CheckBox.isChecked\n"
+
+    def test_klaar(self, monkeypatch, capsys):
+        """unittest for CheckDialog.klaar
+        """
+        def mock_confirm():
+            print('called SetCheck.confirm')
+        def mock_accept(self, *args):
+            """stub
+            """
+            print('called Dialog.accept')
+        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mock_accept)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = types.SimpleNamespace(confirm=mock_confirm)
+        testobj.klaar()
+        assert capsys.readouterr().out == ('called SetCheck.confirm\n'
+                                           'called Dialog.accept\n')
+
+
+class TestOptionsDialog:
+    """unittest for qtgui.OptionsDialog
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.OptionsDialog object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
+        """
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called OptionsDialog.__init__ with args', args)
+        monkeypatch.setattr(testee.OptionsDialog, '__init__', mock_init)
+        testobj = testee.OptionsDialog()
+        testobj.parent = MockMainGui()
+        testobj.parent.master = MockMainWindow()
+        assert capsys.readouterr().out == 'called OptionsDialog.__init__ with args ()\n'
+        return testobj
+
+    def test_init(self, monkeypatch, capsys):
+        """unittest for OptionsDialog.init
+        """
+        mockparent = types.SimpleNamespace(apoicon='icon')
+        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
+        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QGridLayout', mockqtw.MockGridLayout)
+        testobj = testee.OptionsDialog('master', mockparent, 'title')
+        assert testobj.master == 'master'
+        assert testobj.parent == mockparent
+        assert isinstance(testobj.vbox, testee.qtw.QVBoxLayout)
+        assert isinstance(testobj.gbox, testee.qtw.QGridLayout)
+        assert capsys.readouterr().out == (
+            f'called Dialog.__init__ with args {mockparent} () {{}}\n'
+            "called Dialog.setWindowTitle with args ('title',)\n"
+            # "called Dialog.setWindowIcon with args ('icon',)\n"
+            'called VBox.__init__\n'
+            'called Grid.__init__\n'
+            "called VBox.addLayout with arg MockGridLayout\n"
+            'called Dialog.setLayout with arg MockVBoxLayout\n')
+
+    def setup_testobj(self, monkeypatch, capsys):
+        "initialize testdouble"
+        def mock_init(self, *args):
+            print('called Dialog.__init__')
+            self.parent = args[0]
+        monkeypatch.setattr(testee.OptionsDialog, '__init__', mock_init)
+        testobj = testee.OptionsDialog(types.SimpleNamespace(dialog_data={}), {})
+        assert capsys.readouterr().out == 'called Dialog.__init__\n'
+        return testobj
+
+    def test_add_checkbox_line_to_grid(self, monkeypatch, capsys):
+        """unittest for OptionsDialog.add_checkbox_line_to_grid
+        """
+        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
+        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gbox = mockqtw.MockGridLayout()
+        assert capsys.readouterr().out == "called Grid.__init__\n"
+        result = testobj.add_checkbox_line_to_grid(1, 'label', True)
+        assert isinstance(result, testee.qtw.QCheckBox)
+        assert capsys.readouterr().out == (
+            f"called Label.__init__ with args ('label', {testobj})\n"
+            "called Grid.addWidget with arg MockLabel at (1, 0)\n"
+            f"called CheckBox.__init__ with args ('', {testobj})\n"
+            'called CheckBox.setChecked with arg True\n'
+            "called Grid.addWidget with arg MockCheckBox at (1, 1)\n")
+
+    def test_add_buttonbox(self, monkeypatch, capsys):
+        """unittest for OptionsDialog.add_buttonbox
+        """
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        testobj.gbox = mockqtw.MockGridLayout()
+        testobj.accept = lambda: 'dummy callback'
+        testobj.reject = lambda: 'dummy callback'
+        assert capsys.readouterr().out == "called VBox.__init__\ncalled Grid.__init__\n"
+        testobj.add_buttonbox('yes', 'nooo')
+        assert capsys.readouterr().out == (
+            'called HBox.__init__\n'
+            'called HBox.addStretch\n'
+            f"called PushButton.__init__ with args ('yes', {testobj}) {{}}\n"
+            f'called Signal.connect with args ({testobj.accept},)\n'
+            "called HBox.addWidget with arg MockPushButton\n"
+            f"called PushButton.__init__ with args ('nooo', {testobj}) {{}}\n"
+            f'called Signal.connect with args ({testobj.reject},)\n'
+            "called HBox.addWidget with arg MockPushButton\n"
+            'called HBox.addStretch\n'
+            "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_get_checkbox_value(self, monkeypatch, capsys):
+        """unittest for OptionsDialog.get_checkbox_value
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        check = mockqtw.MockCheckBox()
+        check.setChecked(True)
+        assert capsys.readouterr().out == ("called CheckBox.__init__\n"
+                                           "called CheckBox.setChecked with arg True\n")
+        assert capsys.readouterr().out == ""
+        assert testobj.get_checkbox_value(check)
+        assert capsys.readouterr().out == "called CheckBox.isChecked\n"
+
+    def test_accept(self, monkeypatch, capsys):
+        """unittest for OptionsDialog.accept
+        """
+        def mock_accept(self, *args):
+            """stub
+            """
+            print('called Dialog.accept')
+        def mock_confirm():
+            print('called SetOptions.confirm')
+            return {'text': False}
+        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mock_accept)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = types.SimpleNamespace(confirm=mock_confirm)
+        testobj.accept()
+        assert capsys.readouterr().out == ('called SetOptions.confirm\n'
+                                           'called Dialog.accept\n')
+
+
+class TestSearchDialog:
+    """unittest for qtgui.SearchDialog
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.SearchDialog object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
+        """
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called SearchDialog.__init__ with args', args)
+        monkeypatch.setattr(testee.SearchDialog, '__init__', mock_init)
+        testobj = testee.SearchDialog()
+        testobj.parent = MockMainGui()
+        testobj.parent.master = MockMainWindow()
+        assert capsys.readouterr().out == 'called SearchDialog.__init__ with args ()\n'
+        return testobj
+
+    def test_init(self, monkeypatch, capsys):
+        """unittest for SearchDialog.__init__
+        """
+        def mock_check(self):
+            "stub"
+            print('SearchDialog.check_modes')
+        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
+        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
+        parent = MockMainGui()
+        parent.title = 'Title'
+        parent.nt_icon = 'Icon'
+        parent.srchtext = ''
+        parent.srchflags = testee.gui.QTextDocument.FindFlag
+        parent.srchlist = False
+        parent.srchwrap = False
+        parent.master = MockMainWindow()
+        testobj = testee.SearchDialog('master', parent)
+        assert capsys.readouterr().out == (
+                f"called Dialog.__init__ with args {testobj.parent} () {{}}\n"
+                "called Dialog.setWindowTitle with args ('Title',)\n"
+                "called Dialog.setWindowIcon with args ('Icon',)\n"
+                "called VBox.__init__\n"
+                "called Dialog.setLayout with arg MockVBoxLayout\n")
+
+    def test_add_label(self, monkeypatch, capsys):
+        """unittest for SearchDialog.add_label
+        """
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        testobj.add_label('xxx')
+        assert capsys.readouterr().out == ("called HBox.__init__\n"
+                                           f"called Label.__init__ with args ('xxx', {testobj})\n"
+                                           "called HBox.addWidget with arg MockLabel\n"
+                                           "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_add_textentry(self, monkeypatch, capsys):
+        """unittest for SearchDialog.add_textentry
+        """
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QLineEdit', mockqtw.MockLineEdit)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        result = testobj.add_textentry()
+        assert isinstance(result, testee.qtw.QLineEdit)
+        assert capsys.readouterr().out == ("called HBox.__init__\n"
+                                           f"called LineEdit.__init__ with args ({testobj},)\n"
+                                           "called HBox.addWidget with arg MockLineEdit\n"
+                                           "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_build_search_selector(self, monkeypatch, capsys):
+        """unittest for SearchDialog.build_search_selector
+        """
+        def callback():
+            "dummy function, for reference only"
+        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
+        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        result = testobj.build_search_selector(['x', 'y'], callback)
+        assert len(result) == 2
+        for item in result:
+            assert isinstance(item, testee.qtw.QCheckBox)
+        assert capsys.readouterr().out == (
+                "called HBox.__init__\n"
+                "called HBox.addStretch\n"
+                "called VBox.__init__\n"
+                "called VBox.addSpacing\n"
+                f"called Label.__init__ with args ('In: ', {testobj})\n"
+                "called VBox.addWidget with arg MockLabel\n"
+                "called VBox.addStretch\n"
+                "called HBox.addLayout with arg MockVBoxLayout\n"
+                "called VBox.__init__\n"
+                f"called CheckBox.__init__ with args ('x', {testobj})\n"
+                f"called Signal.connect with args ({callback},)\n"
+                "called VBox.addWidget with arg MockCheckBox\n"
+                f"called CheckBox.__init__ with args ('y', {testobj})\n"
+                f"called Signal.connect with args ({callback},)\n"
+                "called VBox.addWidget with arg MockCheckBox\n"
+                "called HBox.addLayout with arg MockVBoxLayout\n"
+                "called HBox.addStretch\n"
+                "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_build_options_selector(self, monkeypatch, capsys):
+        """unittest for SearchDialog.build_options_selector
+        """
+        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        result = testobj.build_options_selector(['x', 'y'])
+        assert len(result) == 2
+        for item in result:
+            assert isinstance(item, testee.qtw.QCheckBox)
+        assert capsys.readouterr().out == (
+                "called HBox.__init__\n"
+                "called VBox.__init__\n"
+                f"called CheckBox.__init__ with args ('x', {testobj})\n"
+                "called VBox.addWidget with arg MockCheckBox\n"
+                f"called CheckBox.__init__ with args ('y', {testobj})\n"
+                "called VBox.addWidget with arg MockCheckBox\n"
+                "called HBox.addLayout with arg MockVBoxLayout\n"
+                "called HBox.addStretch\n"
+                "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_add_vertical_space(self, monkeypatch, capsys):
+        """unittest for SearchDialog.add_vertical_space
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        testobj.add_vertical_space(10)
+        assert capsys.readouterr().out == "called VBox.addSpacing\n"
+
+    def test_add_checkbox(self, monkeypatch, capsys):
+        """unittest for SearchDialog.add_checkbox
+        """
+        monkeypatch.setattr(testee.qtw, 'QCheckBox', mockqtw.MockCheckBox)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        result = testobj.add_checkbox('xxx')
+        assert isinstance(result, testee.qtw.QCheckBox)
+        assert capsys.readouterr().out == (
+                f"called CheckBox.__init__ with args ('xxx', {testobj})\n"
+                "called VBox.addWidget with arg MockCheckBox\n")
+
+    def test_add_buttons(self, monkeypatch, capsys):
+        """unittest for SearchDialog.add_buttons
+        """
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        testobj.add_buttons()
+        assert capsys.readouterr().out == (
+                "called HBox.__init__\n"
+                "called HBox.addStretch\n"
+                f"called PushButton.__init__ with args ('&Ok', {testobj}) {{}}\n"
+                f"called Signal.connect with args ({testobj.accept},)\n"
+                "called HBox.addWidget with arg MockPushButton\n"
+                f"called PushButton.__init__ with args ('&Cancel', {testobj}) {{}}\n"
+                f"called Signal.connect with args ({testobj.reject},)\n"
+                "called HBox.addWidget with arg MockPushButton\n"
+                "called HBox.addStretch\n"
+                "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_set_checkbox_value(self, monkeypatch, capsys):
+        """unittest for SearchDialog.set_checkbox_value
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        cb = mockqtw.MockCheckBox()
+        assert capsys.readouterr().out == "called CheckBox.__init__\n"
+        testobj.set_checkbox_value(cb, True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+
+    def test_set_textentry_value(self, monkeypatch, capsys):
+        """unittest for SearchDialog.set_textentry_valuem
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        txt = mockqtw.MockLineEdit()
+        assert capsys.readouterr().out == "called LineEdit.__init__ with args ()\n"
+        testobj.set_textentry_value(txt, 'xxx')
+        assert capsys.readouterr().out == "called LineEdit.setText with arg `xxx`\n"
+
+    # def test_case_sensitive_search(self, monkeypatch, capsys):
+    #     """unittest for SearchDialog.case_sensitive_search
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     result = testobj.case_sensitive_search()
+    #     assert result == testee.gui.QTextDocument.FindFlag.FindCaseSensitively.value
+
+    # def test_search_for_whole_words(self, monkeypatch, capsys):
+    #     """unittest for SearchDialog.search_for_whole_words
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     result = testobj.search_for_whole_words()
+    #     assert result == testee.gui.QTextDocument.FindFlag.FindWholeWords.value
+
+    def test_set_focus_to(self, monkeypatch, capsys):
+        """unittest for SearchDialog.set_focus_to
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        widget = mockqtw.MockWidget()
+        assert capsys.readouterr().out == "called Widget.__init__\n"
+        testobj.set_focus_to(widget)
+        assert capsys.readouterr().out == "called Widget.setFocus\n"
+
+    def test_set_modechecks(self, monkeypatch, capsys):
+        """unittest for SearchDialog.check_modes
         """
         def mock_sender():
-            print('called MainWindow.sender')
-            return action0
+            print('called SearchDialog.sender')
+            return testobj.master.c_curr
+        def mock_sender_2():
+            print('called SearchDialog.sender')
+            return testobj.master.c_titl
+        def mock_sender_3():
+            print('called SearchDialog.sender')
+            return testobj.master.c_text
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        action = mockqtw.MockAction()
-        assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
-        assert testobj.check_viewmenu_option(action) == ""
-        assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
-
-        action.setChecked(False)
-        testobj.viewmenu.addAction(action)
+        testobj.master=types.SimpleNamespace(c_curr=mockqtw.MockCheckBox(),
+                                             c_titl=mockqtw.MockCheckBox(),
+                                             c_text=mockqtw.MockCheckBox(),
+                                             c_lijst=mockqtw.MockCheckBox())
+        assert capsys.readouterr().out == ("called CheckBox.__init__\n"
+                                           "called CheckBox.__init__\n"
+                                           "called CheckBox.__init__\n"
+                                           "called CheckBox.__init__\n")
         testobj.sender = mock_sender
-        action9.setChecked(True)
-        assert capsys.readouterr().out == ("called Action.setChecked with arg `False`\n"
-                                           "called Menu.addAction\n"
-                                           "called Action.setChecked with arg `True`\n")
-        assert testobj.check_viewmenu_option() == "&2 x10"
-        assert capsys.readouterr().out == ("called MainWindow.sender\n"
-                                           "called Menu.actions\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.setChecked with arg `False`\n"
-                                           "called Action.text\n"
-                                           "called Action.setChecked with arg `True`\n"
-                                           "called Action.isChecked\n")
+        testobj.set_modechecks()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           # "called CheckBox.setChecked with arg False\n"
+                                           # "called CheckBox.setChecked with arg False\n"
+                                           # "called CheckBox.setEnabled with arg False\n")
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.master.c_curr.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.set_modechecks()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg False\n")
+        testobj.sender = mock_sender_2
+        testobj.set_modechecks()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg False\n")
+        testobj.master.c_titl.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.set_modechecks()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.sender = mock_sender_3
+        testobj.set_modechecks()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
+        testobj.master.c_text.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+        testobj.set_modechecks()
+        assert capsys.readouterr().out == ("called SearchDialog.sender\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setChecked with arg False\n"
+                                           "called CheckBox.isChecked\n"
+                                           "called CheckBox.setEnabled with arg True\n")
 
-    def test_uncheck_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.uncheck_viewmenu_option
+    def test_get_checkbox_value(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.get_checkbox_value
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        testobj.master = MockEditor()
-        testobj.master.opts = {'ActiveView': 1}
-        testobj.uncheck_viewmenu_option()
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.setChecked with arg `False`\n")
-        # alleen: welke wordt er nu precies unchecked?
+        cb = mockqtw.MockCheckBox()
+        cb.setChecked(True)
+        assert capsys.readouterr().out == ("called CheckBox.__init__\n"
+                                           "called CheckBox.setChecked with arg True\n")
+        assert testobj.get_checkbox_value(cb)
+        assert capsys.readouterr().out == "called CheckBox.isChecked\n"
 
-    def test_rename_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.rename_viewmenu_option
+    def test_get_textentry_value(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.get_textentry_value
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        testobj.master = MockEditor()
-        testobj.master.opts = {'ActiveView': 1}
-        testobj.rename_viewmenu_option('newname')
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.text\n"
-                                           "called Action.setText with arg `&1 newname`\n")
+        txt = mockqtw.MockLineEdit('xxx')
+        assert capsys.readouterr().out == "called LineEdit.__init__ with args ('xxx',)\n"
+        assert testobj.get_textentry_value(txt) == 'xxx'
+        assert capsys.readouterr().out == "called LineEdit.text\n"
 
-    def test_check_next_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.check_next_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        action9.setChecked(True)
-        assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
-        testobj.check_next_viewmenu_option()
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.setChecked with arg `False`\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.setChecked with arg `True`\n")
-        assert not action9.isChecked()
-        assert action0.isChecked()
+    # def test_update_searchflage(self, monkeypatch, capsys):
+    #     """unittest for ResultsDialog.update_searchflage
+    #     """
+    #     testobj = self.setup_testobj(monkeypatch, capsys)
+    #     hlett = mockqtw.MockCheckBox()
+    #     woord = mockqtw.MockCheckBox()
+    #     assert capsys.readouterr().out == ("called CheckBox.__init__\n"
+    #                                        "called CheckBox.__init__\n")
+    #     test = testee.gui.QTextDocument.FindFlag(0)
+    #     assert testobj.update_searchflags(hlett, woord) == test
+    #     assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
+    #                                        "called CheckBox.isChecked\n")
+    #     hlett.setChecked(True)
+    #     assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+    #     test = testee.gui.QTextDocument.FindFlag.FindCaseSensitively.value
+    #     test = testee.gui.QTextDocument.FindFlag(test)
+    #     assert testobj.update_searchflags(hlett, woord) == test
+    #     assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
+    #                                        "called CheckBox.isChecked\n")
+    #     woord.setChecked(True)
+    #     assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
+    #     test = (testee.gui.QTextDocument.FindFlag.FindCaseSensitively.value
+    #             | testee.gui.QTextDocument.FindFlag.FindWholeWords.value)
+    #     test = testee.gui.QTextDocument.FindFlag(test)
+    #     assert testobj.update_searchflags(hlett, woord) == test
+    #     assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
+    #                                        "called CheckBox.isChecked\n")
 
-    def test_check_next_viewmenu_option_2(self, monkeypatch, capsys):
-        """unittest for MainGui.check_next_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        action0.setChecked(True)
-        assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
-        testobj.check_next_viewmenu_option()
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.setChecked with arg `False`\n"
-                                           "called Action.setChecked with arg `True`\n")
-        assert not action0.isChecked()
-        assert action9.isChecked()
-
-    def test_check_prev_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.check_next_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        action9.setChecked(True)
-        assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
-        testobj.check_next_viewmenu_option(prev=True)
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.setChecked with arg `False`\n"
-                                           "called Action.setChecked with arg `True`\n")
-        assert not action9.isChecked()
-        assert action0.isChecked()
-
-    def test_check_prev_viewmenu_option_2(self, monkeypatch, capsys):
-        """unittest for MainGui.check_next_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        action9.setChecked(True)
-        assert capsys.readouterr().out == "called Action.setChecked with arg `True`\n"
-        testobj.check_next_viewmenu_option(prev=True)
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.isChecked\n"
-                                           "called Action.setChecked with arg `False`\n"
-                                           "called Action.setChecked with arg `True`\n")
-        assert not action9.isChecked()
-        assert action0.isChecked()
-
-    def test_remove_viewmenu_option(self, monkeypatch, capsys):
-        """unittest for MainGui.remove_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        testobj.master = MockEditor()
-        testobj.master.opts = {'ActiveView': 1}
-        assert testobj.remove_viewmenu_option('xx9') == action0
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.text\n"
-                                           f"called Menu.removeaction with arg {action9}\n"
-                                           "called Action.text\n"
-                                           "called Action.setText with arg `&1 x10`\n")
-
-    def test_remove_viewmenu_option_2(self, monkeypatch, capsys):
-        """unittest for MainGui.remove_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        testobj.master = MockEditor()
-        testobj.master.opts = {'ActiveView': 2}
-        assert testobj.remove_viewmenu_option('x10') == action9
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.text\n"
-                                           "called Action.text\n"
-                                           f"called Menu.removeaction with arg {action0}\n")
-
-    def test_remove_viewmenu_option_3(self, monkeypatch, capsys):
-        """unittest for MainGui.remove_viewmenu_option
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.viewmenu, action9, action0 = self.setup_viewmenu(capsys)
-        testobj.viewmenu.addAction('&3 xxx')
-        assert capsys.readouterr().out == ("called Menu.addAction with args `&3 xxx` None\n"
-                                           "called Action.__init__ with args ('&3 xxx', None)\n")
-        testobj.master = MockEditor()
-        testobj.master.opts = {'ActiveView': 2}
-        assert testobj.remove_viewmenu_option('xx9') == action0
-        assert capsys.readouterr().out == ("called Menu.actions\n"
-                                           "called Action.text\n"
-                                           f"called Menu.removeaction with arg {action9}\n"
-                                           "called Action.text\n"
-                                           "called Action.setText with arg `&1 x10`\n"
-                                           "called Action.text\n"
-                                           "called Action.setText with arg `&2 xxx`\n")
-
-    def test_tree_undo(self, monkeypatch, capsys):
-        """unittest for MainGui.tree_undo
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
-        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
-        testobj.tree_undo()
-        assert capsys.readouterr().out == "called UndoRedoStack.undo\n"
-
-    def test_tree_redo(self, monkeypatch, capsys):
-        """unittest for MainGui.tree_redo
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = mockqtw.MockUndoStack(testobj)
-        assert capsys.readouterr().out == f"called UndoStack.__init__ with args ({testobj},)\n"
-        testobj.tree_redo()
-        assert capsys.readouterr().out == "called UndoRedoStack.redo\n"
-
-    def test_find_needle(self, monkeypatch, capsys):
-        """unittest for MainGui.find_needle
-        """
-        def mock_find(self, text, options):
-            print(f"called TextDocument.find with args '{text}' '{options}'")
-            return types.SimpleNamespace(isNull=lambda: True)
-        def mock_find2(self, text, options):
-            print(f"called TextDocument.find with args '{text}' '{options}'")
-            return types.SimpleNamespace(isNull=lambda: False)
-        monkeypatch.setattr(mockqtw.MockTextDocument, 'find', mock_find)
-        monkeypatch.setattr(testee.gui, 'QTextDocument', mockqtw.MockTextDocument)
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.srchtext = 'needle'
-        testobj.srchflags = 'searchflags'
-        assert not testobj.find_needle('haystack')
-        assert capsys.readouterr().out == (
-                "called TextDocument.__init__ with args ()\n"
-                "called TextDocument.setPlainText with arg 'haystack'\n"
-                "called TextDocument.find with args 'needle' 'searchflags'\n")
-        monkeypatch.setattr(mockqtw.MockTextDocument, 'find', mock_find2)
-        assert testobj.find_needle('haystack')
-        assert capsys.readouterr().out == (
-                "called TextDocument.__init__ with args ()\n"
-                "called TextDocument.setPlainText with arg 'haystack'\n"
-                "called TextDocument.find with args 'needle' 'searchflags'\n")
-
-    def test_goto_searchresult(self, monkeypatch, capsys):
-        """unittest for MainGui.goto_searchresult
-        """
-        # def mock_find(text, options):
-        #     print(f"called Editor.find with args '{text}' '{options}'")
-        #     return False
-        # def mock_find2(text, options):
-        #     print(f"called Editor.find with args '{text}' '{options}'")
-        #     return True
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.tree = mockqtw.MockTreeWidget()
-        testobj.root = mockqtw.MockTreeItem('root')
-        item = mockqtw.MockTreeItem('level1')
-        testobj.root.addChild(item)
-        item2 = mockqtw.MockTreeItem('level2')
-        item.addChild(item2)
-        assert capsys.readouterr().out == ("called Tree.__init__\n"
-                                           "called TreeItem.__init__ with args ('root',)\n"
-                                           "called TreeItem.__init__ with args ('level1',)\n"
-                                           "called TreeItem.addChild\n"
-                                           "called TreeItem.__init__ with args ('level2',)\n"
-                                           "called TreeItem.addChild\n")
-        testobj.editor = MockEditor()
-        # testobj.editor.find = mock_find
-        testobj.srchtext = 'needle'
-        testobj.srchflags = 'searchflags'
-        testobj.srchtype = 1
-        testobj.goto_searchresult([0, 0])
-        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{item2}`\n")
-        testobj.srchtype = 2
-        testobj.goto_searchresult([0, 0])
-        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           f"called Tree.setCurrentItem with arg `{item2}`\n"
-                                           # "called Editor.find with args 'needle' 'searchflags'\n")
-                                           "called Editor.search_from_start\n")
-        # testobj.editor.find = mock_find2
-        # testobj.goto_searchresult([0, 0])
-        # assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n"
-        #                                    "called TreeItem.child with arg 0\n"
-        #                                    f"called Tree.setCurrentItem with arg `{item2}`\n"
-        #                                    "called Editor.find with args 'needle' 'searchflags'\n"
-        #                                    "called Editor.ensureCursorVisible\n")
-
-    def test_add_escape_action(self, monkeypatch, capsys):
-        """unittest for MainGui.add_escape_action
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.quit_shortcuts = ['Ctrl-Q', 'Esc']
-        testobj.quit_action = mockqtw.MockAction()
-        testobj.quit_action.setShortcuts(['x', 'y'])
-        assert capsys.readouterr().out == ("called Action.__init__ with args ()\n"
-                                           "called Action.setShortcuts with arg `['x', 'y']`\n")
-        testobj.add_escape_action()
-        assert capsys.readouterr().out == ("called Action.shortcuts\n")
-        testobj.quit_action.setShortcut('x')
-        assert capsys.readouterr().out == ("called Action.setShortcut with arg `x`\n")
-        testobj.add_escape_action()
-        assert capsys.readouterr().out == (
-                "called Action.shortcuts\n"
-                "called Action.setShortcuts with arg `['Ctrl-Q', 'Esc']`\n")
-
-    def test_remove_escape_action(self, monkeypatch, capsys):
-        """unittest for MainGui.remove_escape_action
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.quit_shortcuts = ['Ctrl-Q', 'Esc']
-        testobj.quit_action = mockqtw.MockAction()
-        testobj.quit_action.setShortcut('x')
-        assert capsys.readouterr().out == ('called Action.__init__ with args ()\n'
-                                           'called Action.setShortcut with arg `x`\n')
-        testobj.remove_escape_action()
-        assert capsys.readouterr().out == "called Action.shortcuts\n"
-
-        testobj.quit_action.setShortcuts(['x', 'y'])
-        assert capsys.readouterr().out == "called Action.setShortcuts with arg `['x', 'y']`\n"
-        testobj.remove_escape_action()
-        assert capsys.readouterr().out == ("called Action.shortcuts\n"
-                                           "called Action.setShortcuts with arg `['Ctrl-Q']`\n")
-
-    def test_cleanup_after_writing(self, monkeypatch, capsys):
-        """unittest for MainGui.cleanup_after_writing
+    def test_accept(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.accept
         """
         def mock_set():
-            print('called UndoStack.setClean')
+            print('called MainWindow.set_search_parameters')
+            return False
+        def mock_set_2():
+            print('called MainWindow.set_search_parameters')
+            return True
+        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.undo_stack = types.SimpleNamespace(setClean=mock_set)
-        testobj.cleanup_after_writing()
-        assert capsys.readouterr().out == 'called UndoStack.setClean\n'
+        testobj.master = types.SimpleNamespace(set_search_parameters=mock_set)
+        testobj.accept()
+        assert capsys.readouterr().out == "called MainWindow.set_search_parameters\n"
+        testobj.master.set_search_parameters = mock_set_2
+        testobj.accept()
+        assert capsys.readouterr().out == ("called MainWindow.set_search_parameters\n"
+                                           "called Dialog.accept\n")
+
+
+class TestResultsDialog:
+    """unittest for qtgui.ResultsDialog
+
+    wordt alleen gestuurd als er resultaten zijn voor zoeken in titels en/of teksten
+    dus current_text (mode 0) en geen zoekresultaten hoeven niet getest worden
+    """
+    def setup_testobj(self, monkeypatch, capsys):
+        """stub for qtgui.ResultsDialog object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
+        """
+        def mock_init(self, *args):
+            """stub
+            """
+            print('called ResultsDialog.__init__ with args', args)
+        monkeypatch.setattr(testee.ResultsDialog, '__init__', mock_init)
+        testobj = testee.ResultsDialog()
+        testobj.parent = MockMainGui()
+        testobj.parent.master = MockMainWindow()
+        assert capsys.readouterr().out == 'called ResultsDialog.__init__ with args ()\n'
+        return testobj
+
+    def test_init(self, monkeypatch, capsys, expected_output):
+        """unittest for ResultsDialog.__init__
+        """
+        def mock_populate(self):
+            print('called ResultsDialog.populate_list')
+        monkeypatch.setattr(testee.qtw.QDialog, '__init__', mockqtw.MockDialog.__init__)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowTitle', mockqtw.MockDialog.setWindowTitle)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setWindowIcon', mockqtw.MockDialog.setWindowIcon)
+        monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
+        monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
+        master = types.SimpleNamespace(result_list=mockqtw.MockListBox())
+        assert capsys.readouterr().out == "called List.__init__\n"
+        parent = MockMainGui()
+        parent.title = 'Title'
+        parent.nt_icon = 'Icon'
+        testobj = testee.ResultsDialog(master, parent)
+        assert capsys.readouterr().out == (
+                f"called Dialog.__init__ with args {testobj.parent} () {{}}\n"
+                "called Dialog.setWindowTitle with args ('Search Results',)\n"
+                "called Dialog.setWindowIcon with args ('Icon',)\n"
+                "called VBox.__init__\n"
+                "called Dialog.setLayout with arg MockVBoxLayout\n")
+
+    def test_set_toptext(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.set_toptext
+        """
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QLabel', mockqtw.MockLabel)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        testobj.set_toptext('xxx')
+        assert capsys.readouterr().out == ("called HBox.__init__\n"
+                                           f"called Label.__init__ with args ('xxx', {testobj})\n"
+                                           "called HBox.addWidget with arg MockLabel\n"
+                                           "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_add_results_list(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.add_results_list
+        """
+        def callback():
+            "dummy function, for reference only"
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QTreeWidget', mockqtw.MockTreeWidget)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        result = testobj.add_results_list(['xx', 'yy'], callback)
+        assert isinstance(result, testee.qtw.QTreeWidget)
+        assert capsys.readouterr().out == ("called HBox.__init__\n"
+                                           "called Tree.__init__\n"
+                                           "called Tree.setColumnCount with arg `2`\n"
+                                           "called Tree.setHeaderLabels with arg `['xx', 'yy']`\n"
+                                           f"called Signal.connect with args ({callback},)\n"
+                                           "called HBox.addWidget with arg MockTreeWidget\n"
+                                           "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_add_buttons(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.add_buttons
+        """
+        def callback1():
+            "dummy function, for reference only"
+        def callback2():
+            "dummy function, for reference only"
+        monkeypatch.setattr(testee.qtw, 'QHBoxLayout', mockqtw.MockHBoxLayout)
+        monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.vbox = mockqtw.MockVBoxLayout()
+        assert capsys.readouterr().out == "called VBox.__init__\n"
+        buttons = testobj.add_buttons([('xx', callback1), ('yy', callback2)])
+        assert len(buttons) == 2
+        for item in buttons:
+            assert isinstance(item, testee.qtw.QPushButton)
+        assert capsys.readouterr().out == (
+                "called HBox.__init__\n"
+                "called HBox.addStretch\n"
+                f"called PushButton.__init__ with args ('xx', {testobj}) {{}}\n"
+                f"called Signal.connect with args ({callback1},)\n"
+                "called HBox.addWidget with arg MockPushButton\n"
+                f"called PushButton.__init__ with args ('yy', {testobj}) {{}}\n"
+                f"called Signal.connect with args ({callback2},)\n"
+                "called HBox.addWidget with arg MockPushButton\n"
+                "called HBox.addStretch\n"
+                "called VBox.addLayout with arg MockHBoxLayout\n")
+
+    def test_add_item_to_list(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.add_item_to_list
+        """
+        monkeypatch.setattr(testee.qtw, 'QTreeWidgetItem', mockqtw.MockTreeItem)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        listbox = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == "called Tree.__init__\n"
+        testobj.add_item_to_list(listbox, 'loc', 'root', 'title')
+        assert capsys.readouterr().out == (
+                "called TreeItem.__init__ with args ()\n"
+                "called TreeItem.setText with args (0, 'root')\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 'loc')\n"
+                "called TreeItem.setText with args (1, 'title')\n"
+                "called TreeItem.setData with args (1, <ItemDataRole.UserRole: 256>, 'loc')\n"
+                "called Tree.addTopLevelItem\n")
+
+    def test_get_next_item(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.get_next_item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        listbox = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == "called Tree.__init__\n"
+        assert testobj.get_next_item(listbox) == 'x'
+        assert capsys.readouterr().out == "called Tree.itemBelow with arg called Tree.currentItem\n"
+
+    def test_get_prev_item(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.get_prev_item
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        listbox = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == "called Tree.__init__\n"
+        assert testobj.get_prev_item(listbox) == 'x'
+        assert capsys.readouterr().out == "called Tree.itemAbove with arg called Tree.currentItem\n"
+
+    def test_getselection(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.getselection
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        listbox = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == "called Tree.__init__\n"
+        assert testobj.getselection(listbox) == 'called Tree.currentItem'
+        assert capsys.readouterr().out == ""
+
+    def test_setselection(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.setselection
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        listbox = mockqtw.MockTreeWidget()
+        assert capsys.readouterr().out == "called Tree.__init__\n"
+        testobj.setselection(listbox, 'item')
+        assert capsys.readouterr().out == "called Tree.setCurrentItem with arg `item`\n"
+
+    def test_disable_widget(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.disable_widget
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        button = mockqtw.MockPushButton()
+        button.setEnabled(True)
+        assert capsys.readouterr().out == ("called PushButton.__init__ with args () {}\n"
+                                           "called PushButton.setEnabled with arg `True`\n")
+        testobj.disable_widget(button)
+        assert capsys.readouterr().out == "called PushButton.setEnabled with arg `False`\n"
+
+    def test_enable_button_if_disabled(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.enable_button_if_disabled
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        button = mockqtw.MockPushButton()
+        button.setEnabled(True)
+        assert capsys.readouterr().out == ("called PushButton.__init__ with args () {}\n"
+                                           "called PushButton.setEnabled with arg `True`\n")
+        testobj.enable_button_if_disabled(button)
+        assert capsys.readouterr().out == ""
+        button.setEnabled(False)
+        assert capsys.readouterr().out == "called PushButton.setEnabled with arg `False`\n"
+        testobj.enable_button_if_disabled(button)
+        assert capsys.readouterr().out == "called PushButton.setEnabled with arg `True`\n"
+
+    def test_get_item_data(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.get_item_data
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        listitem = mockqtw.MockTreeItem()
+        listitem.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'xxx')
+        assert capsys.readouterr().out == (
+                "called TreeItem.__init__ with args ()\n"
+                "called TreeItem.setData with args (0, <ItemDataRole.UserRole: 256>, 'xxx')\n")
+        assert testobj.get_item_data(listitem) == 'xxx'
+        assert capsys.readouterr().out == (
+                "called TreeItem.data with args (0, <ItemDataRole.UserRole: 256>)\n")
+
+    def test_accept(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.accept
+        """
+        monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = types.SimpleNamespace()
+        testobj.accept()
+        assert not testobj.master.srchlist
+        assert capsys.readouterr().out == "called Dialog.accept\n"
+
+    def test_reject(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.reject
+        """
+        monkeypatch.setattr(testee.qtw.QDialog, 'reject', mockqtw.MockDialog.reject)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.master = types.SimpleNamespace()
+        testobj.reject()
+        assert not testobj.master.srchlist
+        assert capsys.readouterr().out == "called Dialog.reject\n"

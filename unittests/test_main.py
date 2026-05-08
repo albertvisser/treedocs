@@ -1,6 +1,7 @@
 """unittests for ./doctree/main.py
 """
 import datetime
+import types
 import pytest
 from doctree import main as testee
 
@@ -86,7 +87,7 @@ def mock_get_choice_2(*args, **kwargs):
     """stub for Doctree.gui.get_choice: dialog was accepted
     """
     print('called gui.get_choice with args', args, kwargs)
-    return True, 'selection'
+    return True, 'yyy'
 
 
 def mock_show_message(*args):
@@ -105,14 +106,7 @@ def mock_show_dialog(*args):
     """stub for doctree.gui.show_dialogi: dialog canceled
     """
     print('called gui.show_dialog with args', args)
-    return False
-
-
-def mock_show_dialog_2(*args):
-    """stub for doctree.gui.show_dialog: dialog confirmed
-    """
-    print('called gui.show_dialog with args', args)
-    return True
+    return False, ''
 
 
 def mock_init_opts():
@@ -273,8 +267,18 @@ class MockGui:
         self.tree = MockTree()
         self.editor = MockEditor()
         self.undo_stack = MockStack()
-    def setup_screen(self):
-        print("called MainGui.setup_screen")
+    def create_splitter(self):
+        print("called MainGui.create_splitter")
+    def create_tree_on_left(self):
+        print("called MainGui.create_tree_on_left")
+    def create_editor_on_right(self):
+        print("called MainGui.create_editor_on_right")
+    def create_menu(self, menudata):
+        print("called MainGui.create_menu with arg", menudata)
+    def create_statusbar_at_bottom(self):
+        print("called MainGui.create_statusbar_at_bottom")
+    def finalize_display(self):
+        print("called MainGui.finalize_display")
     def go(self):
         print("called MainGui.go")
     def set_windowtitle(self, *args):
@@ -313,29 +317,32 @@ class MockGui:
         print('called MainGui.hide_me')
     def set_focus_to_editor(self):
         print('called MainGui.set_focus_to_editor')
-    def clear_viewmenu(self):
-        print("called MainGui.clear_viewmenu")
-    def add_viewmenu_option(self, arg):
-        print(f"called MainGui.add_viewmenu_option with arg '{arg}'")
+    def add_viewmenu_option(self, *args):
+        print("called MainGui.add_viewmenu_option with args", args)
         return 'An action'
-    def rename_viewmenu_option(self, arg):
-        print(f"called MainGui.rename_viewmenu_option with arg '{arg}'")
-    def remove_viewmenu_option(self, arg):
-        print(f"called MainGui.remove_viewmenu_option with arg '{arg}'")
-        return 'An action'
-    def uncheck_viewmenu_option(self):
-        print("called MainGui.uncheck_viewmenu_option")
-    def check_viewmenu_option(self, *args):
-        if not args:
-            print("called MainGui.check_viewmenu_option")
-            return "A New view"
-        print(f"called MainGui.check_viewmenu_option with arg '{args[0]}'")
-        return None
+    def check_menuitem_option(self, *args):
+        print("called MainGui.check_menuitem_option with args", args)
+    def determine_viewmenuitem(self, *args):
+        print('called MainGui.determine_viewmenuitem with args', args)
+        return 'xxx'
     def check_next_viewmenu_option(self, **kwargs):
         if not kwargs:
             print("called MainGui.next_check_viewmenu_option")
         else:
             print("called MainGui.check_next_viewmenu_option with args", kwargs)
+    def get_viewmenu_options(self):
+        print("called MainGui.get_viewmenu_options")
+        return [0, 1, 2, 3, 4, 5, 6, '1 xxx', '2 yyy', '3 zzz']
+    def get_viewmenuoption_state(self, arg):
+        print(f"called MainGui.get_viewmenuoption_state with arg {arg}")
+        return False
+    def get_menuitem_text(self, arg):
+        print(f"called MainGui.get_menuitem_text with arg '{arg}'")
+        return '2 yyy'
+    def set_menuitem_text(self, *args):
+        print("called MaimGui.set_menuitem_text with args", args)
+    def remove_menuoption(self, *args):
+        print("called MainGui.remove_menuoption with args", args)
     def add_escape_action(self):
         print("called MainGui.add_escape_action")
     def remove_escape_action(self):
@@ -353,6 +360,22 @@ class MockGui:
         print(f"called Gui.goto_searchresult with arg '{arg}'")
     def cleanup_after_writing(self):
         print('called Gui.cleanup_after_writing')
+
+    # def clear_viewmenu(self):
+    #     print("called MainGui.clear_viewmenu")
+    # def check_viewmenu_option(self, *args):
+    #     if not args:
+    #         print("called MainGui.check_viewmenu_option")
+    #         return "A New view"
+    #     print(f"called MainGui.check_viewmenu_option with arg '{args[0]}'")
+    #     return None
+    # def uncheck_viewmenu_option(self):
+    #     print("called MainGui.uncheck_viewmenu_option")
+    # def rename_viewmenu_option(self, arg):
+    #     print(f"called MainGui.rename_viewmenu_option with arg '{arg}'")
+    # def remove_viewmenu_option(self, arg):
+    #     print(f"called MainGui.remove_viewmenu_option with arg '{arg}'")
+    #     return 'An action'
 
 
 class MockMainWindow:
@@ -495,6 +518,16 @@ class MockMainWindow:
         """
         print("called MainWindow.goto_view with args", args, kwargs)
 
+    def select_view(self, *args):
+        """stub for MainWindow.select_view
+        """
+        print("called MainWindow.select_view with args", args)
+
+    def build_view(self):
+        """stub for MainWindow.build_view
+        """
+        print("called MainWindow.build_view")
+
     def search_from(self, *args):
         """stub for MainWindow.search_from: canceled
         """
@@ -524,6 +557,25 @@ class MockMainWindow:
         """stub for MainWindow.search
         """
         print('called MainWindow.search with args', kwargs)
+
+    def uncheck_viewmenu_option(self):
+        print("called MainWindow.uncheck_viewmenu_option")
+
+    def check_viewmenu_option(self, *args):
+        print("called MainWindow.check_viewmenu_option with args", args)
+        return '1 View1'
+
+    def check_next_viewmenu_option(self, *args, **kwargs):
+        print("called MainWindow.check_next_viewmenu_option with args", args, kwargs)
+
+    def clear_viewmenu(self):
+        print("called MainWindow.clear_viewmenu")
+
+    def rename_viewmenu_option(self, *args):
+        print("called MainWindow.rename_viewmenu_option with args", args)
+
+    def remove_viewmenu_option(self, *args):
+        print("called MainWindow.remove_viewmenu_option with args", args)
 
 
 def test_init_opts():
@@ -652,6 +704,9 @@ class TestMainWindow:
             """stub for doctree.gui.show_message
             """
             print('called gui.show_message with args', args[1:])
+        def mock_get(self):
+            print('called MainWindow.get_menu_data')
+            return 'menu data'
         monkeypatch.setattr(testee, 'reset_toolkit_file_if_needed', mock_reset)
         monkeypatch.setattr(testee.gui, 'MainGui', MockGui)
         monkeypatch.setattr(testee.gui, 'ask_ynquestion', mock_ask_yn)
@@ -661,6 +716,7 @@ class TestMainWindow:
         monkeypatch.setattr(testee.MainWindow, 'new', self.mocker.new)
         monkeypatch.setattr(testee.MainWindow, 'set_project_dirty', self.mocker.set_dirty)
         monkeypatch.setattr(testee.MainWindow, 'read', self.mocker.read)
+        monkeypatch.setattr(testee.MainWindow, 'get_menu_data', mock_get)
         testee.gui.toolkit = 'qt'
         testobj = testee.MainWindow()
         assert not testobj.project_dirty
@@ -674,7 +730,13 @@ class TestMainWindow:
         assert not testobj.images_embedded
         assert capsys.readouterr().out == (
                 f"called MainGui.__init__ with args ({testobj},) {{'title': 'Doctree'}}\n"
-                "called MainGui.setup_screen\n"
+                "called MainGui.create_splitter\n"
+                "called MainGui.create_tree_on_left\n"
+                "called MainGui.create_editor_on_right\n"
+                "called MainWindow.get_menu_data\n"
+                "called MainGui.create_menu with arg menu data\n"
+                "called MainGui.create_statusbar_at_bottom\n"
+                "called MainGui.finalize_display\n"
                 "called MainWindow.new with args () {'ask_ok': False}\n"
                 "called reset_toolkit_file_if_needed\n"
                 "called MainGui.go\n")
@@ -692,12 +754,18 @@ class TestMainWindow:
         assert testobj.images_embedded
         assert capsys.readouterr().out == (
                 f"called MainGui.__init__ with args ({testobj},) {{'title': 'Doctree'}}\n"
-                "called MainGui.setup_screen\n"
+                "called MainGui.create_splitter\n"
+                "called MainGui.create_tree_on_left\n"
+                "called MainGui.create_editor_on_right\n"
+                "called MainWindow.get_menu_data\n"
+                "called MainGui.create_menu with arg menu data\n"
+                "called MainGui.create_statusbar_at_bottom\n"
+                "called MainGui.finalize_display\n"
                 "called path.resolve with arg test.trd\n"
                 "called path.exists with arg resolved\n"
+                "called MainGui.disable_menu\n"
                 "called gui.ask_ynquestion with args"
                 f" ({testobj.gui}, 'test.trd does not exist, do you want to create it?')\n"
-                "called MainGui.disable_menu\n"
                 "called reset_toolkit_file_if_needed\n"
                 "called MainGui.go\n")
 
@@ -715,9 +783,16 @@ class TestMainWindow:
         assert not testobj.images_embedded
         assert capsys.readouterr().out == (
                 f"called MainGui.__init__ with args ({testobj},) {{'title': 'Doctree'}}\n"
-                "called MainGui.setup_screen\n"
+                "called MainGui.create_splitter\n"
+                "called MainGui.create_tree_on_left\n"
+                "called MainGui.create_editor_on_right\n"
+                "called MainWindow.get_menu_data\n"
+                "called MainGui.create_menu with arg menu data\n"
+                "called MainGui.create_statusbar_at_bottom\n"
+                "called MainGui.finalize_display\n"
                 "called path.resolve with arg test.trd\n"
                 "called path.exists with arg resolved\n"
+                "called MainGui.disable_menu\n"
                 "called gui.ask_ynquestion with args"
                 f" ({testobj.gui}, 'test.trd does not exist, do you want to create it?')\n"
                 "called MainWindow.new with args () {'filename': 'test.trd', 'ask_ok': False}\n"
@@ -738,7 +813,13 @@ class TestMainWindow:
         assert not testobj.images_embedded
         assert capsys.readouterr().out == (
                 f"called MainGui.__init__ with args ({testobj},) {{'title': 'Doctree'}}\n"
-                "called MainGui.setup_screen\n"
+                "called MainGui.create_splitter\n"
+                "called MainGui.create_tree_on_left\n"
+                "called MainGui.create_editor_on_right\n"
+                "called MainWindow.get_menu_data\n"
+                "called MainGui.create_menu with arg menu data\n"
+                "called MainGui.create_statusbar_at_bottom\n"
+                "called MainGui.finalize_display\n"
                 "called path.resolve with arg test.trd\n"
                 "called path.exists with arg resolved\n"
                 "called MainWindow.read\n"
@@ -753,7 +834,13 @@ class TestMainWindow:
             testobj = testee.MainWindow('test.trd')
         assert capsys.readouterr().out == (
                 "called MainGui.__init__ with args () {'title': 'Doctree'}\n"
-                "called MainGui.setup_screen\n"
+                "called MainGui.create_splitter\n"
+                "called MainGui.create_tree_on_left\n"
+                "called MainGui.create_editor_on_right\n"
+                "called MainWindow.get_menu_data\n"
+                "called MainGui.create_menu with arg menu data\n"
+                "called MainGui.create_statusbar_at_bottom\n"
+                "called MainGui.finalize_display\n"
                 "called path.resolve with arg test.trd\n"
                 "called path.exists with arg resolved\n"
                 "called MainWindow.read\n"
@@ -813,6 +900,7 @@ class TestMainWindow:
         monkeypatch.setattr(testee, 'init_opts', mock_init_opts)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.set_window_title = self.mocker.set_title
+        testobj.clear_viewmenu = self.mocker.clear_viewmenu
         testobj.set_project_dirty = self.mocker.set_dirty
         testobj.gui.menu_disabled = False
         testobj.new(filename='test.trd')
@@ -835,8 +923,9 @@ class TestMainWindow:
                 "called MainWindow.set_project_dirty with arg False\n"
                 "called MainGui.set_version with args ()\n"
                 "called MainGui.set_window_dimensions with args (200, 100)\n"
-                "called MainGui.clear_viewmenu\n"
-                "called MainGui.add_viewmenu_option with arg '&1 Default'\n"
+                "called MainWindow.clear_viewmenu\n"
+                "called MainGui.add_viewmenu_option with args"
+                f" ('&1 Default', {testobj.select_view_from_menu})\n"
                 "called MainGui.init_app\n"
                 "called MainGui.rebuild_root\n"
                 "called Editor.set_contents with arg 'root data'\n"
@@ -859,8 +948,9 @@ class TestMainWindow:
                 "called MainGui.set_version with args ()\n"
                 "called MainGui.set_window_dimensions with args (200, 100)\n"
                 "called MainGui.disable_menu with arg False\n"
-                "called MainGui.clear_viewmenu\n"
-                "called MainGui.add_viewmenu_option with arg '&1 Default'\n"
+                "called MainWindow.clear_viewmenu\n"
+                "called MainGui.add_viewmenu_option with args"
+                f" ('&1 Default', {testobj.select_view_from_menu})\n"
                 "called MainGui.init_app\n"
                 "called MainGui.rebuild_root\n"
                 "called Editor.set_contents with arg 'root data'\n"
@@ -1894,16 +1984,6 @@ class TestMainWindow:
         assert capsys.readouterr().out == (
                 "called Tree.add_to_parent with args ('key', 'titel', 'parent', 1)\n")
 
-    def test_get_setttexts(self, monkeypatch, capsys):
-        """unittest for shared.get_setttexts
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.get_setttexts() == {
-                'AskBeforeHide': 'Notify that the application will be hidden in the system tray',
-                'NotifyOnLoad': 'Notify that the data has been reloaded',
-                'NotifyOnSave': 'Notify that the data has been saved',
-                'EscapeClosesApp': 'Application can be closed by pressing Escape'}
-
     def test_move_to_file(self, monkeypatch, capsys):
         """unittest for MainWindow.move_to_file
         """
@@ -2106,17 +2186,39 @@ class TestMainWindow:
     def test_set_options(self, monkeypatch, capsys):
         """unittest for MainWindow.set_options
         """
+        def mock_show_dialog_2(*args):
+            """stub for doctree.gui.show_dialog: dialog confirmed
+            """
+            print('called gui.show_dialog with args', args)
+            return True, {'x': 'a', 'y': 'b'}
+        class MockOptions:
+            def __init__(self, *args):
+                print('called SetOptions with args', args)
+                self.gui = 'OptionsDialog'
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog)
+        monkeypatch.setattr(testee, 'SetOptions', MockOptions)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.set_escape_action = self.mocker.set_escape_action
         testobj.set_options()
-        assert capsys.readouterr().out == (f"called gui.show_dialog with args ({testobj.gui},"
-                                           f" {testee.gui.OptionsDialog})\n")
+        assert capsys.readouterr().out == (
+                f"called SetOptions with args ({testobj},"
+                " {'AskBeforeHide': 'Notify that the application will be hidden in the system tray',"
+                " 'NotifyOnLoad': 'Notify that the data has been reloaded',"
+                " 'NotifyOnSave': 'Notify that the data has been saved',"
+                " 'EscapeClosesApp': 'Application can be closed by pressing Escape'})\n"
+                f"called gui.show_dialog with args ({testobj.dp},)\n")
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
+        testobj.opts = {}
         testobj.set_options()
-        assert capsys.readouterr().out == (f"called gui.show_dialog with args ({testobj.gui},"
-                                           f" {testee.gui.OptionsDialog})\n"
-                                           "called MainWindow.set_escape_action\n")
+        assert testobj.opts == {'x': 'a', 'y': 'b'}
+        assert capsys.readouterr().out == (
+                f"called SetOptions with args ({testobj},"
+                " {'AskBeforeHide': 'Notify that the application will be hidden in the system tray',"
+                " 'NotifyOnLoad': 'Notify that the data has been reloaded',"
+                " 'NotifyOnSave': 'Notify that the data has been saved',"
+                " 'EscapeClosesApp': 'Application can be closed by pressing Escape'})\n"
+                f"called gui.show_dialog with args ({testobj.dp},)\n"
+                "called MainWindow.set_escape_action\n")
 
     def test_add_view(self, monkeypatch, capsys):
         """unittest for MainWindow.add_view
@@ -2125,6 +2227,8 @@ class TestMainWindow:
         testobj.check_active = self.mocker.check
         testobj.treetoview = self.mocker.treetoview
         testobj.viewtotree = self.mocker.viewtotree
+        testobj.uncheck_viewmenu_option = self.mocker.uncheck_viewmenu_option
+        testobj.check_viewmenu_option = self.mocker.check_viewmenu_option
         testobj.set_project_dirty = self.mocker.set_dirty
         testobj.opts = {'ActiveItem': ['item0', 'item1'], 'ActiveView': 1,
                         'ViewNames': ['View0', 'View1']}
@@ -2144,9 +2248,10 @@ class TestMainWindow:
                 "called Tree.getitemtitle with arg `active item`\n"
                 "called Tree.getitemtext with args ('active item',)\n"
                 "called MainWindow.treetoview\n"
-                "called MainGui.uncheck_viewmenu_option\n"
-                "called MainGui.add_viewmenu_option with arg '&2 New View #2'\n"
-                "called MainGui.check_viewmenu_option with arg 'An action'\n"
+                "called MainWindow.uncheck_viewmenu_option\n"
+                "called MainGui.add_viewmenu_option with args"
+                f" ('&2 New View #2', {testobj.select_view_from_menu})\n"
+                "called MainWindow.check_viewmenu_option with args ('An action',)\n"
                 "called MainGui.rebuild_root\n"
                 "called MainWindow.viewtotree\n"
                 "called MainWindow.set_project_dirty with arg True\n"
@@ -2166,6 +2271,7 @@ class TestMainWindow:
         testobj.opts = {'ActiveItem': ['item0', 'item1'], 'ActiveView': 1,
                         'ViewNames': ['View0', 'View1']}
         testobj.set_project_dirty = self.mocker.set_dirty
+        testobj.rename_viewmenu_option = self.mocker.rename_viewmenu_option
         testobj.rename_view()
         assert testobj.opts == {'ActiveItem': ['item0', 'item1'], 'ActiveView': 1,
                                 'ViewNames': ['View0', 'View1']}
@@ -2186,7 +2292,7 @@ class TestMainWindow:
         assert capsys.readouterr().out == (
                 "called gui.get_text with args"
                 f" ({testobj.gui}, 'Geef een nieuwe naam voor de huidige view', 'View1') {{}}\n"
-                "called MainGui.rename_viewmenu_option with arg 'Other view'\n"
+                "called MainWindow.rename_viewmenu_option with args ('Other view',)\n"
                 "called MainWindow.set_project_dirty with arg True\n")
 
     def test_remove_view(self, monkeypatch, capsys):
@@ -2200,6 +2306,7 @@ class TestMainWindow:
         testobj.viewcount = 1
         testobj.viewtotree = self.mocker.viewtotree
         testobj.set_project_dirty = self.mocker.set_dirty
+        testobj.remove_viewmenu_option = self.mocker.remove_viewmenu_option
         testobj.remove_view()
         assert capsys.readouterr().out == (f'called gui.show_message with args ({testobj.gui},'
                                            ' "Can\'t delete the last (only) view")\n')
@@ -2219,8 +2326,7 @@ class TestMainWindow:
         assert capsys.readouterr().out == (
                 f"called gui.ask_ynquestion with args ({testobj.gui},"
                 " 'Are you sure you want to remove this view?')\n"
-                "called MainGui.remove_viewmenu_option with arg 'View1'\n"
-                "called MainGui.check_viewmenu_option with arg 'An action'\n"
+                "called MainWindow.remove_viewmenu_option with args ('View1',)\n"
                 "called MainGui.rebuild_root\n"
                 "called MainWindow.set_project_dirty with arg True\n"
                 "called MainWindow.viewtotree\n"
@@ -2235,8 +2341,7 @@ class TestMainWindow:
         assert capsys.readouterr().out == (
                 f"called gui.ask_ynquestion with args ({testobj.gui},"
                 " 'Are you sure you want to remove this view?')\n"
-                "called MainGui.remove_viewmenu_option with arg 'View0'\n"
-                "called MainGui.check_viewmenu_option with arg 'An action'\n"
+                "called MainWindow.remove_viewmenu_option with args ('View0',)\n"
                 "called MainGui.rebuild_root\n"
                 "called MainWindow.set_project_dirty with arg True\n"
                 "called MainWindow.viewtotree\n"
@@ -2272,111 +2377,86 @@ class TestMainWindow:
         assert capsys.readouterr().out == (
                 f"called gui.show_message with args ({testobj.gui}, 'This is the only view')\n")
         testobj.viewcount = 2
-        testobj.views = [('view1',), ('view2',)]
-        testobj.activeitem = 'active item'
-        testobj.gui.root = 'gui root'
-        testobj.check_active = self.mocker.check
-        testobj.treetoview = self.mocker.treetoview
-        testobj.viewtotree = self.mocker.viewtotree
-        testobj.set_window_title = self.mocker.set_title
+        testobj.select_view = self.mocker.select_view
         testobj.opts["ActiveView"] = 0
         testobj.goto_view()
-        assert capsys.readouterr().out == (
-                "called MainWindow.check_active\n"
-                "called MainWindow.treetoview\n"
-                "called Editor.clear\n"
-                "called MainGui.next_check_viewmenu_option\n"
-                "called MainGui.rebuild_root\n"
-                "called MainWindow.viewtotree\n"
-                "called MainWindow.set_window_title\n"
-                "called Tree.set_item_selected with arg `An item`\n")
-        assert testobj.opts["ActiveView"] == 1
-        assert testobj.activeitem == 'gui root'
-        assert testobj.views == ['A view', ('view2',)]
-
-        testobj.activeitem = 'active item'
-        testobj.gui.root = 'gui root'
-        testobj.views = [('view1',), ('view2',)]
-        testobj.goto_view()
-        assert capsys.readouterr().out == (
-                "called MainWindow.check_active\n"
-                "called MainWindow.treetoview\n"
-                "called Editor.clear\n"
-                "called MainGui.next_check_viewmenu_option\n"
-                "called MainGui.rebuild_root\n"
-                "called MainWindow.viewtotree\n"
-                "called MainWindow.set_window_title\n"
-                "called Tree.set_item_selected with arg `An item`\n")
-        assert testobj.opts["ActiveView"] == 0
-        assert testobj.activeitem == 'gui root'
-        assert testobj.views == [('view1',), 'A view']
-
+        assert capsys.readouterr().out == "called MainWindow.select_view with args (1, 'next')\n"
         testobj.opts["ActiveView"] = 1
-        testobj.activeitem = 'active item'
-        testobj.gui.root = 'gui root'
-        testobj.views = [('view1',), ('view2',)]
+        testobj.goto_view()
+        assert capsys.readouterr().out == "called MainWindow.select_view with args (0, 'next')\n"
+        testobj.opts["ActiveView"] = 1
         testobj.goto_view(goto_next=False)
-        assert capsys.readouterr().out == (
-                "called MainWindow.check_active\n"
-                "called MainWindow.treetoview\n"
-                "called Editor.clear\n"
-                "called MainGui.check_next_viewmenu_option with args {'prev': True}\n"
-                "called MainGui.rebuild_root\n"
-                "called MainWindow.viewtotree\n"
-                "called MainWindow.set_window_title\n"
-                "called Tree.set_item_selected with arg `An item`\n")
-        assert testobj.opts["ActiveView"] == 0
-        assert testobj.activeitem == 'gui root'
-        assert testobj.views == [('view1',), 'A view']
-
-        testobj.activeitem = 'active item'
-        testobj.gui.root = 'gui root'
-        testobj.views = [('view1',), ('view2',)]
+        assert capsys.readouterr().out == "called MainWindow.select_view with args (0, 'prev')\n"
+        testobj.opts["ActiveView"] = 0
         testobj.goto_view(goto_next=False)
-        assert capsys.readouterr().out == (
-                "called MainWindow.check_active\n"
-                "called MainWindow.treetoview\n"
-                "called Editor.clear\n"
-                "called MainGui.check_next_viewmenu_option with args {'prev': True}\n"
-                "called MainGui.rebuild_root\n"
-                "called MainWindow.viewtotree\n"
-                "called MainWindow.set_window_title\n"
-                "called Tree.set_item_selected with arg `An item`\n")
-        assert testobj.opts["ActiveView"] == 1
-        assert testobj.activeitem == 'gui root'
-        assert testobj.views == ['A view', ('view2',)]
+        assert capsys.readouterr().out == "called MainWindow.select_view with args (1, 'prev')\n"
 
     def test_select_view_from_dropdown(self, monkeypatch, capsys):
         """unittest for MainWindow.select_view_from_dropdown
         """
+        def mock_get_text(arg):
+            print(f"called MainGui.get_menuitem_text with arg '{arg}'")
+            return arg  # '2 yyy'
+        def mock_get(*args):
+            print("called gui.get_choice with args", args)
+            return True, 'qqq'
         monkeypatch.setattr(testee.gui, 'get_choice', mock_get_choice)
         testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.get_menuitem_text = mock_get_text
         testobj.opts = {'ActiveItem': ['item0', 'item1'], 'ActiveView': 1,
-                        'ViewNames': ['View0', 'selection']}
+                        'ViewNames': ['View0', 'yyy']}
         testobj.views = [('view1',), ('view2',)]
         testobj.check_active = self.mocker.check
         testobj.treetoview = self.mocker.treetoview
-        testobj.viewtotree = self.mocker.viewtotree
-        testobj.set_window_title = self.mocker.set_title
+        testobj.select_view = self.mocker.select_view
+        # testobj.build_view = self.mocker.build_view
+        # testobj.viewtotree = self.mocker.viewtotree
+        # testobj.set_window_title = self.mocker.set_title
         testobj.gui.root = 'gui root'
         testobj.select_view_from_dropdown()
         assert testobj.views == [('view1',), ('view2',)]
         assert capsys.readouterr().out == (
                 "called gui.get_choice with args"
-                f" ({testobj.gui}, 'Select a view:', ['View0', 'selection'], 1) {{}}\n")
+                f" ({testobj.gui}, 'Select a view:', ['View0', 'yyy'], 1) {{}}\n")
 
         monkeypatch.setattr(testee.gui, 'get_choice', mock_get_choice_2)
         testobj.select_view_from_dropdown()
         assert capsys.readouterr().out == (
                 "called gui.get_choice with args"
-                f" ({testobj.gui}, 'Select a view:', ['View0', 'selection'], 1) {{}}\n"
-                "called MainWindow.check_active\n"
-                "called MainWindow.treetoview\n"
-                "called Editor.clear\n"
-                "called MainGui.rebuild_root\n"
-                "called MainWindow.viewtotree\n"
-                "called MainWindow.set_window_title\n"
-                "called Tree.set_item_selected with arg `An item`\n")
+                f" ({testobj.gui}, 'Select a view:', ['View0', 'yyy'], 1) {{}}\n"
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MainWindow.select_view with args (1, '2 yyy')\n")
+
+        # selected view is not in list of view: not actually possible
+        testee.gui.get_choice = mock_get
+        with pytest.raises(ValueError) as exc:
+            testobj.select_view_from_dropdown()
+        assert str(exc.value) == 'No menuoption for select_view'
+        assert capsys.readouterr().out == (
+                "called gui.get_choice with args"
+                f" ({testobj.gui}, 'Select a view:', ['View0', 'yyy'], 1)\n"
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MainGui.get_menuitem_text with arg '3 zzz'\n")
+
+    def test_select_view_from_menu(self, monkeypatch, capsys):
+        """unittest for MainWindow.select_view_from_menu
+        """
+        def mock_get(arg):
+            print(f"called MainGui.get_menuitem_text with arg '{arg}'")
+            return 'x yyy'
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.opts = {'ViewNames': ['xxx', 'yyy']}
+        testobj.gui.get_menuitem_text = mock_get
+        testobj.select_view = self.mocker.select_view
+        testobj.select_view_from_menu()
+        assert capsys.readouterr().out == (
+                "called MainGui.determine_viewmenuitem with args ()\n"
+                "called MainGui.get_menuitem_text with arg 'xxx'\n"
+                "called MainWindow.select_view with args (1, 'xxx')\n")
 
     def test_select_view(self, monkeypatch, capsys):
         """unittest for MainWindow.select_view
@@ -2388,88 +2468,138 @@ class TestMainWindow:
         testobj.viewnames = ['New view', '']
         testobj.check_active = self.mocker.check
         testobj.treetoview = self.mocker.treetoview
-        testobj.viewtotree = self.mocker.viewtotree
-        testobj.set_window_title = self.mocker.set_title
-        testobj.gui.root = 'gui root'
-        testobj.select_view()
+        testobj.check_viewmenu_option = self.mocker.check_viewmenu_option
+        testobj.check_next_viewmenu_option = self.mocker.check_next_viewmenu_option
+        testobj.build_view = self.mocker.build_view
+        testobj.select_view('newview', 'menuitem')
         assert testobj.views == [('view1',), 'A view']
-        assert testobj.opts["ActiveView"] == 0
-        assert testobj.activeitem == 'gui root'
+        assert testobj.opts["ActiveView"] == 'newview'
+        # assert testobj.activeitem == 'gui root'
         assert capsys.readouterr().out == (
                 "called MainWindow.check_active\n"
                 "called MainWindow.treetoview\n"
                 "called Editor.clear\n"
-                "called MainGui.check_viewmenu_option\n"
+                "called MainWindow.check_viewmenu_option with args ('menuitem',)\n"
+                "called MainWindow.build_view\n")
+        testobj.opts["ActiveView"] = 1
+        testobj.select_view('new view', 'next')
+        assert testobj.views == [('view1',), 'A view']
+        assert testobj.opts["ActiveView"] == 'new view'
+        # assert testobj.activeitem == 'gui root'
+        assert capsys.readouterr().out == (
+                "called MainWindow.check_active\n"
+                "called MainWindow.treetoview\n"
+                "called Editor.clear\n"
+                "called MainWindow.check_next_viewmenu_option with args () {}\n"
+                "called MainWindow.build_view\n")
+        testobj.opts["ActiveView"] = 1
+        testobj.select_view('new', 'prev')
+        assert testobj.views == [('view1',), 'A view']
+        assert testobj.opts["ActiveView"] == 'new'
+        # assert testobj.activeitem == 'gui root'
+        assert capsys.readouterr().out == (
+                "called MainWindow.check_active\n"
+                "called MainWindow.treetoview\n"
+                "called Editor.clear\n"
+                "called MainWindow.check_next_viewmenu_option with args () {'prev': True}\n"
+                "called MainWindow.build_view\n")
+
+    def test_build_view(self, monkeypatch, capsys):
+        """unittest for MainWindow.build_view
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.root = 'gui root'
+        testobj.viewtotree = self.mocker.viewtotree
+        testobj.set_window_title = self.mocker.set_title
+        testobj.build_view()
+        assert capsys.readouterr().out == (
                 "called MainGui.rebuild_root\n"
                 "called MainWindow.viewtotree\n"
                 "called MainWindow.set_window_title\n"
                 "called Tree.set_item_selected with arg `An item`\n")
 
-    def test_search(self, monkeypatch, capsys):
+    def test_search(self, monkeypatch, capsys):  # tijdelijk uit tijdens reconstructie dialoogcode
         """unittest for MainWindow.search
         """
+        class MockSearch:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called SetSearch.__init__ with args', args, kwargs)
+                self.gui = 'SearchDialog'
+        def mock_show_dialog_2(*args):
+            """stub for doctree.gui.show_dialog: dialog confirmed
+            """
+            print('called gui.show_dialog with args', args)
+            return True, 'anything'
         def search_from_start_2():
             print('called Editor.search_from_start')
             return True
         def mock_search_from_3(self, *args):
             print('called MainWindow.search_from with args', args)
-            self.gui.srchlist = True
+            self.srchlist = True
             return ['result', 'list']
+        class MockResults:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called Results.__init__ with args', args, kwargs)
+                self.gui = 'ResultsDialog'
         monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog)
         monkeypatch.setattr(testee.gui, 'show_nonmodal', mock_show_nonmodal)
+        monkeypatch.setattr(testee, 'SetSearch', MockSearch)
+        monkeypatch.setattr(testee, 'Results', MockResults)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.go_to_result = self.mocker.go_to_result
         testobj.search_from = self.mocker.search_from
         testobj.gui.root = 'gui root'
-        testobj.gui.srchlist = True
+        testobj.srchlist = True
         testobj.search()
         assert capsys.readouterr().out == (
                 "called gui.show_message with args"
                 f" ({testobj.gui}, 'Cannot start new search while results screen is showing')\n")
 
-        testobj.gui.srchlist = False
+        testobj.srchlist = False
         testobj.search()
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n")
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 0}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n")
 
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
-        testobj.gui.srchtype = 4  # wordt eigenlijk ingesteld door SearchDialog
+        testobj.srchtype = 4  # wordt eigenlijk ingesteld door SearchDialog
         testobj.search(mode=4)
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 4}})\n"
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 4}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Wrong search type')\n")
 
-        testobj.gui.srchtype = 0
+        testobj.srchtype = 0
         testobj.search()
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 0}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n"
                 "called Editor.search_from_start\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Search string not found')\n")
 
         testobj.gui.editor.search_from_start = search_from_start_2
         testobj.search()
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 0}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n"
                 "called Editor.search_from_start\n")
 
-        testobj.gui.srchtype = 1
+        testobj.srchtype = 1
         testobj.search()
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 0}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 f"called gui.show_message with args ({testobj.gui}, 'Search string not found')\n")
 
         testobj.search_from = self.mocker.search_from_2
         testobj.search()
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 0}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
                 "called MainWindow.go_to_result\n")
 
@@ -2478,15 +2608,16 @@ class TestMainWindow:
         monkeypatch.setattr(testee.gui, 'show_nonmodal', mock_show_nonmodal)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.gui.root = 'gui root'
-        testobj.gui.srchlist = False
-        testobj.gui.srchtype = 1
+        testobj.srchlist = False
+        testobj.srchtype = 1
         testobj.search()
-        assert testobj.gui.srchlist
+        assert testobj.srchlist
         assert capsys.readouterr().out == (
-                "called gui.show_dialog with args"
-                f" ({testobj.gui}, {testee.gui.SearchDialog}, {{'mode': 0}})\n"
+                f"called SetSearch.__init__ with args ({testobj},) {{'mode': 0}}\n"
+                f"called gui.show_dialog with args ({testobj.dp1},)\n"
                 "called MainWindow.search_from with args ('gui root',)\n"
-                f"called gui.show_nonmodal with args ({testobj.gui}, {testee.gui.ResultsDialog})\n")
+                f"called Results.__init__ with args ({testobj},) {{}}\n"
+                f"called gui.show_nonmodal with args ({testobj.dp2},)\n")
 
     def test_search_texts(self, monkeypatch, capsys):
         """unittest for MainWindow.search_texts
@@ -2509,15 +2640,15 @@ class TestMainWindow:
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.go_to_result = self.mocker.go_to_result
-        testobj.gui.srchtext = ''
-        testobj.gui.srchtype = 0
+        testobj.srchtext = ''
+        testobj.srchtype = 0
         testobj.srchno = 1
         testobj.find_next()
         assert capsys.readouterr().out == ""
-        testobj.gui.srchtext = 'x'
+        testobj.srchtext = 'x'
         testobj.find_next()
         assert capsys.readouterr().out == "called Editor.find_next\n"
-        testobj.gui.srchtype = 1
+        testobj.srchtype = 1
         testobj.find_next()
         assert testobj.srchno == 2
         assert capsys.readouterr().out == "called MainWindow.go_to_result\n"
@@ -2527,15 +2658,15 @@ class TestMainWindow:
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.go_to_result = self.mocker.go_to_result
-        testobj.gui.srchtext = ''
-        testobj.gui.srchtype = 0
+        testobj.srchtext = ''
+        testobj.srchtype = 0
         testobj.srchno = 1
         testobj.find_prev()
         assert capsys.readouterr().out == ""
-        testobj.gui.srchtext = 'x'
+        testobj.srchtext = 'x'
         testobj.find_prev()
         assert capsys.readouterr().out == "called Editor.find_prev\n"
-        testobj.gui.srchtype = 1
+        testobj.srchtype = 1
         testobj.find_prev()
         assert testobj.srchno == 0
         assert capsys.readouterr().out == "called MainWindow.go_to_result\n"
@@ -2557,7 +2688,7 @@ class TestMainWindow:
         testobj.gui.tree.getitemkids = mock_getitemkids
         testobj.gui.tree.getitemtitle = mock_getitemtitle
         # testobj.first_title = 'first'
-        testobj.gui.srchtype = 1
+        testobj.srchtype = 1
         assert testobj.search_from('parent') == [([0], 'title', 'child1 title', 'child1 title'),
                                                  ([0, 0], 'title', 'child1 title', 'child3 title'),
                                                  ([1], 'title', 'child2 title', 'child2 title')]
@@ -2574,7 +2705,7 @@ class TestMainWindow:
                                            "called Tree.getitemtext with args ('child2',)\n"
                                            "called Gui.find_needle with arg 'child2 title'\n"
                                            "called Tree.getitemkids with arg 'child2'\n")
-        testobj.gui.srchtype = 2
+        testobj.srchtype = 2
         assert testobj.search_from('parent') == [([0], 'text', 'child1 title', 'child1 title'),
                                                  ([0, 0], 'text', 'child1 title', 'child3 title'),
                                                  ([1], 'text', 'child2 title', 'child2 title')]
@@ -2591,7 +2722,7 @@ class TestMainWindow:
                                            "called Tree.getitemtext with args ('child2',)\n"
                                            "called Gui.find_needle with arg 'item text'\n"
                                            "called Tree.getitemkids with arg 'child2'\n")
-        testobj.gui.srchtype = 3
+        testobj.srchtype = 3
         assert testobj.search_from('parent') == [([0], 'title', 'child1 title', 'child1 title'),
                                                  ([0], 'text', 'child1 title', 'child1 title'),
                                                  ([0, 0], 'title', 'child1 title', 'child3 title'),
@@ -2621,7 +2752,7 @@ class TestMainWindow:
         monkeypatch.setattr(testee.gui, 'show_message', mock_show_message)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.search_results = [['x'], ['y'], ['z']]
-        testobj.gui.srchwrap = False
+        testobj.srchwrap = False
         testobj.srchno = 0
         testobj.go_to_result()
         assert testobj.srchno == 0
@@ -2631,12 +2762,12 @@ class TestMainWindow:
         assert testobj.srchno == 0
         assert capsys.readouterr().out == (
                 f"called gui.show_message with args ({testobj.gui}, 'No prior result')\n")
-        testobj.gui.srchwrap = True
+        testobj.srchwrap = True
         testobj.srchno = -1
         testobj.go_to_result()
         assert testobj.srchno == 2
         assert capsys.readouterr().out == "called Gui.goto_searchresult with arg 'z'\n"
-        testobj.gui.srchwrap = False
+        testobj.srchwrap = False
         testobj.srchno = 2
         testobj.go_to_result()
         assert testobj.srchno == 2
@@ -2646,7 +2777,7 @@ class TestMainWindow:
         assert testobj.srchno == 2
         assert capsys.readouterr().out == (
                 f"called gui.show_message with args ({testobj.gui}, 'No next result')\n")
-        testobj.gui.srchwrap = True
+        testobj.srchwrap = True
         testobj.srchno = 3
         testobj.go_to_result()
         assert testobj.srchno == 0
@@ -3100,20 +3231,209 @@ class TestMainWindow:
         """unittest for MainWindow.setup_viewmenu
         """
         counter = 0
-        def mock_add(arg):
+        def mock_add(*args):
             nonlocal counter
-            print(f"called MainGui.add_viewmenu_option with arg '{arg}'")
+            print("called MainGui.add_viewmenu_option with args", args)
             counter += 1
             return f'action-{counter}'
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.opts = {'ViewNames': ['a view', 'also a view',], 'ActiveView': 1}
+        testobj.clear_viewmenu = self.mocker.clear_viewmenu
+        testobj.check_viewmenu_option = self.mocker.check_viewmenu_option
         testobj.gui.add_viewmenu_option = mock_add
         testobj.setup_viewmenu()
         assert capsys.readouterr().out == (
-                "called MainGui.clear_viewmenu\n"
-                "called MainGui.add_viewmenu_option with arg '&1 a view'\n"
-                "called MainGui.add_viewmenu_option with arg '&2 also a view'\n"
-                "called MainGui.check_viewmenu_option with arg 'action-2'\n")
+                "called MainWindow.clear_viewmenu\n"
+                "called MainGui.add_viewmenu_option with args"
+                f" ('&1 a view', {testobj.select_view_from_menu})\n"
+                "called MainGui.add_viewmenu_option with args"
+                f" ('&2 also a view', {testobj.select_view_from_menu})\n"
+                "called MainWindow.check_viewmenu_option with args ('action-2',)\n")
+
+    def test_clear_viewmenu(self, monkeypatch, capsys):
+        """unittest for MainWindow.clear_viewmenu
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.viewmenu = 'viewmenu'
+        testobj.clear_viewmenu()
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.remove_menuoption with args ('viewmenu', '1 xxx')\n"
+                "called MainGui.remove_menuoption with args ('viewmenu', '2 yyy')\n"
+                "called MainGui.remove_menuoption with args ('viewmenu', '3 zzz')\n")
+
+    def test_uncheck_viewmenu_option(self, monkeypatch, capsys):
+        """unittest for MainWindow.uncheck_viewmenu_option
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.opts = {'ActiveView': 1}
+        testobj.uncheck_viewmenu_option()
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', False)\n")
+
+    def test_check_viewmenu_option(self, monkeypatch, capsys):
+        """unittest for MainWindow.check_viewmenu_option
+        """
+        def mock_get_state(arg):
+            print(f"called MainGui.get_viewmenuoption_state with arg {arg}")
+            if arg == '2 yyy':
+                return True
+            return False
+        def mock_get_text(arg):
+            print(f"called MainGui.get_menuitem_text with arg '{arg}'")
+            return arg
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.get_viewmenuoption_state = mock_get_state
+        testobj.gui.get_menuitem_text= mock_get_text
+        testobj.check_viewmenu_option('1 xxx')
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.check_menuitem_option with args ('1 xxx', True)\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', False)\n"
+                "called MainGui.get_menuitem_text with arg '3 zzz'\n"
+                "called MainGui.get_viewmenuoption_state with arg 3 zzz\n")
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.check_viewmenu_option('')
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.get_menuitem_text with arg '3 zzz'\n"
+                "called MainGui.get_viewmenuoption_state with arg 3 zzz\n")
+
+    def test_check_next_viewmenu_option(self, monkeypatch, capsys):
+        """unittest for MainWindow.check_next_viewmenu_option
+        """
+        def mock_get():
+            print("called MainGui.get_viewmenu_options")
+            return []
+        def mock_get_state(arg):
+            print(f"called MainGui.get_viewmenuoption_state with arg {arg}")
+            if arg == '1 xxx':
+                return True
+            return False
+        def mock_get_state_2(arg):
+            print(f"called MainGui.get_viewmenuoption_state with arg {arg}")
+            if arg == '3 zzz':
+                return True
+            return False
+        def mock_get_state_3(arg):
+            print(f"called MainGui.get_viewmenuoption_state with arg {arg}")
+            if arg == '2 yyy':
+                return True
+            return False
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.check_next_viewmenu_option()
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.get_viewmenuoption_state with arg 3 zzz\n")
+        testobj.gui.get_viewmenuoption_state = mock_get_state
+        testobj.check_next_viewmenu_option()
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.check_menuitem_option with args ('1 xxx', False)\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', True)\n")
+        testobj.gui.get_viewmenuoption_state = mock_get_state_2
+        testobj.check_next_viewmenu_option()
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.get_viewmenuoption_state with arg 3 zzz\n"
+                "called MainGui.check_menuitem_option with args ('3 zzz', False)\n"
+                "called MainGui.check_menuitem_option with args ('1 xxx', True)\n")
+        testobj.gui.get_viewmenuoption_state = mock_get_state_3
+        testobj.check_next_viewmenu_option()
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', False)\n"
+                "called MainGui.check_menuitem_option with args ('3 zzz', True)\n")
+        testobj.gui.get_viewmenuoption_state = mock_get_state
+        testobj.check_next_viewmenu_option(prev=True)
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.check_menuitem_option with args ('1 xxx', False)\n"
+                "called MainGui.check_menuitem_option with args ('3 zzz', True)\n")
+        testobj.gui.get_viewmenuoption_state = mock_get_state_2
+        testobj.check_next_viewmenu_option(prev=True)
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.get_viewmenuoption_state with arg 3 zzz\n"
+                "called MainGui.check_menuitem_option with args ('3 zzz', False)\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', True)\n")
+        testobj.gui.get_viewmenuoption_state = mock_get_state_3
+        testobj.check_next_viewmenu_option(prev=True)
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_viewmenuoption_state with arg 1 xxx\n"
+                "called MainGui.get_viewmenuoption_state with arg 2 yyy\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', False)\n"
+                "called MainGui.check_menuitem_option with args ('1 xxx', True)\n")
+        testobj.gui.get_viewmenu_options = mock_get
+        testobj.check_next_viewmenu_option()
+        assert capsys.readouterr().out == "called MainGui.get_viewmenu_options\n"
+
+    def test_rename_viewmenu_option(self, monkeypatch, capsys):
+        """unittest for MainWindow.rename_viewmenu_option
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.opts = {'ActiveView': 1}
+        testobj.rename_viewmenu_option('newname')
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MaimGui.set_menuitem_text with args ('2 yyy', '2 newname')\n")
+
+    def test_remove_viewmenu_option(self, monkeypatch, capsys):
+        """unittest for MainWindow.remove_viewmenu_option
+        """
+        def mock_get_text(arg):
+            print(f"called MainGui.get_menuitem_text with arg '{arg}'")
+            return arg
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.viewmenu = 'viewmenu'
+        testobj.gui.get_menuitem_text = mock_get_text
+        testobj.remove_viewmenu_option('xxx')
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.remove_menuoption with args ('viewmenu', '1 xxx')\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MaimGui.set_menuitem_text with args ('2 yyy', '1 yyy')\n"
+                "called MainGui.get_menuitem_text with arg '3 zzz'\n"
+                "called MaimGui.set_menuitem_text with args ('3 zzz', '2 zzz')\n"
+                "called MainGui.check_menuitem_option with args ('2 yyy', True)\n")
+        testobj.remove_viewmenu_option('yyy')
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MainGui.remove_menuoption with args ('viewmenu', '2 yyy')\n"
+                "called MainGui.get_menuitem_text with arg '3 zzz'\n"
+                "called MaimGui.set_menuitem_text with args ('3 zzz', '2 zzz')\n"
+                "called MainGui.check_menuitem_option with args ('3 zzz', True)\n")
+        testobj.remove_viewmenu_option('zzz')
+        assert capsys.readouterr().out == (
+                "called MainGui.get_viewmenu_options\n"
+                "called MainGui.get_menuitem_text with arg '1 xxx'\n"
+                "called MainGui.get_menuitem_text with arg '2 yyy'\n"
+                "called MainGui.get_menuitem_text with arg '3 zzz'\n"
+                "called MainGui.remove_menuoption with args ('viewmenu', '3 zzz')\n"
+                "called MainGui.check_menuitem_option with args ('1 xxx', True)\n")
 
     def test_write(self, monkeypatch, capsys):
         """unittest for MainWindow.write
@@ -3172,8 +3492,18 @@ class TestMainWindow:
     def test_confirm(self, monkeypatch, capsys):
         """unittest for MainWindow.confirm
         """
+        def mock_show_dialog_2(*args):
+            """stub for doctree.gui.show_dialog: dialog confirmed
+            """
+            print('called gui.show_dialog with args', args)
+            return True, True
+        class MockCheck:
+            def __init__(self, *args, **kwargs):
+                print('called SetCheck with args', args, kwargs)
+                self.gui = 'CheckDialog'
         def mock_write(*args, **kwargs):
             print('called dml.write_to_files with args', args, kwargs)
+        monkeypatch.setattr(testee, 'SetCheck', MockCheck)
         monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog)
         monkeypatch.setattr(testee.dml, 'write_to_files', mock_write)
         testobj = self.setup_testobj(monkeypatch, capsys)
@@ -3185,18 +3515,530 @@ class TestMainWindow:
         testobj.temp_imagepath = 'yyy'
         testobj.confirm(setting='this')
         assert capsys.readouterr().out == ("")
-        testobj.opts = {'this': 'that'}
+        testobj.opts = {'this': True}
         testobj.images_embedded = True
         testobj.confirm(setting='this')
         assert capsys.readouterr().out == (
-                f"called gui.show_dialog with args ({testobj.gui},"
-                f" {testee.gui.CheckDialog}, {{'message': '', 'option': 'this'}})\n"
-                "called dml.write_to_files with args ('xx', {'this': 'that'}, ['view1'],"
+                f"called SetCheck with args ({testobj},) {{'message': ''}}\n"
+                f"called gui.show_dialog with args ({testobj.dp},)\n"
+                "called dml.write_to_files with args ('xx', {'this': True}, ['view1'],"
                 " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': False}\n")
         testobj.images_embedded = False
+        monkeypatch.setattr(testee.gui, 'show_dialog', mock_show_dialog_2)
         testobj.confirm(setting='this', textitem='zzz')
         assert capsys.readouterr().out == (
-                f"called gui.show_dialog with args ({testobj.gui},"
-                f" {testee.gui.CheckDialog}, {{'message': 'zzz', 'option': 'this'}})\n"
-                "called dml.write_to_files with args ('xx', {'this': 'that'}, ['view1'],"
+                f"called SetCheck with args ({testobj},) {{'message': 'zzz'}}\n"
+                f"called gui.show_dialog with args ({testobj.dp},)\n"
+                "called dml.write_to_files with args ('xx', {'this': False}, ['view1'],"
                 " {1: 'x'}, [2], 'yyy') {'backup': False, 'save_images': True}\n")
+
+
+class TestSetOptions:
+    """Unittests for main.SetOptions
+    """
+    def test_init(self, monkeypatch, capsys):
+        """Unittest for SetOptions.__init__
+        """
+        class MockDialog:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called OptionsDialog.__init__ with args', args, kwargs)
+            def add_checkbox_line_to_grid(self, *args):
+                print('called OptionsDialog.add_checkbox_line_to_grid with args', args)
+                return 'check'
+            def add_buttonbox(self, **kwargs):
+                print('called OptionsDialog.add_buttonbox with args', kwargs)
+        monkeypatch.setattr(testee.gui, 'OptionsDialog', MockDialog)
+        parent = types.SimpleNamespace(opts={'x': 'a', 'y': 'b'}, gui='mainwindow')
+        testobj = testee.SetOptions(parent, {'x': 'xxxx', 'y': 'yyyy'})
+        assert testobj.parent == parent
+        assert not testobj.dialog_data
+        assert testobj.controls == [('x', 'check'), ('y', 'check')]
+        assert isinstance(testobj.gui, testee.gui.OptionsDialog)
+        assert capsys.readouterr().out == (
+                "called OptionsDialog.__init__ with args"
+                f" ({testobj}, '{parent.gui}') {{'title': 'DocTree Settings'}}\n"
+                "called OptionsDialog.add_checkbox_line_to_grid with args (1, 'xxxx', 'a')\n"
+                "called OptionsDialog.add_checkbox_line_to_grid with args (2, 'yyyy', 'b')\n"
+                "called OptionsDialog.add_buttonbox with args"
+                " {'okvalue': '&Apply', 'cancelvalue': '&Close'}\n")
+
+    def test_confirm(self, monkeypatch, capsys):
+        """Unittest for SetOptions.confirm
+        """
+        def mock_init(self, *args):
+            print('called SetOptions.__init__ with args', args)
+        def mock_get(*args):
+            print('called OptionsDialog.get_checkbox_value with args', args)
+            return 'value'
+        parent = 'parent'
+        monkeypatch.setattr(testee.SetOptions, '__init__', mock_init)
+        testobj = testee.SetOptions(parent, 'title', {'x': 'xxxx', 'y': 'yyyy'})
+        testobj.controls = [('x', 'checkbox'), ('y', 'checkbox2')]
+        testobj.gui = types.SimpleNamespace(get_checkbox_value=mock_get)
+        assert testobj.confirm() == {'x': 'value', 'y': 'value'}
+        assert capsys.readouterr().out == (
+                "called SetOptions.__init__ with args"
+                " ('parent', 'title', {'x': 'xxxx', 'y': 'yyyy'})\n"
+                "called OptionsDialog.get_checkbox_value with args ('checkbox',)\n"
+                "called OptionsDialog.get_checkbox_value with args ('checkbox2',)\n")
+
+
+class TestSetCheck:
+    """Unittests for main.SetCheck
+    """
+    def test_init(self, monkeypatch, capsys):
+        """Unittest for SetCheck.__init__
+        """
+        class MockDialog:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called CheckDialog.__init__ with args', args, kwargs)
+            def add_label(self, message):
+                print(f"called CheckDialog.add_label with arg '{message}'")
+            def add_checkbox(self, *args):
+                print('called CheckDialog.add_checkbox with args', args)
+                return 'check'
+            def add_ok_buttonbox(self):
+                print('called CheckDialog.add_ok_buttonbox')
+        monkeypatch.setattr(testee.gui, 'CheckDialog', MockDialog)
+        parent = types.SimpleNamespace(opts={'x': 'a', 'y': 'b'}, gui='mainwindow')
+        testobj = testee.SetCheck(parent, 'xyz')
+        assert testobj.parent == parent
+        assert not testobj.dialog_data
+        assert isinstance(testobj.gui, testee.gui.CheckDialog)
+        assert testobj.check == 'check'
+        assert capsys.readouterr().out == (
+                "called CheckDialog.__init__ with args"
+                f" ({testobj}, '{parent.gui}') {{'title': 'DocTree'}}\n"
+                "called CheckDialog.add_label with arg 'xyz'\n"
+                'called CheckDialog.add_checkbox with args ("Don\'t show this message again",)\n'
+                "called CheckDialog.add_ok_buttonbox\n")
+
+    def test_confirm(self, monkeypatch, capsys):
+        """Unittest for SetCheck.confirm
+        """
+        def mock_init(self, *args):
+            print('called CheckDialog.__init__ with args', args)
+        def mock_get(*args):
+            print('called CheckDialog.get_checkbox_value with args', args)
+            return 'value'
+        monkeypatch.setattr(testee.SetCheck, '__init__', mock_init)
+        parent = 'parent'
+        testobj = testee.SetCheck(parent, 'title', 'x', 'y', 'z')
+        assert capsys.readouterr().out == (
+                "called CheckDialog.__init__ with args ('parent', 'title', 'x', 'y', 'z')\n")
+        testobj.check = 'checkbox'
+        testobj.gui = types.SimpleNamespace(get_checkbox_value=mock_get)
+        assert testobj.confirm() == 'value'
+        assert capsys.readouterr().out == (
+                "called CheckDialog.get_checkbox_value with args ('checkbox',)\n")
+
+
+class TestSetSearch:
+    """Unittests for main.SetSearch
+    """
+    def test_init(self, monkeypatch, capsys):
+        """unittest for SetSearch.__init__
+        """
+        class MockDialog:
+            "stub"
+            def __init__(self, *args, **kwargs):
+                print('called SearchDialog.__init__ with args', args, kwargs)
+            def add_label(self, message):
+                print(f"called SearchDialog.add_label with arg '{message}'")
+            def add_textentry(self):
+                print("called SearchDialog.add_textentry")
+                return 'textentry'
+            def build_search_selector(self, *args):
+                print("called SearchDialog.build_search_selector with args", args)
+                return 'check1', 'check2', 'check3'
+            def build_options_selector(self, *args):
+                print("called SearchDialog.build_search_options with args", args)
+                return 'check4', 'check5'
+            def add_vertical_space(self, *args):
+                print('called SearchDialog.add_vertical_space with args', args)
+            def add_checkbox(self, *args):
+                print('called SearchDialog.add_checkbox with args', args)
+                return 'check'
+            def add_buttons(self, *args):
+                print('called SearchDialog.add_buttons with args', args)
+            def set_checkbox_value(self, *args):
+                print('called SearchDialog.set_checkbox_value with args', args)
+            def set_textentry_value(self, *args):
+                print('called SearchDialog.set_textentry_value with args', args)
+            def set_modechecks(self):
+                print('called SearchDialog.set_modechecks')
+            def set_focus_to(self, *args):
+                print('called SearchDialog.set_focus_to with args', args)
+        monkeypatch.setattr(testee.gui, 'SearchDialog', MockDialog)
+        parent = types.SimpleNamespace(srchtext='', srchflags={},
+                                       srchlist=False, srchwrap=False, gui='MainGui')
+        testobj = testee.SetSearch(parent, mode=0)
+        assert isinstance(testobj.gui, testee.gui.SearchDialog)
+        assert testobj.t_zoek == 'textentry'
+        assert (testobj.c_titl, testobj.c_text, testobj.c_curr) == ('check1', 'check2', 'check3')
+        assert (testobj.c_hlett, testobj.c_woord) == ('check4', 'check5')
+        assert (testobj.c_wrap, testobj.c_lijst) == ('check', 'check')
+        assert capsys.readouterr().out == (
+                f"called SearchDialog.__init__ with args ({testobj}, 'MainGui') {{}}\n"
+                "called SearchDialog.add_label with arg 'Zoek naar: '\n"
+                "called SearchDialog.add_textentry\n"
+                "called SearchDialog.build_search_selector with args"
+                " (['Alle titels', 'Alle teksten', 'Alleen huidige tekst'],"
+                f" {testobj.gui.set_modechecks})\n"
+                "called SearchDialog.build_search_options with args"
+                " (['Hoofdlettergevoelig', 'Hele woorden'],)\n"
+                "called SearchDialog.add_vertical_space with args (10,)\n"
+                "called SearchDialog.add_checkbox with args ('Wrap around',)\n"
+                "called SearchDialog.add_checkbox with args ('Toon lijst met zoekresultaten',)\n"
+                "called SearchDialog.add_buttons with args ()\n"
+                "called SearchDialog.set_checkbox_value with args ('check3', True)\n"
+                "called SearchDialog.set_focus_to with args ('textentry',)\n")
+        parent.srchtext = 'xxx'
+        parent.srchflags['case'] = True
+        parent.srchlist = True
+        parent.srchwrap = True
+        testobj = testee.SetSearch(parent, mode=1)
+        assert isinstance(testobj.gui, testee.gui.SearchDialog)
+        assert testobj.t_zoek == 'textentry'
+        assert (testobj.c_titl, testobj.c_text, testobj.c_curr) == ('check1', 'check2', 'check3')
+        assert (testobj.c_hlett, testobj.c_woord) == ('check4', 'check5')
+        assert (testobj.c_wrap, testobj.c_lijst) == ('check', 'check')
+        assert capsys.readouterr().out == (
+                f"called SearchDialog.__init__ with args ({testobj}, 'MainGui') {{}}\n"
+                "called SearchDialog.add_label with arg 'Zoek naar: '\n"
+                "called SearchDialog.add_textentry\n"
+                "called SearchDialog.build_search_selector with args"
+                " (['Alle titels', 'Alle teksten', 'Alleen huidige tekst'],"
+                f" {testobj.gui.set_modechecks})\n"
+                "called SearchDialog.build_search_options with args"
+                " (['Hoofdlettergevoelig', 'Hele woorden'],)\n"
+                "called SearchDialog.add_vertical_space with args (10,)\n"
+                "called SearchDialog.add_checkbox with args ('Wrap around',)\n"
+                "called SearchDialog.add_checkbox with args ('Toon lijst met zoekresultaten',)\n"
+                "called SearchDialog.add_buttons with args ()\n"
+                "called SearchDialog.set_checkbox_value with args ('check1', True)\n"
+                "called SearchDialog.set_textentry_value with args ('textentry', 'xxx')\n"
+                "called SearchDialog.set_checkbox_value with args ('check4', True)\n"
+                "called SearchDialog.set_checkbox_value with args ('check', True)\n"
+                "called SearchDialog.set_checkbox_value with args ('check', True)\n"
+                "called SearchDialog.set_focus_to with args ('textentry',)\n")
+        parent.srchflags['words'] = True
+        testobj = testee.SetSearch(parent, mode=2)
+        assert isinstance(testobj.gui, testee.gui.SearchDialog)
+        assert testobj.t_zoek == 'textentry'
+        assert (testobj.c_titl, testobj.c_text, testobj.c_curr) == ('check1', 'check2', 'check3')
+        assert (testobj.c_hlett, testobj.c_woord) == ('check4', 'check5')
+        assert (testobj.c_wrap, testobj.c_lijst) == ('check', 'check')
+        assert capsys.readouterr().out == (
+                f"called SearchDialog.__init__ with args ({testobj}, 'MainGui') {{}}\n"
+                "called SearchDialog.add_label with arg 'Zoek naar: '\n"
+                "called SearchDialog.add_textentry\n"
+                "called SearchDialog.build_search_selector with args"
+                " (['Alle titels', 'Alle teksten', 'Alleen huidige tekst'],"
+                f" {testobj.gui.set_modechecks})\n"
+                "called SearchDialog.build_search_options with args"
+                " (['Hoofdlettergevoelig', 'Hele woorden'],)\n"
+                "called SearchDialog.add_vertical_space with args (10,)\n"
+                "called SearchDialog.add_checkbox with args ('Wrap around',)\n"
+                "called SearchDialog.add_checkbox with args ('Toon lijst met zoekresultaten',)\n"
+                "called SearchDialog.add_buttons with args ()\n"
+                "called SearchDialog.set_checkbox_value with args ('check2', True)\n"
+                "called SearchDialog.set_textentry_value with args ('textentry', 'xxx')\n"
+                "called SearchDialog.set_checkbox_value with args ('check4', True)\n"
+                "called SearchDialog.set_checkbox_value with args ('check5', True)\n"
+                "called SearchDialog.set_checkbox_value with args ('check', True)\n"
+                "called SearchDialog.set_checkbox_value with args ('check', True)\n"
+                "called SearchDialog.set_focus_to with args ('textentry',)\n")
+        parent.srchtext = ''
+        parent.srchflags = {}
+        parent.srchlist = False
+        parent.srchwrap = False
+        testobj = testee.SetSearch(parent, mode=2)
+        assert isinstance(testobj.gui, testee.gui.SearchDialog)
+        assert testobj.t_zoek == 'textentry'
+        assert (testobj.c_titl, testobj.c_text, testobj.c_curr) == ('check1', 'check2', 'check3')
+        assert (testobj.c_hlett, testobj.c_woord) == ('check4', 'check5')
+        assert (testobj.c_wrap, testobj.c_lijst) == ('check', 'check')
+        assert capsys.readouterr().out == (
+                f"called SearchDialog.__init__ with args ({testobj}, 'MainGui') {{}}\n"
+                "called SearchDialog.add_label with arg 'Zoek naar: '\n"
+                "called SearchDialog.add_textentry\n"
+                "called SearchDialog.build_search_selector with args"
+                " (['Alle titels', 'Alle teksten', 'Alleen huidige tekst'],"
+                f" {testobj.gui.set_modechecks})\n"
+                "called SearchDialog.build_search_options with args"
+                " (['Hoofdlettergevoelig', 'Hele woorden'],)\n"
+                "called SearchDialog.add_vertical_space with args (10,)\n"
+                "called SearchDialog.add_checkbox with args ('Wrap around',)\n"
+                "called SearchDialog.add_checkbox with args ('Toon lijst met zoekresultaten',)\n"
+                "called SearchDialog.add_buttons with args ()\n"
+                "called SearchDialog.set_checkbox_value with args ('check2', True)\n"
+                "called SearchDialog.set_focus_to with args ('textentry',)\n")
+
+    def test_set_search_parameters(self, monkeypatch, capsys):
+        """unittest fror SetSearch.set_search_parameters
+        """
+        def mock_get_text(*args):
+            print("called SearchDialog.get_textentry_value with args", args)
+            return ''
+        def mock_get_text_2(*args):
+            print("called SearchDialog.get_textentry_value with args", args)
+            return 'xxx'
+        def mock_get_check(*args):
+            print("called SearchDialog.get_checkbox_value with args", args)
+            return ''
+        def mock_get_check_2(*args):
+            print("called SearchDialog.get_checkbox_value with args", args)
+            return args[0]
+        def mock_show(*args):
+            print('called gui.show_message with args', args)
+        def mock_init(self, *args):
+            print('called SetSearch.__init___ with args', args)
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show)
+        monkeypatch.setattr(testee.SetSearch, '__init__', mock_init)
+        testobj = testee.SetSearch()
+        assert capsys.readouterr().out == "called SetSearch.__init___ with args ()\n"
+        testobj.gui = types.SimpleNamespace(get_textentry_value=mock_get_text,
+                                            get_checkbox_value=mock_get_check)
+        testobj.parent = types.SimpleNamespace(srchflags={})
+        testobj.t_zoek = 'zoek'
+        testobj.c_curr = 'current'
+        testobj.c_titl = 'titles'
+        testobj.c_text = 'texts'
+        testobj.c_hlett = 'case'
+        testobj.c_woord = 'words'
+        testobj.c_lijst = 'list'
+        testobj.c_wrap = 'wrap'
+        assert not testobj.set_search_parameters()
+        assert capsys.readouterr().out == (
+                "called SearchDialog.get_textentry_value with args ('zoek',)\n"
+                f"called gui.show_message with args ({testobj.gui}, 'Wel iets te zoeken opgeven')\n")
+        testobj.gui.get_textentry_value = mock_get_text_2
+        assert not testobj.set_search_parameters()
+        assert capsys.readouterr().out == (
+                "called SearchDialog.get_textentry_value with args ('zoek',)\n"
+                "called SearchDialog.get_checkbox_value with args ('titles',)\n"
+                "called SearchDialog.get_checkbox_value with args ('texts',)\n"
+                "called SearchDialog.get_checkbox_value with args ('current',)\n"
+                f"called gui.show_message with args ({testobj.gui}, 'Wel een zoek modus kiezen')\n")
+        testobj.gui.get_checkbox_value = mock_get_check_2
+        assert testobj.set_search_parameters()
+        assert testobj.parent.srchtext == 'xxx'
+        assert testobj.parent.srchtype == 3
+        assert testobj.parent.srchflags == {'case': 'case', 'words': 'words'}
+        assert testobj.parent.srchlist == 'list'
+        assert testobj.parent.srchwrap == 'wrap'
+        assert capsys.readouterr().out == (
+                "called SearchDialog.get_textentry_value with args ('zoek',)\n"
+                "called SearchDialog.get_checkbox_value with args ('titles',)\n"
+                "called SearchDialog.get_checkbox_value with args ('texts',)\n"
+                "called SearchDialog.get_checkbox_value with args ('case',)\n"
+                "called SearchDialog.get_checkbox_value with args ('words',)\n"
+                "called SearchDialog.get_checkbox_value with args ('list',)\n"
+                "called SearchDialog.get_checkbox_value with args ('wrap',)\n")
+
+
+class TestResults:
+    """Unittests for main.Results
+    """
+    def test_init(self, monkeypatch, capsys):
+        """unittest for Results.__init__
+        """
+        class MockDialog:
+            def __init__(self, *args):
+                print('called ResultsDialog.__init__ with args', args)
+            def set_toptext(self, *args):
+                print('called ResultsDialog.set_toptext with args', args)
+            def add_results_list(self, *args):
+                print('called ResultsDialog.add_results_list with args', args)
+                return 'results list'
+            def add_buttons(self, *args):
+                print('called ResultsDialog.add_buttons with args', args)
+                return 'x', 'y', 'nextbutton', 'prevbutton', 'z'
+            def disable_widget(self, *args):
+                print('called ResultsDialog.disable_widget with args', args)
+            def accept(self):
+                print('called ResultsDialog.accept')
+        def mock_populate(*args):
+            print('called Results.populate_list')
+        def mock_determine(*args):
+            print('called Results.determine_where')
+        monkeypatch.setattr(testee.Results, 'populate_list', mock_populate)
+        monkeypatch.setattr(testee.Results, 'determine_where', mock_determine)
+        monkeypatch.setattr(testee.gui, 'ResultsDialog', MockDialog)
+        parent = types.SimpleNamespace(srchtext='xxx')
+        testobj = testee.Results(parent)
+        assert capsys.readouterr().out == (
+                f"called ResultsDialog.__init__ with args ({testobj}, {testobj.parent})\n"
+                "called Results.determine_where\n"
+                "called ResultsDialog.set_toptext with args"
+                " ('Showing results of searching for `xxx` in all None\\n"
+                "Doubleclick to go to an entry',)\n"
+                "called ResultsDialog.add_results_list with args"
+                f" (('Node Root', 'Node Title'), {testobj.goto_selected})\n"
+                "called Results.populate_list\n"
+                "called ResultsDialog.add_buttons with args"
+                f" ([('&Goto', {testobj.goto_selected}, True),"
+                f" ('g&Oto and Close', {testobj.goto_and_close}, True),"
+                f" ('Goto &Next', {testobj.goto_next}, True),"
+                f" ('Goto &Previous', {testobj.goto_prev}, False),"
+                f" ('&Close', {testobj.gui.accept}, True)],)\n"
+                "called ResultsDialog.disable_widget with args ('prevbutton',)\n")
+
+    def setup_testobj(self, monkeypatch, capsys):
+        def mock_init(self):
+            print('called Results.__init__')
+        monkeypatch.setattr(testee.Results, '__init__', mock_init)
+        testobj = testee.Results()
+        assert capsys.readouterr().out == 'called Results.__init__\n'
+        return testobj
+
+    def test_determine_where(self, monkeypatch, capsys):
+        """unittest for Results.determine_where
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.parent = types.SimpleNamespace()
+        testobj.parent.srchtype = 0
+        assert testobj.determine_where() == ''
+        testobj.parent.srchtype = 1
+        assert testobj.determine_where() == 'titles'
+        testobj.parent.srchtype = 2
+        assert testobj.determine_where() == 'texts'
+        testobj.parent.srchtype = 3
+        assert testobj.determine_where() == 'titles and texts'
+
+    def test_populate_list(self, monkeypatch, capsys):
+        """unittest for Results.populate_list
+        """
+        def mock_add(*args):
+            print('called ResultsDialog.add_item_to_list with args', args)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.parent = types.SimpleNamespace(master=types.SimpleNamespace())
+        testobj.gui = types.SimpleNamespace(add_item_to_list=mock_add)
+        testobj.parent.master.search_results = [(1, 'title', 'xxx', 'yyy'),
+                                                (1, 'text', 'xxx', 'yyy'),
+                                                (2, 'text', 'aaa', 'bbb'),
+                                                (3, 'title', 'qqq', 'rrr')]
+        testobj.populate_list('listbox')
+        assert capsys.readouterr().out == (
+                "called ResultsDialog.add_item_to_list with args ('listbox', 1, 'xxx', 'yyy')\n"
+                "called ResultsDialog.add_item_to_list with args ('listbox', 2, 'aaa', 'bbb')\n"
+                "called ResultsDialog.add_item_to_list with args ('listbox', 3, 'qqq', 'rrr')\n")
+
+    def test_goto_next(self, monkeypatch, capsys):
+        """unittest for ResultsDialog.goto_next
+        """
+        class MockGui:
+            def get_next_item(self, arg):
+                print(f"called ResultsDialog.get_next with arg '{arg}'")
+                return 'next'
+            def setselection(self, *args):
+                print('called ResultsDialog.setselection with args', args)
+            def disable_widget(self, *args):
+                print('called ResultsDialog.disable_widget with args', args)
+        def mock_goto():
+            print('called Results.goto_selected')
+        def mock_show(*args):
+            print('called show_message with args', args)
+        def mock_next(arg):
+            print(f"called ResultsDialog.get_next with arg '{arg}'")
+            return ''
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui = MockGui()
+        testobj.goto_selected = mock_goto
+        testobj.next_button = 'nextbutton'
+        testobj.result_list = 'result list'
+        testobj.goto_next()
+        assert capsys.readouterr().out == (
+                "called ResultsDialog.get_next with arg 'result list'\n"
+                "called ResultsDialog.setselection with args ('result list', 'next')\n"
+                "called Results.goto_selected\n")
+        testobj.gui.get_next_item = mock_next
+        testobj.goto_next()
+        assert capsys.readouterr().out == (
+                "called ResultsDialog.get_next with arg 'result list'\n"
+                "called ResultsDialog.disable_widget with args ('nextbutton',)\n"
+                f"called show_message with args ({testobj}, 'This is the last one')\n")
+
+    def test_goto_prev(self, monkeypatch, capsys):
+        """unittest for Results.goto_prev
+        """
+        class MockGui:
+            def get_prev_item(self, arg):
+                print(f"called ResultsDialog.get_prev with arg '{arg}'")
+                return 'prev'
+            def setselection(self, *args):
+                print('called ResultsDialog.setselection with args', args)
+            def disable_widget(self, *args):
+                print('called ResultsDialog.disable_widget with args', args)
+        def mock_goto():
+            print('called Results.goto_selected')
+        def mock_show(*args):
+            print('called show_message with args', args)
+        def mock_prev(arg):
+            print(f"called ResultsDialog.get_prev with arg '{arg}'")
+            return ''
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui = MockGui()
+        testobj.goto_selected = mock_goto
+        testobj.prev_button = 'prevbutton'
+        testobj.result_list = 'result list'
+        testobj.goto_prev()
+        assert capsys.readouterr().out == (
+                "called ResultsDialog.get_prev with arg 'result list'\n"
+                "called ResultsDialog.setselection with args ('result list', 'prev')\n"
+                "called Results.goto_selected\n")
+        testobj.gui.get_prev_item = mock_prev
+        testobj.goto_prev()
+        assert capsys.readouterr().out == (
+                "called ResultsDialog.get_prev with arg 'result list'\n"
+                "called ResultsDialog.disable_widget with args ('prevbutton',)\n"
+                f"called show_message with args ({testobj}, 'This is the first one')\n")
+
+    def test_goto_selected(self, monkeypatch, capsys):
+        """unittest for Results.goto_selected
+        """
+        class MockGui:
+            def enable_button_if_disabled(self, arg):
+                print(f"called ResultsDialog.enable_button_if_disabled with arg '{arg}'")
+            def getselection(self, arg):
+                print(f"called ResultsDialog.getselection with arg '{arg}'")
+            def get_item_data(self, arg):
+                print(f"called ResultsDialog.get_item_data with arg '{arg}'")
+                return 'xxx'
+        def mock_goto():
+            print('called Editor.go_to_result')
+            return 'resultitem'
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.parent = types.SimpleNamespace(master=types.SimpleNamespace())
+        testobj.parent.master.go_to_result = mock_goto
+        testobj.gui = MockGui()
+        testobj.next_button = 'nextbutton'
+        testobj.prev_button = 'prevbutton'
+        testobj.result_list = 'result list'
+        testobj.goto_selected()
+        assert testobj.parent.master.srchno == "xxx"
+        assert capsys.readouterr().out == (
+                "called ResultsDialog.enable_button_if_disabled with arg 'nextbutton'\n"
+                "called ResultsDialog.enable_button_if_disabled with arg 'prevbutton'\n"
+                "called ResultsDialog.getselection with arg 'result list'\n"
+                "called ResultsDialog.get_item_data with arg 'None'\n"
+                "called Editor.go_to_result\n")
+
+    def test_goto_and_close(self, monkeypatch, capsys):
+        """unittest for Results.goto_and_close
+        """
+        def mock_goto():
+            print('called Results.goto_selected')
+        def mock_accept():
+            print('called ResultsDialog.accept')
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.goto_selected = mock_goto
+        testobj.gui = types.SimpleNamespace(accept=mock_accept)
+        testobj.goto_and_close()
+        assert capsys.readouterr().out == ("called Results.goto_selected\n"
+                                           "called ResultsDialog.accept\n")
