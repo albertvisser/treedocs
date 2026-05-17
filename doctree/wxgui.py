@@ -11,6 +11,7 @@ import wx.lib.mixins.listctrl as listmix
 import wx.richtext as rt
 import wx.lib.colourselect as csel
 import wx.lib.buttons as wxlb
+from wx import stc
 
 
 def show_message(win, text):
@@ -223,9 +224,12 @@ class MainGui(wx.Frame):
         self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, self.tree)
         self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
-    def create_editor_on_right(self):
+    def create_editor_on_right(self, use_scintilla):
         "create editor"
-        self.editor = EditorPanel(self.splitter)
+        if use_scintilla:
+            self.editor = EditorPanelSC(self.splitter)
+        else:
+            self.editor = EditorPanel(self.splitter)
         self.editor.Enable(False)
         # self.editor.new_content = True
         self.editor.Bind(wx.EVT_KEY_DOWN, self.on_key)
@@ -234,12 +238,13 @@ class MainGui(wx.Frame):
         "create area for status messages"
         self.statbar = self.CreateStatusBar()
 
-    def finalize_display(self):
+    def finalize_display(self, use_scintilla):
         "finish off screen creation"
         self.menu_disabled = True
-        toolbar = self.GetToolBar()
-        self.create_stylestoolbar(toolbar)
-        toolbar.Realize()
+        if not use_scintilla:
+            toolbar = self.GetToolBar()
+            self.create_stylestoolbar(toolbar)
+            toolbar.Realize()
 
         self.splitter.SplitVertically(self.tree, self.editor)
         try:
@@ -1130,6 +1135,98 @@ class EditorPanel(rt.RichTextCtrl):
     # def update_alignright(self, evt):
     #     "het betreffende menuitem aanvinken indien van toepassing"
     #     evt.Check(self.IsSelectionAligned(wx.TEXT_ALIGNMENT_RIGHT))
+
+    def check_dirty(self):
+        "mixin exit to check for modifications"
+        return self.IsModified()
+
+    def mark_dirty(self, value):
+        "mixin exit to manually turn modified flag on/off (mainly intended for off)"
+        self.SetModified(value)
+
+    def openup(self, value):
+        "mixin exit to make text accessible (or not)"
+        self.Enable(value)
+
+    def search_from_start(self):
+        "start search in textarea"
+        # move cursor to start of text
+        # find first position of text and ensure it is visible
+
+    def find_next(self):
+        "search forward in textarea"
+
+    def find_prev(self):
+        "search backwards in textarea"
+
+
+class EditorPanelSC(stc.StyledTextCtrl):
+    "Scintilla widget displaying the note data"
+    def __init__(self, parent):
+        self.parent = parent
+        super().__init__(parent)
+        # font = gui.QFont()
+        # self.setFont(font)
+        self.SetWrapMode(stc.STC_WRAP_WORD)
+        # self.SetBraceMatching(stc.QsciScintilla.BraceMatch.SloppyBraceMatch)
+        # self.SetAutoIndent(True)
+        # self.SetFolding(stc.QsciScintilla.FoldStyle.PlainFoldStyle)
+        self.SetCaretLineVisible(True)
+        self.SetCaretLineBackground(wx.Colour(255, 244, 244))
+        self.SetLexer(stc.STC_LEX_MARKDOWN)
+        # self.setEnabled(False)
+
+    def set_contents(self, data):
+        "load contents into editor"
+        self.Clear()
+        data = str(data)
+        self.SetValue(data)
+        self.Refresh()
+
+    def get_contents(self):
+        "return contents from editor"
+        content = self.GetValue()
+        return content
+
+    def get_text_position(self):
+        """return where the cursor is positioned in the text
+        """
+        return self.GetInsertionPoint()
+
+    def set_text_position(self, pos):
+        """set where the cursor should appear in the text
+        """
+        self.SetInsertionPoint(pos)
+        # self.ScrollIntoView(pos, 0)
+        self.EnsureCaretVisible()
+
+    def undo(self, evt):
+        "relay undo action"
+        self.Undo()
+
+    def redo(self, evt):
+        "relay redo action"
+        self.Redo()
+
+    def cut(self, evt):
+        "relay cut action"
+        self.Cut()
+
+    def copy(self, evt):
+        "relay copy action"
+        self.Copy()
+
+    def paste(self, evt):
+        "relay paste action"
+        self.Paste()
+
+    def select_all(self):
+        "select complete text"
+        self.SelectAll()
+
+    def clear(self):
+        "empty the editor's contents"
+        self.Clear()
 
     def check_dirty(self):
         "mixin exit to check for modifications"

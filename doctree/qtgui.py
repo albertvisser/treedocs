@@ -7,6 +7,7 @@ import subprocess
 import PyQt6.QtGui as gui
 import PyQt6.QtWidgets as qtw
 import PyQt6.QtCore as core
+import PyQt6.Qsci as qsc  # scintilla
 
 
 def show_message(win, text):
@@ -175,9 +176,12 @@ class MainGui(qtw.QMainWindow):
         self.tree = TreePanel(self)
         self.splitter.addWidget(self.tree)
 
-    def create_editor_on_right(self):
+    def create_editor_on_right(self, use_scintilla):
         "create editor"
-        self.editor = EditorPanel(self)
+        if use_scintilla:
+            self.editor = EditorPanelSC(self)
+        else:
+            self.editor = EditorPanel(self)
         self.editor.setReadOnly(True)
         # self.editor.new_content = True
         self.splitter.addWidget(self.editor)
@@ -187,11 +191,12 @@ class MainGui(qtw.QMainWindow):
         self.statusbar = self.statusBar()
         self.statusbar.showMessage('Ready')
 
-    def finalize_display(self):
+    def finalize_display(self, use_scintilla):
         "finish off screen creation"
         self.menu_disabled = False
         self.undo_stack = UndoRedoStack(self)
-        self.create_stylestoolbar()
+        if not use_scintilla:
+            self.create_stylestoolbar()
 
         # dit lijkt in create_stylestoolbar ook gedaan te worden
         # pix = gui.QPixmap(14, 14)
@@ -450,7 +455,8 @@ class MainGui(qtw.QMainWindow):
         action = gui.QAction(optiontext, self)
         action.setStatusTip("switch to this view")
         action.setCheckable(True)
-        action.triggered.connect(callback)
+        # action.triggered.connect(callback)
+        self.viewmenu.triggered.connect(callback)
         self.viewmenu.addAction(action)
         return action
 
@@ -675,6 +681,7 @@ class TreePanel(qtw.QTreeWidget):
 
     def keyReleaseEvent(self, event):
         "event handler for showing a context menu using the keyboard"
+        print('in keyReleaseEvent with arg', event.key())
         if event.key() == core.Qt.Key.Key_Menu:
             item = self.currentItem()
             self.create_popupmenu(item)
@@ -1293,6 +1300,127 @@ class EditorPanel(qtw.QTextEdit):
     # def clear(self):
     #     "empty the editor's contents"
     #     self.editor.clear()
+
+
+class EditorPanelSC(qsc.QsciScintilla):
+    "Scintilla widget displaying the note data"
+    def __init__(self, parent):
+        self.parent = parent
+        super().__init__(parent)
+        # qsc.QsciScintilla.__init__(self)
+        font = gui.QFont()
+        self.setFont(font)
+        self.setWrapMode(qsc.QsciScintilla.WrapMode.WrapWord)
+        self.setBraceMatching(qsc.QsciScintilla.BraceMatch.SloppyBraceMatch)
+        self.setAutoIndent(True)
+        self.setFolding(qsc.QsciScintilla.FoldStyle.PlainFoldStyle)
+        self.setCaretLineVisible(True)
+        self.setCaretLineBackgroundColor(gui.QColor("#ffe4e4"))
+        self.setLexer(qsc.QsciLexerMarkdown())
+        # self.setEnabled(False)
+
+    def set_contents(self, data):
+        """load contents into editor
+
+        also edits in the image references to point to the right location
+        and retains the original value
+        """
+        # data = data.replace('img src="', f'img src="{self.parent.master.temp_imagepath}/')
+        # self.setHtml(data)
+        self.setText(data)
+        # dit hopenlijk niet nodig, want merkt document altijd aan als gewijzigd
+        # fmt = gui.QTextCharFormat()
+        # self.charformat_changed(fmt)  # callback voor currentCharFormatChanged event
+        self.oldtext = data
+
+    def get_contents(self):
+        """return contents from editor
+
+        also puts a plaintext version of the text in the internal tree (for searching)
+        and removes the extraction location from the image references
+        """
+        # update plain text in tree item to facilitate search
+        # self.parent.tree.currentItem().setData(0, core.Qt.ItemDataRole.UserRole, self.toPlainText())
+        item = self.parent.tree.currentItem()
+        # self.parent.tree.setitemtext(item, self.toPlainText())
+        # return self.toHtml().replace(f'img src="{self.parent.master.temp_imagepath}/', 'img src="')
+        text = self.text()
+        self.parent.tree.setitemtext(item, text)
+        return text
+
+    def get_text_position(self):
+        """return where the cursor is positioned in the text
+        """
+        line, index = 0, 0
+        line, index = self.getCursorPosition()
+        pos = line
+        # cursor = self.textCursor()
+        # pos = cursor.position()
+        # pos = 0
+        # if cursor.atEnd():
+        #     pos -= 1
+        return pos
+
+    def set_text_position(self, pos):
+        """set where the cursor should appear in the text
+        """
+        self.setCursorPosition(pos, 0)
+        # cursor = self.textCursor()
+        # cursor.setPosition(pos)
+        # # cursor.movePosition(gui.QTextCursor.MoveOperation.NextCharacter, n=pos)
+        # self.setTextCursor(cursor)
+        self.ensureCursorVisible()
+
+    def select_all(self):
+        "select complete text"
+        self.selectAll()
+
+    def check_dirty(self):
+        "check for modifications"
+        if not self.parent.master.initializing:
+            return self.isModified()
+
+    def mark_dirty(self, value):
+        "manually turn modified flag on/off (mainly intended for off)"
+        self.setModified(value)
+
+    def openup(self, value):
+        "make text accessible (or not)"
+        self.setReadOnly(not value)
+
+    def focusInEvent(self, *args):
+    # def SCN_FOCUSIN(self, *args):
+        "reimplemented to correctly set application title"
+        self.parent.in_editor = True
+        self.parent.master.set_window_title()
+        super().focusInEvent(*args)
+        # super().SCN_FOCUSIN(*args)
+
+    def focusOutEvent(self, *args):
+    # def SCN_FOCUSOUT(self, *args):
+        "reimplemented to correctly set application title"
+        self.parent.in_editor = False
+        self.parent.master.set_window_title()
+        super().focusOutEvent(*args)
+        # super().SCN_FOCUSOUT(*args)
+
+    def search_from_start(self):
+        "start search in textarea"
+        self.moveCursor(gui.QTextCursor.MoveOperation.Start)
+        ok = self.find(self.parent.master.srchtext, self.parent.set_searchflags())
+        if ok:
+            self.ensureCursorVisible()
+        return ok
+
+    def find_next(self):
+        "search forward in textarea"
+        if self.find(self.parent.master.srchtext, self.parent.set_searchflags()):
+            self.ensureCursorVisible()
+
+    def find_prev(self):
+        "search backwards in textarea"
+        if self.find(self.parent.master.srchtext, self.parent.set_searchflags(backward=True)):
+            self.ensureCursorVisible()
 
 
 class UndoRedoStack(gui.QUndoStack):

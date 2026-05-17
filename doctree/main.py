@@ -146,7 +146,8 @@ class MainWindow:
     HIDE_TEXT = ("DocTree gaat nu slapen in de System tray\n"
                  "Er komt een icoontje waarop je kunt klikken om hem weer wakker te maken")
 
-    def __init__(self, fname=''):
+    def __init__(self, fname='', use_scintilla=False):
+        self.use_scintilla = use_scintilla
         self.project_dirty = False
         self.add_node_on_paste = False
         self.has_treedata = False
@@ -160,10 +161,10 @@ class MainWindow:
         # self.gui.setup_screen()
         self.gui.create_splitter()
         self.gui.create_tree_on_left()
-        self.gui.create_editor_on_right()
+        self.gui.create_editor_on_right(use_scintilla)
         self.gui.create_menu(self.get_menu_data())
         self.gui.create_statusbar_at_bottom()
-        self.gui.finalize_display()
+        self.gui.finalize_display(use_scintilla)
         self.srchtext = ''
         self.srchtype = 0
         self.srchflags = {}
@@ -191,7 +192,7 @@ class MainWindow:
     def get_menu_data(self):
         """Menu options definitions
         """
-        return (
+        menus = [
             ("&Main", (
                 ("Re&Load", self.reread, 'Ctrl+R', 'icons/filerevert.png', 'Reread notes file'),
                 ("&Open", self.open, 'Ctrl+O', 'icons/fileopen.png',
@@ -289,48 +290,53 @@ class MainWindow:
                  'Select the entire text'),
                 ("&Clear All (can't undo)", self.gui.editor.clear, '', '',
                  'Delete the entire text'))),
-            ('&Format', (
-                ('&Bold', self.gui.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png',
-                 'CheckB'),
-                ('&Italic', self.gui.editor.text_italic, 'Ctrl+I',
-                 'icons/format-text-italic.png', 'CheckI'),
-                ('&Underline', self.gui.editor.text_underline, 'Ctrl+U',
-                 'icons/format-text-underline.png', 'CheckU'),
-                ('Strike&through', self.gui.editor.text_strikethrough, 'Ctrl+~',
-                 'icons/format-text-strikethrough.png', 'CheckS'),
-                ('&Monospace', self.gui.editor.text_monospace, 'Ctrl+F12',
-                 'icons/format-text-monospace.png', 'CheckM'),
-                (),
-                ('Align &Left', self.gui.editor.align_left, 'Shift+Ctrl+L',
-                 'icons/format-justify-left.png', 'Check'),
-                ('C&enter', self.gui.editor.align_center, 'Shift+Ctrl+C',
-                 'icons/format-justify-center.png', 'Check'),
-                ('Align &Right', self.gui.editor.align_right, 'Shift+Ctrl+R',
-                 'icons/format-justify-right.png', 'Check'),
-                ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
-                 'icons/format-justify-fill.png', 'Check'),
-                (),
-                ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
-                 'icons/format-indent-more.png', 'Increase indentation'),
-                ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
-                 'icons/format-indent-less.png', 'Decrease indentation'),
-                (),
-                ("Increase Paragraph Spacing", self.gui.editor.increase_parspacing, '', '', ''),
-                ("Decrease Paragraph Spacing", self.gui.editor.decrease_parspacing, '', '', ''),
-                (),
-                ("Normal Line Spacing", self.gui.editor.set_linespacing_10, '', '', ''),
-                ("1.5 Line Spacing", self.gui.editor.set_linespacing_15, '', '', ''),
-                ("Double Line Spacing", self.gui.editor.set_linespacing_20, '', '', ''),
-                (),
-                # ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
-                ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl++', '',
-                 'Use bigger letters'),
-                ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+-', '',
-                 'Use smaller letters'),
-                (),
-                ("&Color...", self.gui.editor.select_text_color, '', '', 'Set/change colour'),
-                ("&Background...", self.gui.editor.select_background_color, '', '',
-                 'Set/change background colour'))),
+            ]
+        if not self.use_scintilla:
+            menus += [
+                ('&Format', (
+                    ('&Bold', self.gui.editor.text_bold, 'Ctrl+B', 'icons/format-text-bold.png',
+                     'CheckB'),
+                    ('&Italic', self.gui.editor.text_italic, 'Ctrl+I',
+                     'icons/format-text-italic.png', 'CheckI'),
+                    ('&Underline', self.gui.editor.text_underline, 'Ctrl+U',
+                     'icons/format-text-underline.png', 'CheckU'),
+                    ('Strike&through', self.gui.editor.text_strikethrough, 'Ctrl+~',
+                     'icons/format-text-strikethrough.png', 'CheckS'),
+                    ('&Monospace', self.gui.editor.text_monospace, 'Ctrl+F12',
+                     'icons/format-text-monospace.png', 'CheckM'),
+                    (),
+                    ('Align &Left', self.gui.editor.align_left, 'Shift+Ctrl+L',
+                     'icons/format-justify-left.png', 'Check'),
+                    ('C&enter', self.gui.editor.align_center, 'Shift+Ctrl+C',
+                     'icons/format-justify-center.png', 'Check'),
+                    ('Align &Right', self.gui.editor.align_right, 'Shift+Ctrl+R',
+                     'icons/format-justify-right.png', 'Check'),
+                    ('&Justify', self.gui.editor.text_justify, 'Shift+Ctrl+J',
+                     'icons/format-justify-fill.png', 'Check'),
+                    (),
+                    ("Indent &More", self.gui.editor.indent_more, 'Ctrl+]',
+                     'icons/format-indent-more.png', 'Increase indentation'),
+                    ("Indent &Less", self.gui.editor.indent_less, 'Ctrl+[',
+                     'icons/format-indent-less.png', 'Decrease indentation'),
+                    (),
+                    ("Increase Paragraph Spacing", self.gui.editor.increase_parspacing, '', '', ''),
+                    ("Decrease Paragraph Spacing", self.gui.editor.decrease_parspacing, '', '', ''),
+                    (),
+                    ("Normal Line Spacing", self.gui.editor.set_linespacing_10, '', '', ''),
+                    ("1.5 Line Spacing", self.gui.editor.set_linespacing_15, '', '', ''),
+                    ("Double Line Spacing", self.gui.editor.set_linespacing_20, '', '', ''),
+                    (),
+                    # ("&Font...", self.gui.editor.text_font, '', '', 'Set/change font'),
+                    ("&Enlarge text", self.gui.editor.enlarge_text, 'Ctrl++', '',
+                     'Use bigger letters'),
+                    ("&Shrink text", self.gui.editor.shrink_text, 'Ctrl+-', '',
+                     'Use smaller letters'),
+                    (),
+                    ("&Color...", self.gui.editor.select_text_color, '', '', 'Set/change colour'),
+                    ("&Background...", self.gui.editor.select_background_color, '', '',
+                     'Set/change background colour'))),
+                ]
+        menus += [
             ('&Search', (
                 ('&Current text', self.search, 'Ctrl+F', '', "Search in current text"),
                 ('All t&exts', self.search_texts, 'Shift+Ctrl+F', '',
@@ -343,7 +349,8 @@ class MainWindow:
                  'Repeat search backwards'))),
             ("&Help", (
                 ("&About", self.info_page, '', '', 'About this application'),
-                ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts'))))
+                ("&Keys", self.help_page, 'F1', '', 'Keyboard shortcuts')))]
+        return menus
 
     def set_window_title(self):
         """standaard manier van venstertitel opbouwen"""
@@ -675,6 +682,7 @@ class MainWindow:
 
     def next_note_any(self, *args):
         """move to next item"""
+        breakpoint()
         if not self.gui.set_next_item(any_level=True):
             gui.show_message(self.gui, "Geen volgend item")
             return
@@ -684,6 +692,7 @@ class MainWindow:
 
     def prev_note_any(self, *args):
         """move to previous item"""
+        breakpoint()
         if not self.gui.set_prev_item(any_level=True):
             gui.show_message(self.gui, "Geen vorig item")
             return
@@ -1409,7 +1418,9 @@ class MainWindow:
         self.set_project_dirty(False)
         self.gui.expand_root()
         if item_to_activate != self.activeitem:
+            self.initializing = True
             self.gui.tree.set_item_selected(item_to_activate)
+            self.initializing = False
         return []  # self.opts, self.views, self.itemdict, self.text_positions, self.imagelist
 
     def set_windowsplit(self):
@@ -1454,8 +1465,10 @@ class MainWindow:
         "check the given view action and uncheck the others if needed"
         # if self.gui.check_given_option(arg):
         #     return ''
+        # breakpoint()
         for menuitem in self.gui.get_viewmenu_options()[7:]:
-            if self.gui.get_menuitem_text(menuitem) == newview:
+            # if self.gui.get_menuitem_text(menuitem) == newview:
+            if menuitem == newview:
                 self.gui.check_menuitem_option(menuitem, True)
             elif self.gui.get_viewmenuoption_state(menuitem):
                 self.gui.check_menuitem_option(menuitem, False)
