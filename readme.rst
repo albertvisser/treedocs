@@ -34,8 +34,7 @@ Requirements
 
 - Python
 - PyQT(5) for the current GUI version
-- wxPython (Phoenix) for a version of the GUI where I don't have the rich text field fully working yet.
+- wxPython (Phoenix) for an earlier version of the GUI. 
 
-Note that the current implementation uses *pickle* for storing the data. 
-I'm in the process of providing an alternative data backend, because I already tried out json and 
-sqlite for NoteTree, I thought MomgoDB might be a good choice. It's still a work in progress though.
+Note that data files are not interchangeable between the GUI variants.
+This is because they handle rich text differently.
