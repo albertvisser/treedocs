@@ -4245,8 +4245,8 @@ class TestOptionsDialog:
             print('called OptionsDialog.__init__ with args', args)
         monkeypatch.setattr(testee.OptionsDialog, '__init__', mock_init)
         testobj = testee.OptionsDialog()
-        testobj.parent = MockMainGui()
-        testobj.parent.master = MockMainWindow()
+        # testobj.parent = MockMainGui()
+        # testobj.parent.master = MockMainWindow()
         assert capsys.readouterr().out == 'called OptionsDialog.__init__ with args ()\n'
         return testobj
 
@@ -4273,16 +4273,6 @@ class TestOptionsDialog:
             'called Grid.__init__\n'
             "called VBox.addLayout with arg MockGridLayout\n"
             'called Dialog.setLayout with arg MockVBoxLayout\n')
-
-    def setup_testobj(self, monkeypatch, capsys):
-        "initialize testdouble"
-        def mock_init(self, *args):
-            print('called Dialog.__init__')
-            self.parent = args[0]
-        monkeypatch.setattr(testee.OptionsDialog, '__init__', mock_init)
-        testobj = testee.OptionsDialog(types.SimpleNamespace(dialog_data={}), {})
-        assert capsys.readouterr().out == 'called Dialog.__init__\n'
-        return testobj
 
     def test_add_checkbox_line_to_grid(self, monkeypatch, capsys):
         """unittest for OptionsDialog.add_checkbox_line_to_grid

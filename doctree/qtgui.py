@@ -326,6 +326,7 @@ class MainGui(qtw.QMainWindow):
 
     def closeEvent(self, event):
         "reimplemented event handler"
+        # print('in closeEvent')
         if not self.master.handle_save_needed():
             event.ignore()
         else:

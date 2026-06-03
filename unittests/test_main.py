@@ -3285,7 +3285,7 @@ class TestMainWindow:
             return arg
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.gui.get_viewmenuoption_state = mock_get_state
-        testobj.gui.get_menuitem_text= mock_get_text
+        testobj.gui.get_menuitem_text = mock_get_text
         testobj.check_viewmenu_option('1 xxx')
         assert capsys.readouterr().out == (
                 "called MainGui.get_viewmenu_options\n"

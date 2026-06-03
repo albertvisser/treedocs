@@ -279,8 +279,8 @@ class TestMainGui:
         def mock_add(arg):
             print(f'called MainGui.addToolBar with arg {arg}')
             return toolbar
-        monkeypatch.setattr(testee.wx,'ToolBar', mockwx.MockToolBar)
-        monkeypatch.setattr(testee.wx,'MenuBar', mockwx.MockMenuBar)
+        monkeypatch.setattr(testee.wx, 'ToolBar', mockwx.MockToolBar)
+        monkeypatch.setattr(testee.wx, 'MenuBar', mockwx.MockMenuBar)
         monkeypatch.setattr(testee.wx, 'Bitmap', mockwx.MockBitmap)
         monkeypatch.setattr(testee.wx, 'Menu', mockwx.MockMenu)
         monkeypatch.setattr(testee.wx, 'MenuItem', mockwx.MockMenuItem)
@@ -509,13 +509,13 @@ class TestMainGui:
                 self._id = count + 1
                 self._text = ['Open', 'Init', 'eXit', 'qqqq'][count]
             def GetId(self):  # , *args):
-                print('called menuitem.GetId')  #  with args', args)
+                print('called menuitem.GetId')  # with args', args)
                 return self._id
             def GetItemLabelText(self):
                 print('called menuitem.GetItemLabelText')
                 return self._text
         testobj = self.setup_testobj(monkeypatch, capsys)
-        monkeypatch.setattr(testee.MainGui, 'GetMenuBar',  mock_get)
+        monkeypatch.setattr(testee.MainGui, 'GetMenuBar', mock_get)
         testobj.disable_menu()
         assert testobj.menu_disabled
         assert capsys.readouterr().out == ("called MainGui.GetMenuBar\n"
@@ -808,7 +808,7 @@ class TestMainGui:
         """unittest for MainGui.set_next_item
         """
         def mock_getnext(*args):
-            print('called tree.GetNextSibling')  #  with args', args)
+            print('called tree.GetNextSibling')  # with args', args)
             return mockwx.MockTreeItem('not ok')
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.master = types.SimpleNamespace(activeitem='activeitem')
@@ -836,7 +836,7 @@ class TestMainGui:
         """unittest for MainGui.set_prev_item
         """
         def mock_getprev(*args):
-            print('called tree.GetPrevSibling')  #  with args', args)
+            print('called tree.GetPrevSibling')  # with args', args)
             return mockwx.MockTreeItem('not ok')
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.master = types.SimpleNamespace(activeitem='activeitem')
@@ -1279,7 +1279,7 @@ class TestMainGui:
         """unittest for MainGui.find_needle
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.find_needle(haystack) == "expected_result"
+        assert testobj.find_needle('haystack') == "expected_result"
         assert capsys.readouterr().out == ("")
         # not implemented
 
@@ -1287,7 +1287,7 @@ class TestMainGui:
         """unittest for MainGui.goto_searchresult
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.goto_searchresult(loc) == "expected_result"
+        assert testobj.goto_searchresult('loc') == "expected_result"
         assert capsys.readouterr().out == ("")
         # not implemented
 
@@ -1295,7 +1295,7 @@ class TestMainGui:
         """unittest for MainGui.forward_event
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.forward_event(evt) == "expected_result"
+        assert testobj.forward_event('evt') == "expected_result"
         assert capsys.readouterr().out == ("")
         # disabled
 
@@ -1428,7 +1428,7 @@ class TestTreePanel:
         """unittest for TreePanel.create_popupmenu
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.create_popupmenu(item) == "expected_result"
+        assert testobj.create_popupmenu('item') == "expected_result"
         assert capsys.readouterr().out == ("")
         # not implemented
 
@@ -2486,7 +2486,7 @@ class TestEditorPanel:
         """unittest for EditorPanel.enlarge_text
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.enlarge_text(evt) == "expected_result"
+        assert testobj.enlarge_text('evt') == "expected_result"
         assert capsys.readouterr().out == ("")
         # not implemented
 
@@ -2494,7 +2494,7 @@ class TestEditorPanel:
         """unittest for EditorPanel.shrink_text
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.shrink_text(evt) == "expected_result"
+        assert testobj.shrink_text('evt') == "expected_result"
         assert capsys.readouterr().out == ("")
         # not implemented
 
