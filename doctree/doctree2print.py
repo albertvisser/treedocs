@@ -44,7 +44,7 @@ def main(fname, donot_filter_html=False, to_files=False):
         nt_data = json.load(f_in)
 
         try:
-            test = nt_data['0']["AskBeforeHide"]
+            _test = nt_data['0']["AskBeforeHide"]
         except (TypeError, KeyError):
             return f"{fname} is not a valid Doctree data file"
         if any(('1' not in nt_data, '2' not in nt_data, '3' not in nt_data)):

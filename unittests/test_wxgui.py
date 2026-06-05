@@ -296,8 +296,8 @@ class TestMainGui:
         toolbar = mockwx.MockToolBar()
         assert capsys.readouterr().out == "called ToolBar.__init__ with args ()\n"
         testobj.addToolBar = mock_add
-        menubar = mockwx.MockMenuBar()
-        assert capsys.readouterr().out == "called MenuBar.__init__ with args ()\n"
+        # menubar = mockwx.MockMenuBar()
+        # assert capsys.readouterr().out == "called MenuBar.__init__ with args ()\n"
         testobj.create_menu([])
         assert capsys.readouterr().out == (
                 f"called ToolBar.__init__ with args ({testobj},)\n"
@@ -3478,7 +3478,7 @@ class TestMyListCtrl:
                 "called ListCtrl.__init__ with args"
                 " ('parent',) {'pos': wx.Point(-1, -1), 'size': wx.Size(-1, -1), 'style': 0}\n"
                 "called ListCtrlAutoWidthMixin.__init__ with args () {}\n")
-        testobj = testee.MyListCtrl(parent, pos="pos", size="size", style="style")
+        _testobj = testee.MyListCtrl(parent, pos="pos", size="size", style="style")
         assert capsys.readouterr().out == (
                 "called ListCtrl.__init__ with args"
                 " ('parent',) {'pos': 'pos', 'size': 'size', 'style': 'style'}\n"
@@ -3517,7 +3517,7 @@ class TestTaskbarIcon:
         monkeypatch.setattr(testee.wx.adv.TaskBarIcon, '__init__', mock_init)
         monkeypatch.setattr(testee.wx.adv.TaskBarIcon, 'SetIcon', mock_set)
         monkeypatch.setattr(testee.wx.adv.TaskBarIcon, 'Bind', mock_bind)
-        testobj = testee.TaskbarIcon(parent)
+        _testobj = testee.TaskbarIcon(parent)
         assert capsys.readouterr().out == (
             "called taskbaricon.__init__\n"
             "called taskbaricon.SetIcon with args ('appicon', 'Click to revive DocTree')\n"

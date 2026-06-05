@@ -3888,6 +3888,12 @@ class TestResults:
                 "called ResultsDialog.disable_widget with args ('prevbutton',)\n")
 
     def setup_testobj(self, monkeypatch, capsys):
+        """stub for main.MainWindow object
+
+        create the object skipping the normal initialization
+        intercept messages during creation
+        return the object so that other methods can be monkeypatched in the caller
+        """
         def mock_init(self):
             print('called Results.__init__')
         monkeypatch.setattr(testee.Results, '__init__', mock_init)

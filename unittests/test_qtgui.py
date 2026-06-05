@@ -1648,7 +1648,7 @@ class TestTreePanel:
         # monkeypatch.setattr(testee.qtw.QTreeWidget, 'InternalMove',
         #                     mockqtw.MockTreeWidget.InternalMove)
         parent = MockMainGui()
-        testobj = testee.TreePanel(parent)
+        testee.TreePanel(parent)
         assert capsys.readouterr().out == (
                 "called Tree.__init__\n"
                 "called Tree.setColumnCount with arg `2`\n"
@@ -2110,7 +2110,7 @@ class TestTreePanel:
         testobj = self.setup_testobj(monkeypatch, capsys)
         monkeypatch.setattr(testee.qtw.QTreeWidget, 'currentItem',
                             mockqtw.MockTreeWidget.currentItem)
-        item = mockqtw.MockTreeItem()
+        mockqtw.MockTreeItem()
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ()\n"
         assert testobj.get_selected_item() == "called Tree.currentItem"
 
@@ -2225,14 +2225,12 @@ class TestTreePanel:
         def mock_pop(*args):
             print('called MainWindow.popitems with args', args)
             return ['popped', 'items']
-        root = mockqtw.MockTreeItem()
         parent = mockqtw.MockTreeItem()
         child1 = mockqtw.MockTreeItem()
         child2 = mockqtw.MockTreeItem()
         parent.addChild(child1)
         parent.addChild(child2)
         assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
                                            "called TreeItem.__init__ with args ()\n"
                                            "called TreeItem.__init__ with args ()\n"
                                            "called TreeItem.addChild\n"
@@ -2260,9 +2258,7 @@ class TestTreePanel:
         root = mockqtw.MockTreeItem()
         parent = None
         item1 = mockqtw.MockTreeItem()
-        item2 = mockqtw.MockTreeItem()
         assert capsys.readouterr().out == ("called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.__init__ with args ()\n"
                                            "called TreeItem.__init__ with args ()\n"
                                            )
         testobj = self.setup_testobj(monkeypatch, capsys)

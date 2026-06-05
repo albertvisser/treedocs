@@ -1677,8 +1677,8 @@ class Results:
 
     def populate_list(self, listbox):
         "zoekresultaten vullen in list"
-        oldloc, oldtype, oldroot, oldtitle = None, None, '', ''
-        for ix, item in enumerate(self.parent.master.search_results):
+        oldloc, _oldtype, oldroot, oldtitle = None, None, '', ''
+        for item in self.parent.master.search_results:
             loc, newtype, root, title = item
             if loc != oldloc:
                 if oldloc is not None:
@@ -1689,8 +1689,7 @@ class Results:
                 in_title += 1
             else:  # if newtype == 'text':  # something else currently not possible
                 in_text += 1
-            oldloc, oldtype, oldroot, oldtitle = loc, newtype, root, title
-            # oldix = ix
+            oldloc, _oldtype, oldroot, oldtitle = loc, newtype, root, title
         self.gui.add_item_to_list(listbox, oldloc, oldroot, oldtitle)
 
     def goto_next(self):
