@@ -3136,7 +3136,6 @@ class TestMainWindow:
         assert testobj.read(other_file='qqqq') == ({'RootData': None, 'ScreenSize': (5, 10)},
                                                    ['views'], {'item': 'dict'}, {'text': 'positions'})
         assert capsys.readouterr().out == (
-                "called Editor.init_opts\n"
                 "called dml.read_from_files with args ('xxxx', 'qqqq', 'yyyy')\n")
 
         assert testobj.read() == []

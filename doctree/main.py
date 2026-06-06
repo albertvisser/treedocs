@@ -750,6 +750,8 @@ class MainWindow:
             # oldloc, prev = self.gui.tree.removeitem(current, cut_from_itemdict)
             oldloc, prev = self.gui.tree.removeitem(current)[:2]  # het derde geretourneerde
             # element bevat de verwijderde gegevens, is misschien te gebruiken ipv cut_from_itemdict?
+            # de wx versie verwacht dat cut_from_itemdict wordt meegegeven en retourneert deze niet,
+            # de qt versie bepaalt hem opnieuw
             self.activeitem = None
 
             # remove item(s) from view(s)
@@ -1377,7 +1379,7 @@ class MainWindow:
         """settings dictionary lezen, opgeslagen data omzetten naar tree"""
         if not other_file:
             self.has_treedata = False  # wordt deze ergens onderwater gebruikt? Ivm terugzetten
-        self.opts = init_opts()
+            self.opts = init_opts()
         nt_data = dml.read_from_files(self.project_file, other_file, self.temp_imagepath)
         if len(nt_data) == 1:
             return (nt_data[0],)  # foutmelding - teruggeven als 1-tuple
