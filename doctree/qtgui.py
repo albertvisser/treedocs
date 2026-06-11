@@ -1412,7 +1412,7 @@ class PasteCommand(gui.QUndoCommand):
         """
         for key in self.used_keys:
             self.win.master.itemdict.pop(key)
-        # items weer uit de visual tree halen   / removeitem
+        # items weer uit de visual tree halen
         parent, pos = self.used_parent
         if pos == -1:
             pos = parent.childCount() - 1
