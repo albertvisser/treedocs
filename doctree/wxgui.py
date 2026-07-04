@@ -786,8 +786,9 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
         "return the selected tree item"
         return self.GetFocusedItem()
 
-    def removeitem(self, item, cut_from_itemdict):
+    def removeitem(self, item):   # , cut_from_itemdict):
         "removes current treeitem and returns the previous one"
+        cut_from_itemdict = []
         parent, pos = self.getitemparentpos(item)
         oldloc = parent, pos
         prev = self.GetPrevSibling(item)
@@ -795,9 +796,9 @@ class TreePanel(treemix.DragAndDrop, wx.TreeCtrl):
             prev = parent
             if prev == self.root:
                 prev = self.GetNextSibling(item)
-        self.parent.master.popitems(item, cut_from_itemdict)
+        cut_from_itemdict = self.parent.master.popitems(item, cut_from_itemdict)
         self.Delete(item)
-        return oldloc, prev
+        return oldloc, prev, cut_from_itemdict
 
 
 class EditorPanel(rt.RichTextCtrl):

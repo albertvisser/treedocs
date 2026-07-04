@@ -1738,6 +1738,7 @@ class TestTreePanel:
         """
         def mock_pop(*args):
             print('called MainWindow.popitems with args', args)
+            return 'cut_from_itemdict'
         def mock_getpp(*args):
             print('called treepanel.getitemparentpos with args', args)
             return parent, 'pos'
@@ -1768,29 +1769,29 @@ class TestTreePanel:
         testobj.Delete = mock_delete
         testobj.root = rootitem
         parent = parentitem
-        assert testobj.removeitem('item', 'cut_from_itemdict') == ((parent, 'pos'), previtem)
+        assert testobj.removeitem('item') == ((parent, 'pos'), previtem, 'cut_from_itemdict')
         assert capsys.readouterr().out == (
                 "called treepanel.getitemparentpos with args ('item',)\n"
                 "called treepanel.GetPrevSibling with args ('item',)\n"
                 "called TreeItem.IsOk\n"
-                "called MainWindow.popitems with args ('item', 'cut_from_itemdict')\n"
+                "called MainWindow.popitems with args ('item', [])\n"
                 "called treepanel.Delete with args ('item',)\n")
         monkeypatch.setattr(mockwx.MockTreeItem, 'IsOk', mock_isok)
-        assert testobj.removeitem('item', 'cut_from_itemdict') == ((parent, 'pos'), parent)
+        assert testobj.removeitem('item') == ((parent, 'pos'), parent, 'cut_from_itemdict')
         assert capsys.readouterr().out == (
                 "called treepanel.getitemparentpos with args ('item',)\n"
                 "called treepanel.GetPrevSibling with args ('item',)\n"
                 "called TreeItem.IsOk\n"
-                "called MainWindow.popitems with args ('item', 'cut_from_itemdict')\n"
+                "called MainWindow.popitems with args ('item', [])\n"
                 "called treepanel.Delete with args ('item',)\n")
         parent = rootitem
-        assert testobj.removeitem('item', 'cut_from_itemdict') == ((rootitem, 'pos'), nextitem)
+        assert testobj.removeitem('item') == ((rootitem, 'pos'), nextitem, 'cut_from_itemdict')
         assert capsys.readouterr().out == (
                 "called treepanel.getitemparentpos with args ('item',)\n"
                 "called treepanel.GetPrevSibling with args ('item',)\n"
                 "called TreeItem.IsOk\n"
                 "called treepanel.GetNextSibling with args ('item',)\n"
-                "called MainWindow.popitems with args ('item', 'cut_from_itemdict')\n"
+                "called MainWindow.popitems with args ('item', [])\n"
                 "called treepanel.Delete with args ('item',)\n")
 
     # def _test_getsubtree(self, monkeypatch, capsys):

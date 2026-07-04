@@ -778,7 +778,7 @@ class MainWindow:
         ref = self.gui.tree.getitemkey(current)
         ## try:
         itemdict_item = self.itemdict.pop(ref)
-        cut_from_itemdict = []
+        # cut_from_itemdict = []    - niet initialiseren want is van buitanaf meegegeven
         ## except KeyError:
             ## pass
         ## else:
