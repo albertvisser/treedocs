@@ -1221,7 +1221,7 @@ class MainWindow:
                 result.append((loc, 'title', self.first_title, title))
             if self.srchtype & 2 and self.gui.find_needle(text):
                 result.append((loc, 'text', self.first_title, title))
-                # TODO: verder zoeken in document als de switch daarvoor aan staat
+                # TODO: verder zoeken in document als de switch daarvoor aan staat (2026-0005)
                 # cursorpos = self.gui.find_needle(text, cursorpos) - extra arg om dit aan te geven
             test = self.search_from(treeitem, loc)
             if test:
