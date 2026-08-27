@@ -14,7 +14,7 @@ print = test_doctree2print.py
 [testees]
 main = doctree/main.py
 log = doctree/do_logging.py
-dml = json_dml.py
+dml = doctree/json_dml.py
 mongo = doctree/mongo_dml.py
 pickle = doctree/pickle_dml.py
 qtgui = doctree/qtgui.py
